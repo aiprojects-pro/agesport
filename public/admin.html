@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AGESPORT · Panel de Administración</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #0d355f;
+      --navy-deep: #08233f;
+      --lime: #a8cf2f;
+      --bg: #eef3f7;
+      --card: #ffffff;
+      --ink: #18222e;
+      --muted: #61717f;
+      --line: rgba(13,53,95,.1);
+      --ok: #eaf8c7;
+      --warn: #fff1cf;
+      --max: 1240px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Manrope", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top right, rgba(168, 207, 47, 0.18), transparent 22rem),
+        linear-gradient(180deg, #f7fafc 0%, var(--bg) 100%);
+    }
+    a { color: inherit; text-decoration: none; }
+    .shell { width: min(calc(100% - 32px), var(--max)); margin: 0 auto; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(247,250,252,.86);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--line);
+    }
+    .topbar-inner {
+      min-height: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+    .brand h1 {
+      margin: 0;
+      font-family: "Fraunces", serif;
+      font-size: 1.6rem;
+      letter-spacing: -.04em;
+      color: var(--navy-deep);
+    }
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: .92rem;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--navy); color: #fff; }
+    .btn-secondary { background: rgba(13,53,95,.08); color: var(--navy); }
+    .btn-danger { background: rgba(152, 28, 28, .12); color: #892121; }
+    .hero {
+      padding: 30px 0 18px;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 18px;
+    }
+    .panel, .metric, .table-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: 0 14px 40px rgba(13,53,95,.08);
+    }
+    .panel { padding: 24px; }
+    .panel h2 {
+      margin: 0 0 8px;
+      font-family: "Fraunces", serif;
+      font-size: 2.2rem;
+      line-height: 1;
+      letter-spacing: -.04em;
+      color: var(--navy-deep);
+    }
+    .panel p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 18px;
+      padding: 10px 14px;
+      background: rgba(168,207,47,.15);
+      color: var(--navy);
+      border-radius: 999px;
+      font-weight: 800;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #6dd56f;
+    }
+    .admin-card {
+      padding: 24px;
+      background: linear-gradient(180deg, rgba(13,53,95,.96), rgba(8,35,63,.98));
+      color: #fff;
+    }
+    .admin-card strong {
+      display: block;
+      font-size: 1.2rem;
+      margin-bottom: 6px;
+    }
+    .admin-card span {
+      color: rgba(255,255,255,.78);
+      line-height: 1.6;
+      font-size: .94rem;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      padding: 12px 0 24px;
+    }
+    .metric { padding: 20px; }
+    .metric small {
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .metric strong {
+      display: block;
+      margin-top: 10px;
+      color: var(--navy);
+      font-size: 2rem;
+      line-height: 1;
+    }
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: .93rem;
+      line-height: 1.5;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      padding-bottom: 36px;
+    }
+    .table-card { overflow: hidden; }
+    .table-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    .table-head h3 {
+      margin: 0;
+      color: var(--navy-deep);
+      font-size: 1.05rem;
+    }
+    .table-wrap { padding: 8px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .95rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 12px 20px;
+      border-bottom: 1px solid rgba(13,53,95,.08);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    td strong { color: var(--navy); }
+    .empty {
+      padding: 24px 20px 28px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .actions .btn {
+      padding: 9px 12px;
+      font-size: .84rem;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 800;
+    }
+    .pill.pending { background: var(--warn); color: #875c00; }
+    .pill.ok { background: var(--ok); color: #456800; }
+    .notice {
+      margin: 0 0 26px;
+      padding: 16px 18px;
+      border-radius: 18px;
+      background: rgba(13,53,95,.06);
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .flash {
+      margin: 0 0 18px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      font-weight: 700;
+      display: none;
+    }
+    .flash.ok {
+      display: block;
+      background: var(--ok);
+      color: #456800;
+    }
+    .flash.error {
+      display: block;
+      background: rgba(152, 28, 28, .12);
+      color: #892121;
+    }
+    @media (max-width: 980px) {
+      .hero-grid, .metrics, .grid-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <div class="brand">
+        <h1>Panel de Administración</h1>
+        <p>AGESPORT · Mapa del Talento · Gestión y seguimiento</p>
+      </div>
+      <div class="top-actions">
+        <a class="btn btn-secondary" href="/">Volver a la portada</a>
+        <button class="btn btn-secondary" id="logoutBtn" type="button">Cerrar sesión</button>
+        <button class="btn btn-primary" id="refreshBtn" type="button">Actualizar datos</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-grid">
+        <article class="panel">
+          <h2>Cuadro de mando</h2>
+          <p>Espacio de seguimiento para la gestión administrativa del Mapa del Talento, con visión de actividad, solicitudes, evolución y supervisión general.</p>
+          <div class="status"><span class="dot"></span> Sesión administrativa activa</div>
+        </article>
+        <article class="panel admin-card">
+          <strong id="adminName">Cargando administrador...</strong>
+          <span id="adminMeta">Verificando sesión actual.</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="metrics" id="metrics"></section>
+
+    <p class="notice">Seguimiento operativo del ecosistema, con control sobre las altas pendientes y la actividad reciente registrada en la plataforma.</p>
+    <div id="flashMessage" class="flash"></div>
+
+    <section class="grid-2">
+      <article class="table-card">
+        <div class="table-head">
+          <h3>Socios pendientes</h3>
+          <span id="pendingCount" class="pill pending">0 pendientes</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Provincia</th>
+                <th>Entidad</th>
+                <th>Registro</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="pendingBody"></tbody>
+          </table>
+          <div id="pendingEmpty" class="empty" style="display:none">No hay solicitudes pendientes ahora mismo.</div>
+        </div>
+      </article>
+
+      <article class="table-card">
+        <div class="table-head">
+          <h3>Actividad reciente</h3>
+          <span class="pill ok">Auditoría</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Acción</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody id="activityBody"></tbody>
+          </table>
+          <div id="activityEmpty" class="empty" style="display:none">Todavía no hay actividad reciente registrada.</div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script src="/assets/portal.js"></script>
+  <script src="/assets/admin-dashboard.js"></script>
+</body>
+</html>

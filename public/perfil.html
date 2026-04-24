@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AGESPORT · Perfil</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/portal.css">
+</head>
+<body>
+  <header class="site-topbar">
+    <div class="shell inner">
+      <a class="site-brand" href="/">
+        <span class="site-brand-mark"></span>
+        <span class="site-brand-copy"><span>AGESPORT</span><strong>Mapa del Talento</strong></span>
+      </a>
+      <div class="topbar-actions">
+        <button class="btn btn-secondary" id="logoutBtn" type="button">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page shell private-layout">
+    <aside class="sidebar panel">
+      <h3>Navegación</h3>
+      <nav class="nav-list">
+        <a class="nav-link" href="/panel.html">Dashboard</a>
+        <a class="nav-link" href="/directorio.html">Directorio</a>
+        <a class="nav-link active" href="/perfil.html">Mi perfil</a>
+        <a class="nav-link" href="/mensajes.html">Mensajes</a>
+      </nav>
+    </aside>
+
+    <section class="stack">
+      <article class="hero-block">
+        <div class="eyebrow">Perfil profesional</div>
+        <h1 id="profileTitle">Cargando perfil</h1>
+        <p id="profileIntro">Preparando información del perfil profesional.</p>
+        <div class="toolbar" id="profileActions" style="margin-top:16px;display:none">
+          <div class="actions">
+            <a class="btn btn-primary" id="contactBtn" href="/mensajes.html">Abrir conversación</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="form-card">
+        <h2>Datos profesionales</h2>
+        <form id="profileForm" class="form-grid" style="margin-top:18px">
+          <div class="field">
+            <label for="nombre">Nombre</label>
+            <input id="nombre">
+          </div>
+          <div class="field">
+            <label for="apellidos">Apellidos</label>
+            <input id="apellidos">
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" disabled>
+          </div>
+          <div class="field">
+            <label for="entidad">Entidad</label>
+            <input id="entidad">
+          </div>
+          <div class="field">
+            <label for="cargo_actual">Cargo actual</label>
+            <input id="cargo_actual">
+          </div>
+          <div class="field">
+            <label for="anos_experiencia">Años de experiencia</label>
+            <input id="anos_experiencia" type="number" min="0" max="50">
+          </div>
+          <div class="field">
+            <label for="provincia">Provincia</label>
+            <select id="provincia">
+              <option value="">Selecciona provincia</option>
+              <option>Almería</option><option>Cádiz</option><option>Córdoba</option><option>Granada</option>
+              <option>Huelva</option><option>Jaén</option><option>Málaga</option><option>Sevilla</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="localidad">Localidad</label>
+            <input id="localidad">
+          </div>
+          <div class="field">
+            <label for="linkedin_url">LinkedIn</label>
+            <input id="linkedin_url">
+          </div>
+          <div class="field">
+            <label for="web_profesional">Web profesional</label>
+            <input id="web_profesional">
+          </div>
+          <div class="field-full">
+            <label for="direccion_completa">Dirección profesional</label>
+            <input id="direccion_completa">
+          </div>
+          <div class="field-full checkbox-row">
+            <input id="acepta_mensajeria" type="checkbox">
+            <label for="acepta_mensajeria">Acepto el uso de mensajería interna.</label>
+          </div>
+          <div class="field-full checkbox-row">
+            <input id="visible_web_profesional" type="checkbox">
+            <label for="visible_web_profesional">Mostrar web profesional dentro del directorio privado.</label>
+          </div>
+          <div class="field-full checkbox-row">
+            <input id="visible_linkedin" type="checkbox">
+            <label for="visible_linkedin">Mostrar perfil de LinkedIn dentro del directorio privado.</label>
+          </div>
+          <div class="field-full">
+            <button class="btn btn-primary" type="submit" id="saveBtn">Guardar cambios</button>
+          </div>
+        </form>
+        <div id="profileMessage" class="message-box"></div>
+      </article>
+
+      <article class="form-card">
+        <h2>Seguridad</h2>
+        <form id="passwordForm" class="form-grid" style="margin-top:18px">
+          <div class="field">
+            <label for="currentPassword">Contraseña actual</label>
+            <input id="currentPassword" type="password">
+          </div>
+          <div class="field">
+            <label for="newPassword">Nueva contraseña</label>
+            <input id="newPassword" type="password">
+          </div>
+          <div class="field-full">
+            <button class="btn btn-secondary" type="submit" id="passwordBtn">Actualizar contraseña</button>
+          </div>
+        </form>
+        <div id="passwordMessage" class="message-box"></div>
+      </article>
+    </section>
+  </main>
+
+  <script src="/assets/portal.js"></script>
+  <script src="/assets/perfil.js"></script>
+</body>
+</html>
