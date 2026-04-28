@@ -49,10 +49,10 @@ class Server {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
           imgSrc: ["'self'", "data:", "https:"],
-          scriptSrc: ["'self'"],
+          scriptSrc: ["'self'", "https://unpkg.com"],
           connectSrc: ["'self'", this.publicBaseUrl]
         }
       }

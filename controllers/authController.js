@@ -23,8 +23,9 @@ class AuthController {
         linkedin_url, otras_redes,
         
         // Datos profesionales
-        entidad, web_profesional, provincia, localidad, codigo_postal,
+        tipo_socio, tipo_corporativo, entidad, web_profesional, provincia, localidad, codigo_postal,
         direccion_completa, ambito, cargo_actual, anos_experiencia,
+        bio_profesional,
         
         // Rol en el clúster
         rol_cluster, b2b_ofrece, b2b_busca, b2b_licita,
@@ -83,16 +84,16 @@ class AuthController {
         const socioResult = await client.query(`
           INSERT INTO socios (
             email, password_hash, nombre, apellidos, dni_nie_encrypted, telefono_encrypted,
-            linkedin_url, otras_redes, entidad, web_profesional, provincia, localidad,
+            linkedin_url, otras_redes, tipo_socio, tipo_corporativo, entidad, web_profesional, provincia, localidad,
             codigo_postal, direccion_completa, ambito, cargo_actual, anos_experiencia,
-            latitud, longitud, estado
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+            bio_profesional, latitud, longitud, estado
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
           RETURNING id, email, nombre, apellidos
         `, [
           email, passwordHash, nombre, apellidos, dniEncrypted, telefonoEncrypted,
-          linkedin_url, otras_redes, entidad, web_profesional, provincia, localidad,
+          linkedin_url, otras_redes, tipo_socio || 'numero', tipo_corporativo || null, entidad, web_profesional, provincia, localidad,
           codigo_postal, direccion_completa, ambito, cargo_actual, anos_experiencia,
-          latitud, longitud, 'pendiente' // Requiere aprobación admin
+          bio_profesional || null, latitud, longitud, 'pendiente' // Requiere aprobación admin
         ]);
 
         const socio = socioResult.rows[0];

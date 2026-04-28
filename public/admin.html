@@ -3,340 +3,158 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AGESPORT · Panel de Administración</title>
+  <title>Administración · AGESPORT</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --navy: #0d355f;
-      --navy-deep: #08233f;
-      --lime: #a8cf2f;
-      --bg: #eef3f7;
-      --card: #ffffff;
-      --ink: #18222e;
-      --muted: #61717f;
-      --line: rgba(13,53,95,.1);
-      --ok: #eaf8c7;
-      --warn: #fff1cf;
-      --max: 1240px;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Manrope", sans-serif;
-      color: var(--ink);
-      background:
-        radial-gradient(circle at top right, rgba(168, 207, 47, 0.18), transparent 22rem),
-        linear-gradient(180deg, #f7fafc 0%, var(--bg) 100%);
-    }
-    a { color: inherit; text-decoration: none; }
-    .shell { width: min(calc(100% - 32px), var(--max)); margin: 0 auto; }
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: rgba(247,250,252,.86);
-      backdrop-filter: blur(16px);
-      border-bottom: 1px solid var(--line);
-    }
-    .topbar-inner {
-      min-height: 78px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 18px;
-    }
-    .brand h1 {
-      margin: 0;
-      font-family: "Fraunces", serif;
-      font-size: 1.6rem;
-      letter-spacing: -.04em;
-      color: var(--navy-deep);
-    }
-    .brand p {
-      margin: 4px 0 0;
-      color: var(--muted);
-      font-size: .92rem;
-    }
-    .top-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .btn {
-      border: 0;
-      border-radius: 999px;
-      padding: 12px 18px;
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .btn-primary { background: var(--navy); color: #fff; }
-    .btn-secondary { background: rgba(13,53,95,.08); color: var(--navy); }
-    .btn-danger { background: rgba(152, 28, 28, .12); color: #892121; }
-    .hero {
-      padding: 30px 0 18px;
-    }
-    .hero-grid {
-      display: grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap: 18px;
-    }
-    .panel, .metric, .table-card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 24px;
-      box-shadow: 0 14px 40px rgba(13,53,95,.08);
-    }
-    .panel { padding: 24px; }
-    .panel h2 {
-      margin: 0 0 8px;
-      font-family: "Fraunces", serif;
-      font-size: 2.2rem;
-      line-height: 1;
-      letter-spacing: -.04em;
-      color: var(--navy-deep);
-    }
-    .panel p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.7;
-    }
-    .status {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 18px;
-      padding: 10px 14px;
-      background: rgba(168,207,47,.15);
-      color: var(--navy);
-      border-radius: 999px;
-      font-weight: 800;
-    }
-    .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #6dd56f;
-    }
-    .admin-card {
-      padding: 24px;
-      background: linear-gradient(180deg, rgba(13,53,95,.96), rgba(8,35,63,.98));
-      color: #fff;
-    }
-    .admin-card strong {
-      display: block;
-      font-size: 1.2rem;
-      margin-bottom: 6px;
-    }
-    .admin-card span {
-      color: rgba(255,255,255,.78);
-      line-height: 1.6;
-      font-size: .94rem;
-    }
-    .metrics {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 16px;
-      padding: 12px 0 24px;
-    }
-    .metric { padding: 20px; }
-    .metric small {
-      color: var(--muted);
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-    }
-    .metric strong {
-      display: block;
-      margin-top: 10px;
-      color: var(--navy);
-      font-size: 2rem;
-      line-height: 1;
-    }
-    .metric span {
-      display: block;
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: .93rem;
-      line-height: 1.5;
-    }
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
-      padding-bottom: 36px;
-    }
-    .table-card { overflow: hidden; }
-    .table-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 18px 20px;
-      border-bottom: 1px solid var(--line);
-    }
-    .table-head h3 {
-      margin: 0;
-      color: var(--navy-deep);
-      font-size: 1.05rem;
-    }
-    .table-wrap { padding: 8px 0; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: .95rem;
-    }
-    th, td {
-      text-align: left;
-      padding: 12px 20px;
-      border-bottom: 1px solid rgba(13,53,95,.08);
-      vertical-align: top;
-    }
-    th {
-      color: var(--muted);
-      font-size: .78rem;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-    }
-    td strong { color: var(--navy); }
-    .empty {
-      padding: 24px 20px 28px;
-      color: var(--muted);
-      line-height: 1.7;
-    }
-    .actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .actions .btn {
-      padding: 9px 12px;
-      font-size: .84rem;
-    }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: .78rem;
-      font-weight: 800;
-    }
-    .pill.pending { background: var(--warn); color: #875c00; }
-    .pill.ok { background: var(--ok); color: #456800; }
-    .notice {
-      margin: 0 0 26px;
-      padding: 16px 18px;
-      border-radius: 18px;
-      background: rgba(13,53,95,.06);
-      color: var(--muted);
-      line-height: 1.7;
-    }
-    .flash {
-      margin: 0 0 18px;
-      padding: 14px 16px;
-      border-radius: 16px;
-      font-weight: 700;
-      display: none;
-    }
-    .flash.ok {
-      display: block;
-      background: var(--ok);
-      color: #456800;
-    }
-    .flash.error {
-      display: block;
-      background: rgba(152, 28, 28, .12);
-      color: #892121;
-    }
-    @media (max-width: 980px) {
-      .hero-grid, .metrics, .grid-2 { grid-template-columns: 1fr; }
-    }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/portal.css">
 </head>
 <body>
-  <header class="topbar">
-    <div class="shell topbar-inner">
-      <div class="brand">
-        <h1>Panel de Administración</h1>
-        <p>AGESPORT · Mapa del Talento · Gestión y seguimiento</p>
+
+  <div id="topbar"></div>
+
+  <main class="page">
+    <div class="shell">
+
+      <header class="page-head">
+        <h1>Panel de administración</h1>
+        <p>Personaliza la identidad de tu organización en el Mapa del Talento, gestiona socios pendientes y supervisa la actividad reciente.</p>
+      </header>
+
+      <div class="admin-grid">
+
+        <!-- Identidad de la organización -->
+        <section class="panel">
+          <h2 style="margin-top:0;color:var(--navy-deep);font-family:'Fraunces',serif;font-size:1.3rem">Identidad de la organización</h2>
+          <p style="color:var(--muted);font-size:.9rem;margin-bottom:18px">Estos datos personalizan cómo se muestra el portal a los socios de tu organización.</p>
+
+          <div class="org-logo-preview">
+            <img id="orgLogoImg" src="" alt="" style="display:none">
+            <div class="logo-placeholder" id="orgLogoPlaceholder">LOGO</div>
+            <input type="file" id="orgLogoInput" accept="image/*" style="display:none">
+            <div style="display:flex;gap:8px;justify-content:center">
+              <button class="btn btn-secondary btn-sm" id="btnUploadLogo">Subir logo</button>
+              <button class="btn btn-ghost btn-sm" id="btnRemoveLogo">Quitar</button>
+            </div>
+          </div>
+
+          <div class="form-grid" style="margin-top:14px">
+            <div class="field-full">
+              <label>Nombre de la organización</label>
+              <input type="text" id="orgNombre" placeholder="p.ej. Ayuntamiento de Almería">
+            </div>
+            <div class="field">
+              <label>Tipo de entidad</label>
+              <select id="orgTipo"></select>
+            </div>
+            <div class="field">
+              <label>Provincia</label>
+              <select id="orgProvincia"></select>
+            </div>
+            <div class="field-full">
+              <label>Web institucional</label>
+              <input type="url" id="orgWeb" placeholder="https://...">
+            </div>
+            <div class="field-full">
+              <label>Descripción breve</label>
+              <textarea id="orgDesc" rows="3" placeholder="Misión, ámbito de actuación, especialidades..."></textarea>
+            </div>
+            <div class="field">
+              <label>Color corporativo</label>
+              <input type="color" id="orgColor" value="#0d355f" style="height:42px;padding:4px">
+            </div>
+            <div class="field">
+              <label>NIF / CIF</label>
+              <input type="text" id="orgNif">
+            </div>
+          </div>
+
+          <div style="margin-top:14px;display:flex;gap:10px">
+            <button class="btn btn-primary" id="btnSaveOrg">Guardar cambios</button>
+          </div>
+
+          <div class="message-box" id="okMsg">Cambios guardados correctamente.</div>
+        </section>
+
+        <!-- Estadísticas + pendientes -->
+        <section class="panel">
+          <h2 style="margin-top:0;color:var(--navy-deep);font-family:'Fraunces',serif;font-size:1.3rem">Resumen de actividad</h2>
+
+          <div class="kpi-grid" id="adminKpis" style="margin-bottom:20px"></div>
+
+          <h3 style="font-family:'Fraunces',serif;color:var(--navy);margin:18px 0 10px;font-size:1.05rem">Socios pendientes de aprobación</h3>
+          <div id="pendientes"></div>
+
+          <h3 style="font-family:'Fraunces',serif;color:var(--navy);margin:24px 0 10px;font-size:1.05rem">Actividad reciente</h3>
+          <ul id="actividad" style="list-style:none;padding:0;margin:0;display:grid;gap:8px"></ul>
+        </section>
+
       </div>
-      <div class="top-actions">
-        <a class="btn btn-secondary" href="/">Volver a la portada</a>
-        <button class="btn btn-secondary" id="logoutBtn" type="button">Cerrar sesión</button>
-        <button class="btn btn-primary" id="refreshBtn" type="button">Actualizar datos</button>
-      </div>
+
+      <!-- Subida masiva de socios + accesos -->
+      <section class="panel" style="margin-top:24px">
+        <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+          <div style="flex:1;min-width:240px">
+            <h2 style="margin:0 0 4px;color:var(--navy-deep);font-family:'Fraunces',serif;font-size:1.3rem">Subida masiva de socios</h2>
+            <p style="margin:0;color:var(--muted);font-size:.92rem">Importa un archivo CSV con los nuevos socios y genera un enlace individual de activación para cada alta. Después podrás abrirlo o copiarlo y compartirlo desde el panel.</p>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btnDownloadTemplate" type="button">Descargar plantilla CSV</button>
+        </div>
+
+        <!-- Drop zone -->
+        <label class="upload-zone" id="uploadZone" for="csvFile">
+          <span class="upload-zone-icon">📥</span>
+          <strong>Arrastra tu CSV aquí o haz clic para seleccionar</strong>
+          <span>Formato esperado: <code style="background:#fff;padding:2px 6px;border-radius:6px;font-size:.78rem">nombre, apellidos, email, tipo_socio, tipo_corporativo, organizacion, provincia, localidad, cargo, rol_cluster, especialidades</code></span>
+          <input type="file" id="csvFile" accept=".csv,text/csv">
+        </label>
+
+        <!-- Preview -->
+        <div id="previewWrap" style="display:none;margin-top:18px">
+          <h3 style="font-family:'Fraunces',serif;color:var(--navy);margin:0 0 8px;font-size:1.05rem">Vista previa</h3>
+          <div class="table-wrap">
+            <table class="simple-table" id="previewTable">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="bulk-actions">
+            <div class="bulk-summary" id="bulkSummary"></div>
+            <button class="btn btn-ghost btn-sm" type="button" id="btnCancelBulk">Cancelar</button>
+            <button class="btn btn-primary" type="button" id="btnProcessBulk">Generar accesos</button>
+          </div>
+        </div>
+
+        <div class="message-box" id="bulkMsg" style="margin-top:14px"></div>
+
+        <!-- Lista de accesos generados -->
+        <div style="margin-top:30px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <h3 style="font-family:'Fraunces',serif;color:var(--navy);margin:0;font-size:1.05rem;flex:1">Accesos generados</h3>
+            <span class="row-status pendiente" id="invStatPending">0 pendientes</span>
+            <span class="row-status aceptada" id="invStatAccepted">0 aceptadas</span>
+          </div>
+          <div class="table-wrap" id="invitationsWrap">
+            <table class="simple-table" id="invitationsTable">
+              <thead>
+                <tr>
+                  <th style="width:30%">Destinatario</th>
+                  <th>Tipo</th>
+                  <th>Estado</th>
+                  <th>Enviada</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="invitationsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
     </div>
-  </header>
-
-  <main class="shell">
-    <section class="hero">
-      <div class="hero-grid">
-        <article class="panel">
-          <h2>Cuadro de mando</h2>
-          <p>Espacio de seguimiento para la gestión administrativa del Mapa del Talento, con visión de actividad, solicitudes, evolución y supervisión general.</p>
-          <div class="status"><span class="dot"></span> Sesión administrativa activa</div>
-        </article>
-        <article class="panel admin-card">
-          <strong id="adminName">Cargando administrador...</strong>
-          <span id="adminMeta">Verificando sesión actual.</span>
-        </article>
-      </div>
-    </section>
-
-    <section class="metrics" id="metrics"></section>
-
-    <p class="notice">Seguimiento operativo del ecosistema, con control sobre las altas pendientes y la actividad reciente registrada en la plataforma.</p>
-    <div id="flashMessage" class="flash"></div>
-
-    <section class="grid-2">
-      <article class="table-card">
-        <div class="table-head">
-          <h3>Socios pendientes</h3>
-          <span id="pendingCount" class="pill pending">0 pendientes</span>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Provincia</th>
-                <th>Entidad</th>
-                <th>Registro</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="pendingBody"></tbody>
-          </table>
-          <div id="pendingEmpty" class="empty" style="display:none">No hay solicitudes pendientes ahora mismo.</div>
-        </div>
-      </article>
-
-      <article class="table-card">
-        <div class="table-head">
-          <h3>Actividad reciente</h3>
-          <span class="pill ok">Auditoría</span>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Acción</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody id="activityBody"></tbody>
-          </table>
-          <div id="activityEmpty" class="empty" style="display:none">Todavía no hay actividad reciente registrada.</div>
-        </div>
-      </article>
-    </section>
   </main>
 
+  <script src="/assets/data.js"></script>
   <script src="/assets/portal.js"></script>
-  <script src="/assets/admin-dashboard.js"></script>
+  <script src="/assets/admin.js"></script>
 </body>
 </html>

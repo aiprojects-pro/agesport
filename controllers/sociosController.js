@@ -196,8 +196,9 @@ class SociosController {
 
       const {
         nombre, apellidos, dni_nie, telefono, linkedin_url, otras_redes,
-        entidad, web_profesional, provincia, localidad, codigo_postal,
+        tipo_socio, tipo_corporativo, entidad, web_profesional, provincia, localidad, codigo_postal,
         direccion_completa, ambito, cargo_actual, anos_experiencia,
+        bio_profesional,
         
         // Rol cluster
         rol_cluster, b2b_ofrece, b2b_busca, b2b_licita,
@@ -228,6 +229,8 @@ class SociosController {
         if (telefono !== undefined) socioUpdate.telefono_encrypted = telefono ? encryptData(telefono) : null;
         if (linkedin_url !== undefined) socioUpdate.linkedin_url = linkedin_url;
         if (otras_redes !== undefined) socioUpdate.otras_redes = otras_redes;
+        if (tipo_socio !== undefined) socioUpdate.tipo_socio = tipo_socio;
+        if (tipo_corporativo !== undefined) socioUpdate.tipo_corporativo = tipo_corporativo;
         if (entidad !== undefined) socioUpdate.entidad = entidad;
         if (web_profesional !== undefined) socioUpdate.web_profesional = web_profesional;
         if (provincia !== undefined) socioUpdate.provincia = provincia;
@@ -237,6 +240,7 @@ class SociosController {
         if (ambito !== undefined) socioUpdate.ambito = ambito;
         if (cargo_actual !== undefined) socioUpdate.cargo_actual = cargo_actual;
         if (anos_experiencia !== undefined) socioUpdate.anos_experiencia = parseInt(anos_experiencia);
+        if (bio_profesional !== undefined) socioUpdate.bio_profesional = bio_profesional;
 
         // Regeocoding si cambió la dirección
         if (direccion_completa && (direccion_completa !== datosAnteriores.direccion_completa)) {
@@ -261,13 +265,24 @@ class SociosController {
         }
 
         // 2. Actualizar rol cluster
-        if (rol_cluster !== undefined) {
+        if (rol_cluster !== undefined || b2b_ofrece !== undefined || b2b_busca !== undefined || b2b_licita !== undefined) {
+          const rolActual = await client.query('SELECT * FROM rol_cluster WHERE socio_id = $1 LIMIT 1', [socioId]);
+          const rolEfectivo = rol_cluster !== undefined
+            ? rol_cluster
+            : (rolActual.rows[0] ? rolActual.rows[0].rol : null);
+
           await client.query('DELETE FROM rol_cluster WHERE socio_id = $1', [socioId]);
-          if (rol_cluster) {
+          if (rolEfectivo) {
             await client.query(`
               INSERT INTO rol_cluster (socio_id, rol, b2b_ofrece, b2b_busca, b2b_licita)
               VALUES ($1, $2, $3, $4, $5)
-            `, [socioId, rol_cluster, !!b2b_ofrece, !!b2b_busca, !!b2b_licita]);
+            `, [
+              socioId,
+              rolEfectivo,
+              b2b_ofrece !== undefined ? !!b2b_ofrece : !!(rolActual.rows[0] && rolActual.rows[0].b2b_ofrece),
+              b2b_busca !== undefined ? !!b2b_busca : !!(rolActual.rows[0] && rolActual.rows[0].b2b_busca),
+              b2b_licita !== undefined ? !!b2b_licita : !!(rolActual.rows[0] && rolActual.rows[0].b2b_licita)
+            ]);
           }
         }
 
@@ -283,17 +298,36 @@ class SociosController {
         }
 
         // 4. Actualizar disponibilidad
-        if (disponibilidad !== undefined) {
+        if (
+          disponibilidad !== undefined ||
+          ponente !== undefined ||
+          tutor_mentor !== undefined ||
+          asistente !== undefined ||
+          congreso_almeria !== undefined ||
+          representacion !== undefined ||
+          captacion_patrocinio !== undefined
+        ) {
+          const disponibilidadActual = await client.query('SELECT * FROM disponibilidad WHERE socio_id = $1 LIMIT 1', [socioId]);
+          const nivelEfectivo = disponibilidad !== undefined
+            ? disponibilidad
+            : (disponibilidadActual.rows[0] ? disponibilidadActual.rows[0].nivel : null);
+
           await client.query('DELETE FROM disponibilidad WHERE socio_id = $1', [socioId]);
-          if (disponibilidad) {
+          if (nivelEfectivo) {
             await client.query(`
               INSERT INTO disponibilidad (
                 socio_id, nivel, ponente, tutor_mentor, asistente,
                 congreso_almeria, representacion, captacion_patrocinio
               ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             `, [
-              socioId, disponibilidad, !!ponente, !!tutor_mentor, !!asistente,
-              !!congreso_almeria, !!representacion, !!captacion_patrocinio
+              socioId,
+              nivelEfectivo,
+              ponente !== undefined ? !!ponente : !!(disponibilidadActual.rows[0] && disponibilidadActual.rows[0].ponente),
+              tutor_mentor !== undefined ? !!tutor_mentor : !!(disponibilidadActual.rows[0] && disponibilidadActual.rows[0].tutor_mentor),
+              asistente !== undefined ? !!asistente : !!(disponibilidadActual.rows[0] && disponibilidadActual.rows[0].asistente),
+              congreso_almeria !== undefined ? !!congreso_almeria : !!(disponibilidadActual.rows[0] && disponibilidadActual.rows[0].congreso_almeria),
+              representacion !== undefined ? !!representacion : !!(disponibilidadActual.rows[0] && disponibilidadActual.rows[0].representacion),
+              captacion_patrocinio !== undefined ? !!captacion_patrocinio : !!(disponibilidadActual.rows[0] && disponibilidadActual.rows[0].captacion_patrocinio)
             ]);
           }
         }

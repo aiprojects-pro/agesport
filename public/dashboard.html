@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Observatorio del Talento · AGESPORT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/portal.css">
+</head>
+<body>
+
+  <div id="topbar"></div>
+
+  <main class="page">
+    <div class="shell">
+
+      <header class="page-head">
+        <h1>Observatorio del Talento</h1>
+        <p>Indicadores estratégicos del clúster del deporte andaluz: distribución territorial, capacidades, mentoría y proyectos B2B activos entre socios.</p>
+      </header>
+
+      <!-- KPIs principales -->
+      <section class="kpi-grid" id="kpis"></section>
+
+      <!-- Indicadores Sectoriales -->
+      <section class="section-block">
+        <div class="section-block-head">
+          <h2>Indicadores Sectoriales</h2>
+          <select class="sort">
+            <option>Todas las provincias</option>
+            <option>Solo Andalucía Occidental</option>
+            <option>Solo Andalucía Oriental</option>
+          </select>
+        </div>
+
+        <div class="section-cards-grid">
+
+          <div class="section-card">
+            <div class="section-card-head">
+              <span class="section-icon">📍</span>
+              <h3>Distribución por Provincia</h3>
+            </div>
+            <div class="bars" id="barsProvincia"></div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-card-head">
+              <span class="section-icon">🎯</span>
+              <h3>Rol en Clúster</h3>
+            </div>
+            <div class="donut-wrap">
+              <svg id="donutRol" viewBox="0 0 160 160" width="160" height="160" aria-hidden="true"></svg>
+              <div class="donut-legend" id="donutLegend"></div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Especialidades + Disponibilidad -->
+      <section class="section-block">
+        <div class="section-block-head">
+          <h2>Capacidades y Disponibilidad</h2>
+        </div>
+
+        <div class="section-cards-grid">
+
+          <div class="section-card">
+            <div class="section-card-head">
+              <span class="section-icon">⭐</span>
+              <h3>Top Especialidades</h3>
+            </div>
+            <div class="bars" id="barsEspecialidad"></div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-card-head">
+              <span class="section-icon">⚡</span>
+              <h3>Disponibilidad para colaborar</h3>
+            </div>
+            <div class="bars" id="barsDisp"></div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script src="/assets/data.js"></script>
+  <script src="/assets/portal.js"></script>
+  <script src="/assets/dashboard.js"></script>
+</body>
+</html>
