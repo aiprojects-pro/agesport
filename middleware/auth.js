@@ -177,26 +177,42 @@ const authenticateAny = async (req, res, next) => {
 };
 
 // ==================== CIFRADO DE DATOS SENSIBLES ====================
+// Usamos AES-256-CBC con IV aleatorio por valor. La clave se deriva
+// de la `ENCRYPTION_KEY` configurada para garantizar 32 bytes exactos.
+// Formato de salida: "ivHex:cipherHex" para poder descifrar después.
+
+const deriveEncryptionKey = () => {
+  const raw = String(config.encryption.key || '');
+  return crypto.createHash('sha256').update(raw).digest(); // 32 bytes
+};
 
 const encryptData = (text) => {
   if (!text) return null;
-  
-  const cipher = crypto.createCipher(config.encryption.algorithm, config.encryption.key);
-  let encrypted = cipher.update(text, 'utf8', 'hex');
+  const key = deriveEncryptionKey();
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  let encrypted = cipher.update(String(text), 'utf8', 'hex');
   encrypted += cipher.final('hex');
-  return encrypted;
+  return iv.toString('hex') + ':' + encrypted;
 };
 
 const decryptData = (encryptedText) => {
   if (!encryptedText) return null;
-  
   try {
-    const decipher = crypto.createDecipher(config.encryption.algorithm, config.encryption.key);
-    let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
+    // Soporte para el formato nuevo "iv:cipher"
+    if (typeof encryptedText === 'string' && encryptedText.includes(':')) {
+      const [ivHex, cipherHex] = encryptedText.split(':');
+      const key = deriveEncryptionKey();
+      const iv = Buffer.from(ivHex, 'hex');
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+      let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
+    }
+    // Si no tiene IV (formato legacy createCipher), no podemos descifrar de forma segura.
+    return null;
   } catch (error) {
-    console.error('Error descifrando datos:', error);
+    console.error('Error descifrando datos:', error.message);
     return null;
   }
 };

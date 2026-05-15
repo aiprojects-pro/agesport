@@ -51,7 +51,7 @@ class Server {
           defaultSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
-          imgSrc: ["'self'", "data:", "https:"],
+          imgSrc: ["'self'", "data:", "blob:", "https:"],
           scriptSrc: ["'self'", "https://unpkg.com"],
           connectSrc: ["'self'", this.publicBaseUrl]
         }
@@ -98,13 +98,25 @@ class Server {
     this.app.use('/api/admin', adminRoutes);
     this.app.use('/api/mensajeria', mensajeriaRoutes);
 
-    // Servir archivos estáticos del frontend
+    // Servir uploads (fotos perfil, CVs, logos org) — disponible en dev y prod
+    const uploadsPath = path.resolve(config.uploads.path || './uploads');
+    this.app.use('/uploads', express.static(uploadsPath, {
+      maxAge: '7d',
+      fallthrough: true
+    }));
+
+    // En desarrollo, servir también /assets para que los HTML carguen CSS/JS estáticos
+    if (process.env.NODE_ENV !== 'production') {
+      this.app.use(express.static(path.join(__dirname, 'public')));
+    }
+
+    // Servir archivos estáticos del frontend (en producción)
     if (process.env.NODE_ENV === 'production') {
       this.app.use(express.static(path.join(__dirname, 'public')));
       
       // SPA fallback - todas las rutas no API devuelven index.html
       this.app.get('/{*path}', (req, res) => {
-        if (!req.path.startsWith('/api/')) {
+        if (!req.path.startsWith('/api/') && !req.path.startsWith('/uploads/')) {
           res.sendFile(path.join(__dirname, 'public', 'index.html'));
         } else {
           res.status(404).json({ error: 'Endpoint no encontrado' });

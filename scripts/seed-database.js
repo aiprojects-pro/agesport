@@ -1,22 +1,11 @@
 // scripts/seed-database.js
 const db = require('../config/database');
 const { hashPassword, encryptData } = require('../middleware/auth');
+const catalogos = require('../config/catalogos');
 
-const PROVINCIAS = ['Almería', 'Cádiz', 'Córdoba', 'Granada', 'Huelva', 'Jaén', 'Málaga', 'Sevilla'];
-const ESPECIALIDADES = [
-  'Gestión de Instalaciones',
-  'Organización de Eventos', 
-  'Derecho Deportivo',
-  'Contratación y Patrimonio',
-  'Marketing y Patrocinio',
-  'Digitalización e IA',
-  'Recursos Humanos',
-  'Accesibilidad e Inclusión',
-  'Actividad Física y Salud',
-  'Seguridad y Autoprotección'
-];
-
-const ROLES_CLUSTER = ['gestion', 'servicios', 'infra', 'tech'];
+const PROVINCIAS = catalogos.allProvinces();
+const ESPECIALIDADES = catalogos.ESPECIALIDADES.map(e => e.slug);
+const ROLES_CLUSTER = catalogos.ROLES_CLUSTER.map(r => r.slug);
 const AMBITOS = ['Público', 'Privado', 'Mixto / Otros'];
 const DISPONIBILIDAD = ['Alta', 'Media', 'Puntual'];
 
@@ -46,25 +35,27 @@ async function seedDatabase() {
         nombre: 'María',
         apellidos: 'García López',
         provincia: 'Almería',
+        comunidad_autonoma: 'andalucia',
         localidad: 'Almería',
         entidad: 'Centro Deportivo Almería',
         cargo_actual: 'Directora de Instalaciones',
         anos_experiencia: 8,
-        rol_cluster: 'gestion',
-        especialidades: ['Gestión de Instalaciones', 'Organización de Eventos'],
+        rol_cluster: 'gestor_infraestructuras_instalaciones',
+        especialidades: ['gestion_instalaciones', 'organizacion_eventos'],
         disponibilidad: 'Alta'
       },
       {
         email: 'carlos.rodriguez@sevilladeporte.es',
         nombre: 'Carlos',
         apellidos: 'Rodríguez Martín',
-        provincia: 'Sevilla', 
+        provincia: 'Sevilla',
+        comunidad_autonoma: 'andalucia',
         localidad: 'Sevilla',
         entidad: 'Ayuntamiento de Sevilla - Deportes',
         cargo_actual: 'Coordinador de Eventos',
         anos_experiencia: 12,
-        rol_cluster: 'servicios',
-        especialidades: ['Organización de Eventos', 'Marketing y Patrocinio'],
+        rol_cluster: 'eventos_turismo_experiencias',
+        especialidades: ['organizacion_eventos', 'marketing_comunicacion_patrocinio'],
         disponibilidad: 'Media'
       },
       {
@@ -72,12 +63,13 @@ async function seedDatabase() {
         nombre: 'Ana',
         apellidos: 'Fernández Ruiz',
         provincia: 'Málaga',
+        comunidad_autonoma: 'andalucia',
         localidad: 'Marbella',
         entidad: 'MálagaTech Sports',
         cargo_actual: 'CTO',
         anos_experiencia: 6,
-        rol_cluster: 'tech',
-        especialidades: ['Digitalización e IA', 'Gestión de Instalaciones'],
+        rol_cluster: 'proveedor_tecnologico_innovacion',
+        especialidades: ['digitalizacion_datos_ia', 'gestion_instalaciones'],
         disponibilidad: 'Alta'
       },
       {
@@ -85,12 +77,13 @@ async function seedDatabase() {
         nombre: 'José',
         apellidos: 'Martínez Sánchez',
         provincia: 'Córdoba',
+        comunidad_autonoma: 'andalucia',
         localidad: 'Córdoba',
         entidad: 'Federación Deportiva Córdoba',
         cargo_actual: 'Responsable Legal',
         anos_experiencia: 15,
-        rol_cluster: 'gestion',
-        especialidades: ['Derecho Deportivo', 'Contratación y Patrimonio'],
+        rol_cluster: 'proveedor_servicios_profesionales',
+        especialidades: ['derecho_deportivo', 'contratacion_compras_patrimonio'],
         disponibilidad: 'Puntual'
       },
       {
@@ -98,12 +91,13 @@ async function seedDatabase() {
         nombre: 'Laura',
         apellidos: 'Jiménez Torres',
         provincia: 'Cádiz',
+        comunidad_autonoma: 'andalucia',
         localidad: 'Jerez de la Frontera',
         entidad: 'CádizPorts Marina',
         cargo_actual: 'Directora de RRHH',
         anos_experiencia: 10,
-        rol_cluster: 'servicios',
-        especialidades: ['Recursos Humanos', 'Accesibilidad e Inclusión'],
+        rol_cluster: 'formacion_talento_investigacion',
+        especialidades: ['recursos_humanos_talento', 'accesibilidad_inclusion_igualdad'],
         disponibilidad: 'Media'
       }
     ];
@@ -130,15 +124,15 @@ async function seedDatabase() {
         // Crear socio
         const socio = await client.query(`
           INSERT INTO socios (
-            email, password_hash, nombre, apellidos, provincia, localidad, 
-            entidad, cargo_actual, anos_experiencia, latitud, longitud, estado
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            email, password_hash, nombre, apellidos, provincia, comunidad_autonoma, localidad,
+            entidad, cargo_actual, anos_experiencia, latitud, longitud, estado, tipo_socio
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
           RETURNING id
         `, [
           socioData.email, passwordHash, socioData.nombre, socioData.apellidos,
-          socioData.provincia, socioData.localidad, socioData.entidad, 
-          socioData.cargo_actual, socioData.anos_experiencia, 
-          coords.lat, coords.lng, 'aprobado'
+          socioData.provincia, socioData.comunidad_autonoma || 'andalucia', socioData.localidad,
+          socioData.entidad, socioData.cargo_actual, socioData.anos_experiencia,
+          coords.lat, coords.lng, 'aprobado', 'numero'
         ]);
 
         const socioId = socio.rows[0].id;

@@ -3,235 +3,300 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Solicitar acceso · AGESPORT</title>
+  <title>AGESPORT · Solicitud de acceso</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/portal.css">
+  <style>
+    /* Estilos específicos del registro */
+    .type-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .type-toggle .type-card {
+      padding: 22px;
+      border: 2px solid var(--line);
+      border-radius: 18px;
+      cursor: pointer;
+      transition: all .18s;
+      background: #fff;
+    }
+    .type-toggle .type-card:hover { border-color: rgba(15,137,91,.4); }
+    .type-toggle .type-card.active {
+      border-color: var(--green-deep);
+      box-shadow: 0 12px 30px rgba(15,137,91,.18);
+      background: rgba(15,137,91,.04);
+    }
+    .type-toggle .type-card h3 {
+      margin: 0 0 6px;
+      color: var(--navy-deep);
+      font-size: 1.05rem;
+    }
+    .type-toggle .type-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: .92rem;
+      line-height: 1.5;
+    }
+    .type-toggle .type-card .tag {
+      display: inline-block;
+      margin-bottom: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      background: rgba(13,53,95,.08);
+      color: var(--navy);
+    }
+    .type-toggle .type-card.active .tag {
+      background: rgba(15,137,91,.18);
+      color: var(--green-deep);
+    }
+    .form-section {
+      padding-top: 6px;
+      border-top: 1px solid var(--line);
+      margin-top: 18px;
+    }
+    .form-section h3 {
+      margin: 16px 0 12px;
+      color: var(--navy);
+      font-size: 1.02rem;
+    }
+    .rol-card {
+      display: flex;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .rol-card:hover { background: var(--bg-soft); }
+    .rol-card input[type=radio] { margin-top: 4px; }
+    .rol-card.selected {
+      border-color: var(--rol-color, var(--green));
+      background: color-mix(in srgb, var(--rol-color, var(--green)) 6%, white);
+    }
+    .rol-card .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      background: var(--rol-color, var(--navy));
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    .rol-card-body strong {
+      display: block;
+      color: var(--navy);
+      margin-bottom: 4px;
+    }
+    .rol-card-body span {
+      display: block;
+      color: var(--muted);
+      font-size: .88rem;
+      line-height: 1.5;
+    }
+    .rol-list, .esp-list {
+      display: grid;
+      gap: 8px;
+    }
+    .esp-row {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 10px;
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      align-items: start;
+    }
+    .esp-row.selected {
+      border-color: var(--green-deep);
+      background: rgba(15,137,91,.04);
+    }
+    .esp-row strong { color: var(--navy); display: block; margin-bottom: 2px; }
+    .esp-row span { color: var(--muted); font-size: .86rem; line-height: 1.45; }
+    @media (max-width: 720px) {
+      .type-toggle { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
-<body class="public-body">
-
-  <header class="public-topbar">
-    <div class="shell public-topbar-inner">
-      <a class="app-brand" href="/index.html" aria-label="Mapa del Talento">
-        <span class="app-brand-mark"></span>
-        <span class="app-brand-copy">
-          <strong>MAPA DEL TALENTO</strong>
-          <small>AGESPORT ANDALUCÍA</small>
-        </span>
+<body>
+  <header class="site-topbar">
+    <div class="shell inner">
+      <a class="site-brand" href="/">
+        <span class="site-brand-mark" aria-label="AGESPORT"></span>
       </a>
-      <div class="public-topbar-actions">
-        <a class="btn btn-ghost btn-sm" href="/index.html">Inicio</a>
-        <a class="btn btn-cta-socio btn-sm" href="/acceso.html">Acceso socio</a>
+      <div class="topbar-actions">
+        <a class="btn btn-secondary" href="/acceso.html">Ya tengo acceso</a>
+        <a class="btn btn-primary" href="/">Volver</a>
       </div>
     </div>
   </header>
 
-  <main class="page" style="padding-top:30px">
-    <div class="shell" style="max-width:920px">
+  <main class="page shell">
+    <section class="hero-block">
+      <div class="eyebrow">Solicitud de alta</div>
+      <h1>Incorporación al Mapa del Talento</h1>
+      <p>Registro inicial para profesionales y entidades vinculadas a AGESPORT. Tras la revisión administrativa, el acceso quedará habilitado para el entorno privado de la plataforma.</p>
+    </section>
 
-      <header class="page-head">
-        <h1>Solicitar acceso al Mapa del Talento</h1>
-        <p>Únete al ecosistema profesional del deporte andaluz. Indica tu tipología, tus capacidades y disponibilidad para colaborar. Tu solicitud será revisada en un plazo máximo de 5 días laborables.</p>
-      </header>
+    <section class="form-card" style="margin-top:18px">
+      <h2>¿Cómo te das de alta?</h2>
+      <p class="muted" style="margin-top:6px">AGESPORT distingue entre socios de número (personas físicas) y socios asociados corporativos (personas jurídicas). Elige el tipo que corresponde a tu solicitud.</p>
 
-      <form class="registro-card" id="formRegistro" autocomplete="off" novalidate>
+      <div class="type-toggle" style="margin-top:18px">
+        <label class="type-card active" data-tipo="numero">
+          <input type="radio" name="tipo" value="numero" checked style="display:none">
+          <span class="tag">Persona física</span>
+          <h3>Socio/a de número</h3>
+          <p>Profesional individual que se incorpora a la asociación con plenitud de derechos.</p>
+        </label>
+        <label class="type-card" data-tipo="asociado_corporativo">
+          <input type="radio" name="tipo" value="asociado_corporativo" style="display:none">
+          <span class="tag">Persona jurídica</span>
+          <h3>Socio/a asociado corporativo</h3>
+          <p>Empresa, club, federación o entidad que coadyuva en los fines de AGESPORT.</p>
+        </label>
+      </div>
 
-        <!-- Tipo de socio -->
-        <div class="registro-section">
-          <h3>Tipo de socio</h3>
-          <p class="help">AGESPORT contempla dos figuras claramente diferenciadas. Selecciona la que se ajusta a tu caso.</p>
-          <div class="tipo-socio-picker" id="tipoPicker">
-            <label class="tipo-card active" data-tipo="numero">
-              <input type="radio" name="tipoSocio" value="numero" checked style="display:none">
-              <strong>Socio de Número</strong>
-              <span>Profesional individual del sector deportivo. Persona física que aporta experiencia, asesoramiento y participa en proyectos.</span>
-            </label>
-            <label class="tipo-card" data-tipo="corporativo">
-              <input type="radio" name="tipoSocio" value="corporativo" style="display:none">
-              <strong>Socio Corporativo</strong>
-              <span>Entidad u organización: empresa, administración pública, ONG, fundación, club, federación, cooperativa, universidad, etc.</span>
-            </label>
-          </div>
+      <form id="registerForm" class="form-grid" style="margin-top:6px">
+
+        <!-- ====== Bloque persona física ====== -->
+        <div class="field-full form-section" id="seccionFisica">
+          <h3>Datos personales</h3>
+        </div>
+        <div class="field campo-fisica">
+          <label for="nombre">Nombre</label>
+          <input id="nombre" required>
+        </div>
+        <div class="field campo-fisica">
+          <label for="apellidos">Apellidos</label>
+          <input id="apellidos" required>
         </div>
 
-        <!-- Datos personales / entidad -->
-        <div class="registro-section" id="seccionDatos">
-          <h3 id="datosTitulo">Datos personales</h3>
-          <div class="form-grid">
-            <div class="field">
-              <label>Nombre <span style="color:#a52525">*</span></label>
-              <input type="text" name="nombre" required>
-            </div>
-            <div class="field">
-              <label>Apellidos <span style="color:#a52525">*</span></label>
-              <input type="text" name="apellidos" required>
-            </div>
-            <div class="field">
-              <label>Email profesional <span style="color:#a52525">*</span></label>
-              <input type="email" name="email" required autocomplete="off">
-            </div>
-            <div class="field">
-              <label>Teléfono</label>
-              <input type="tel" name="telefono" autocomplete="off">
-            </div>
-            <div class="field">
-              <label>Contraseña <span style="color:#a52525">*</span></label>
-              <input type="password" name="reg_password" required autocomplete="new-password">
-            </div>
-            <div class="field">
-              <label>Confirmar contraseña <span style="color:#a52525">*</span></label>
-              <input type="password" name="reg_password2" required autocomplete="new-password">
-            </div>
-          </div>
-        </div>
-
-        <!-- Datos corporativos: solo si tipo=corporativo -->
-        <div class="registro-section" id="seccionCorporativo" style="display:none">
+        <!-- ====== Bloque organización ====== -->
+        <div class="field-full form-section campo-corp" style="display:none">
           <h3>Datos de la organización</h3>
-          <div class="form-grid">
-            <div class="field-full">
-              <label>Nombre de la organización <span style="color:#a52525">*</span></label>
-              <input type="text" name="orgNombre">
-            </div>
-            <div class="field">
-              <label>Tipo de entidad <span style="color:#a52525">*</span></label>
-              <select name="orgTipo" id="orgTipo"></select>
-            </div>
-            <div class="field">
-              <label>NIF / CIF</label>
-              <input type="text" name="orgNif" autocomplete="off">
-            </div>
-            <div class="field-full">
-              <label>Web institucional</label>
-              <input type="url" name="orgWeb" placeholder="https://...">
-            </div>
-          </div>
+        </div>
+        <div class="field-full campo-corp" style="display:none">
+          <label for="nombre_organizacion">Nombre de la organización</label>
+          <input id="nombre_organizacion" placeholder="Razón social o nombre comercial">
+        </div>
+        <div class="field campo-corp" style="display:none">
+          <label for="persona_contacto">Persona de contacto (nombre)</label>
+          <input id="persona_contacto">
+        </div>
+        <div class="field campo-corp" style="display:none">
+          <label for="persona_contacto_apellidos">Persona de contacto (apellidos)</label>
+          <input id="persona_contacto_apellidos">
         </div>
 
-        <!-- Datos profesionales -->
-        <div class="registro-section">
-          <h3>Información profesional</h3>
-          <div class="form-grid">
-            <div class="field">
-              <label>Cargo / Posición</label>
-              <input type="text" name="cargo">
-            </div>
-            <div class="field">
-              <label>Años de experiencia</label>
-              <input type="number" name="anos" min="0" max="60">
-            </div>
-            <div class="field">
-              <label>Provincia <span style="color:#a52525">*</span></label>
-              <select name="provincia" id="provinciaSel" required></select>
-            </div>
-            <div class="field">
-              <label>Localidad</label>
-              <input type="text" name="localidad">
-            </div>
-            <div class="field">
-              <label>Rol en clúster <span style="color:#a52525">*</span></label>
-              <select name="rolCluster" id="rolSel" required></select>
-            </div>
-            <div class="field">
-              <label>Disponibilidad <span style="color:#a52525">*</span></label>
-              <select name="disponibilidad" id="dispSel" required></select>
-            </div>
-            <div class="field">
-              <label>LinkedIn</label>
-              <input type="url" name="linkedin" placeholder="https://linkedin.com/in/...">
-            </div>
-            <div class="field">
-              <label>Web profesional</label>
-              <input type="url" name="web" placeholder="https://...">
-            </div>
-            <div class="field-full">
-              <label>Biografía profesional</label>
-              <textarea name="bio" rows="3" placeholder="Describe brevemente tu trayectoria, especialización y motivación para unirte al clúster..."></textarea>
-            </div>
-          </div>
+        <!-- ====== Email + acceso ====== -->
+        <div class="field-full form-section">
+          <h3>Datos de acceso</h3>
+        </div>
+        <div class="field">
+          <label for="email">Email profesional</label>
+          <input id="email" type="email" required>
+        </div>
+        <div class="field">
+          <label for="email_personal">Email personal (opcional)</label>
+          <input id="email_personal" type="email">
+        </div>
+        <div class="field">
+          <label for="telefono">Teléfono</label>
+          <input id="telefono" placeholder="+34 600 00 00 00">
+        </div>
+        <div class="field">
+          <label for="password">Contraseña</label>
+          <input id="password" type="password" required placeholder="Mín. 8 caracteres, mayúscula y número">
         </div>
 
-        <!-- Especialidades -->
-        <div class="registro-section">
-          <h3>Especialidades</h3>
-          <p class="help">Marca todas las áreas en las que tengas experiencia profesional acreditable. Esta información alimenta el matchmaking del clúster.</p>
-          <div class="especialidades-grid" id="especialidadesPicker"></div>
+        <!-- ====== Datos profesionales ====== -->
+        <div class="field-full form-section">
+          <h3>Datos profesionales</h3>
+        </div>
+        <div class="field">
+          <label for="entidad" id="labelEntidad">Entidad / empresa</label>
+          <input id="entidad">
+        </div>
+        <div class="field">
+          <label for="cargo_actual" id="labelCargo">Cargo actual</label>
+          <input id="cargo_actual" required>
+        </div>
+        <div class="field">
+          <label for="anos_experiencia" id="labelExperiencia">Años de experiencia</label>
+          <input id="anos_experiencia" type="number" min="0" max="50" required>
+        </div>
+        <div class="field">
+          <label for="web_profesional">Web profesional (opcional)</label>
+          <input id="web_profesional" placeholder="https://...">
         </div>
 
-        <!-- Mentoría: solo si tipo=numero -->
-        <div class="registro-section" id="seccionMentor">
-          <h3>Mentoría</h3>
-          <div class="role-toggle">
-            <div class="role-toggle-label">
-              <strong>Quiero ser mentor de otros socios</strong>
-              <span>Si activas esta opción, aparecerás en la red de mentores disponibles para tutorizar a otros profesionales del clúster.</span>
-            </div>
-            <span class="switch" id="switchMentor" role="switch" aria-checked="false" tabindex="0"></span>
-          </div>
+        <!-- ====== Ubicación ====== -->
+        <div class="field-full form-section">
+          <h3>Ubicación</h3>
+        </div>
+        <div class="field">
+          <label for="comunidad_autonoma">Comunidad autónoma</label>
+          <select id="comunidad_autonoma" required></select>
+        </div>
+        <div class="field">
+          <label for="provincia">Provincia</label>
+          <select id="provincia" required></select>
+        </div>
+        <div class="field-full">
+          <label for="localidad">Localidad</label>
+          <input id="localidad" required>
         </div>
 
-        <!-- Ecosistema B2B -->
-        <div class="registro-section">
-          <h3>Ecosistema B2B</h3>
-          <div class="role-toggle">
-            <div class="role-toggle-label">
-              <strong>Ofrezco servicios B2B</strong>
-              <span>Aparecerás como proveedor en el ecosistema interno del clúster.</span>
-            </div>
-            <span class="switch" id="switchOfrece" role="switch" tabindex="0"></span>
-          </div>
-          <div class="role-toggle">
-            <div class="role-toggle-label">
-              <strong>Busco colaboradores</strong>
-              <span>Otros socios podrán proponerte alianzas y proyectos compartidos.</span>
-            </div>
-            <span class="switch" id="switchBusca" role="switch" tabindex="0"></span>
-          </div>
-          <div class="role-toggle">
-            <div class="role-toggle-label">
-              <strong>Concurro a licitaciones</strong>
-              <span>Recibirás avisos de licitaciones públicas afines a tu actividad.</span>
-            </div>
-            <span class="switch" id="switchLicita" role="switch" tabindex="0"></span>
-          </div>
+        <!-- ====== Rol en el clúster ====== -->
+        <div class="field-full form-section">
+          <h3>Rol en el clúster del deporte</h3>
+          <p class="muted" style="margin:0 0 12px;font-size:.92rem">¿Cuál de estos perfiles describe mejor tu actividad? Elige uno.</p>
+          <div class="rol-list" id="rolList"></div>
         </div>
 
-        <!-- RGPD -->
-        <div class="registro-section" style="border-bottom:0">
+        <!-- ====== Especialidades ====== -->
+        <div class="field-full form-section">
+          <h3>Especialidades (selecciona las que se ajusten a tu actividad)</h3>
+          <p class="muted" style="margin:0 0 12px;font-size:.92rem">Puedes marcar varias.</p>
+          <div class="esp-list" id="espList"></div>
+        </div>
+
+        <!-- ====== Consentimientos ====== -->
+        <div class="field-full form-section">
           <h3>Consentimientos</h3>
-          <label class="checkbox-row">
-            <input type="checkbox" name="rgpd1" required>
-            <span>Acepto la <a href="#" style="color:var(--lime-deep);font-weight:700">política de privacidad</a> y el tratamiento de mis datos para los fines del clúster. <span style="color:#a52525">*</span></span>
-          </label>
-          <label class="checkbox-row">
-            <input type="checkbox" name="rgpd2" checked>
-            <span>Autorizo la visualización de mi perfil en el directorio público y en el mapa territorial.</span>
-          </label>
-          <label class="checkbox-row">
-            <input type="checkbox" name="rgpd3" checked>
-            <span>Acepto recibir comunicaciones internas y notificaciones del sistema de mensajería.</span>
-          </label>
+        </div>
+        <div class="field-full checkbox-row">
+          <input id="acepta_mapa_interactivo" type="checkbox" checked>
+          <label for="acepta_mapa_interactivo">Autorizo la participación de mi perfil en el entorno privado y en las dinámicas internas de relación profesional.</label>
+        </div>
+        <div class="field-full checkbox-row">
+          <input id="acepta_visibilidad_datos" type="checkbox" checked>
+          <label for="acepta_visibilidad_datos">Acepto la visibilidad de mis datos profesionales dentro del espacio privado de la plataforma.</label>
+        </div>
+        <div class="field-full checkbox-row">
+          <input id="acepta_mensajeria" type="checkbox" checked>
+          <label for="acepta_mensajeria">Acepto el uso de mensajería interna por parte de otros socios autenticados.</label>
         </div>
 
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
-          <button type="submit" class="btn btn-primary btn-lg">Enviar solicitud</button>
-          <a class="btn btn-ghost btn-lg" href="/acceso.html">Ya tengo cuenta</a>
+        <div class="field-full">
+          <button class="btn btn-primary" type="submit" id="registerBtn">Enviar solicitud</button>
         </div>
-
-        <div class="message-box" id="okMsg"></div>
       </form>
-
-    </div>
+      <div id="registerMessage" class="message-box"></div>
+    </section>
   </main>
 
-  <footer class="public-footer">
-    <div class="shell" style="text-align:center;padding:20px 0;color:rgba(255,255,255,.6);font-size:.82rem">
-      © AGESPORT — Asociación Andaluza de Profesionales del Deporte · Mapa del Talento
-    </div>
-  </footer>
-
-  <script src="/assets/data.js"></script>
+  <script src="/assets/catalogos.js"></script>
   <script src="/assets/portal.js"></script>
   <script src="/assets/register.js"></script>
 </body>

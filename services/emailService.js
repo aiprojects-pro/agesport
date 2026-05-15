@@ -282,6 +282,38 @@ class EmailService {
   }
 
   // Enviar email de prueba para verificar configuración
+  // Email para socios creados desde importación masiva (con contraseña temporal)
+  async sendAccountApproved(socio, options = {}) {
+    const { passwordTemporal, adminNombre } = options;
+    const baseUrl = config.app.publicBaseUrl || 'https://agesport.aiprojects.pro';
+    const subject = 'Tu acceso al Mapa del Talento AGESPORT';
+    const html = `
+      <div style="font-family: Arial, sans-serif; color: #18222e">
+        <h2 style="color:#0d355f">Bienvenida/o al Mapa del Talento AGESPORT</h2>
+        <p>Hola ${socio.nombre},</p>
+        <p>${adminNombre || 'La Gerencia de AGESPORT'} ha creado tu acceso al entorno privado del Mapa del Talento.</p>
+        <p>Estos son tus datos de acceso provisionales:</p>
+        <ul>
+          <li><strong>Email:</strong> ${socio.email}</li>
+          <li><strong>Contraseña temporal:</strong> ${passwordTemporal}</li>
+        </ul>
+        <p>Por seguridad, te recomendamos cambiar la contraseña la primera vez que entres.</p>
+        <p><a href="${baseUrl}/acceso.html" style="display:inline-block;padding:10px 18px;background:#0d355f;color:#fff;border-radius:8px;text-decoration:none">Acceder a la plataforma</a></p>
+        <p>Un saludo,<br>Equipo AGESPORT</p>
+      </div>`;
+    const text = `Hola ${socio.nombre},
+
+${adminNombre || 'La Gerencia de AGESPORT'} ha creado tu acceso al Mapa del Talento.
+Email: ${socio.email}
+Contraseña temporal: ${passwordTemporal}
+
+Por favor, cámbiala la primera vez que entres: ${baseUrl}/acceso.html
+
+Equipo AGESPORT`;
+
+    return this.sendEmail(socio.email, subject, html, text);
+  }
+
   async testEmail(toEmail = null) {
     const testEmail = toEmail || 'test@agesport.org';
     const subject = 'Test - Configuración de Email AGESPORT';

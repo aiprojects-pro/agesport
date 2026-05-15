@@ -5,6 +5,15 @@ const router = express.Router();
 const sociosController = require('../controllers/sociosController');
 const { authenticateSocio, withAudit } = require('../middleware/auth');
 const { validateInput, validateProfileData } = require('../middleware/security');
+const { uploadFoto, uploadCV } = require('../services/uploadService');
+
+// Helper para envolver multer y convertir su error en JSON
+const wrapMulter = (uploader) => (req, res, next) => {
+  uploader(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message || 'Error subiendo fichero' });
+    next();
+  });
+};
 
 // ==================== DIRECTORIO PÚBLICO (solo socios autenticados) ====================
 router.get('/directorio', 
@@ -25,6 +34,24 @@ router.put('/perfil',
   validateInput,
   validateProfileData,
   sociosController.updatePerfil
+);
+
+// ==================== SUBIDA DE FOTO Y CV ====================
+router.post('/perfil/foto',
+  authenticateSocio,
+  wrapMulter(uploadFoto),
+  sociosController.uploadFoto
+);
+
+router.post('/perfil/cv',
+  authenticateSocio,
+  wrapMulter(uploadCV),
+  sociosController.uploadCV
+);
+
+router.delete('/perfil/cv',
+  authenticateSocio,
+  sociosController.deleteCV
 );
 
 // ==================== BÚSQUEDA GEOGRÁFICA ====================
@@ -49,6 +76,12 @@ router.delete('/eliminar-cuenta',
   authenticateSocio,
   validateInput,
   sociosController.eliminarCuenta
+);
+
+router.post('/solicitar-baja',
+  authenticateSocio,
+  validateInput,
+  sociosController.solicitarBaja
 );
 
 module.exports = router;

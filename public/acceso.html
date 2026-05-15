@@ -3,112 +3,80 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Acceso · Mapa del Talento AGESPORT</title>
+  <title>AGESPORT · Acceso</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/portal.css">
 </head>
 <body>
-
-  <main class="access-page">
-
-    <!-- Lado izquierdo: branding -->
-    <aside class="access-side">
-      <a class="app-brand" href="/" style="position:relative;z-index:2">
-        <span class="app-brand-mark"></span>
-        <span class="app-brand-copy">
-          <strong style="color:#fff">MAPA DEL TALENTO</strong>
-          <small style="color:var(--lime)">AGESPORT ANDALUCÍA</small>
-        </span>
+  <header class="site-topbar">
+    <div class="shell inner">
+      <a class="site-brand" href="/">
+        <span class="site-brand-mark" aria-label="AGESPORT"></span>
       </a>
-
-      <div class="access-content">
-        <span class="eyebrow" style="background:rgba(168,207,47,.18);color:var(--lime)">
-          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--lime)"></span>
-          Acceso autenticado
-        </span>
-        <h1>Entra al ecosistema profesional del deporte andaluz.</h1>
-        <p>Una vez dentro, accede al directorio de socios, al observatorio del talento, al visor geográfico y a la mensajería privada con el resto del clúster.</p>
-
-        <div class="access-quote">
-          “El Mapa del Talento es el primer paso para que AGESPORT funcione como un ecosistema vivo,
-          donde cada socio sabe quién hace qué, dónde y con quién puede colaborar.”
-        </div>
+      <div class="topbar-actions">
+        <a class="btn btn-secondary" href="/registro.html">Solicitar acceso</a>
+        <a class="btn btn-primary" href="/">Volver</a>
       </div>
-    </aside>
+    </div>
+  </header>
 
-    <!-- Lado derecho: formulario -->
-    <section class="access-form-side">
-      <div class="access-form-card">
+  <main class="page shell">
+    <section class="hero-grid">
+      <article class="hero-block">
+        <div class="eyebrow">Entorno privado</div>
+        <h1>Acceso a la plataforma</h1>
+        <p>Entrada para socios y administración. Desde aquí se accede al directorio privado, paneles de seguimiento, mensajería y herramientas de gestión.</p>
+        <div class="status-chip"><span class="status-dot"></span> Acceso seguro</div>
+      </article>
+      <article class="hero-block">
+        <h2>Flujo de acceso</h2>
+        <p>Las altas nuevas pasan a revisión administrativa. Una vez aprobadas, cada socio puede acceder a su área privada y al directorio profesional.</p>
+      </article>
+    </section>
 
-        <h2>Acceso a la plataforma</h2>
-        <p>Introduce tus credenciales para entrar al área privada.</p>
-
-        <!-- Selector de rol: socio / administrador (la cuenta puede tener uno, otro o ambos) -->
-        <div class="role-picker" role="tablist" aria-label="Tipo de acceso">
-          <span class="role-pick active" data-role="socio" role="tab">Acceso Socio</span>
-          <span class="role-pick"        data-role="admin" role="tab">Acceso Administración</span>
-        </div>
-
-        <!-- IMPORTANTE: cada formulario usa un nombre diferente y autocomplete específico
-             para que el navegador NO autorrellene cruzado entre los dos roles. -->
-
-        <form id="formSocio" autocomplete="off" name="login-socio">
-          <div class="field-full" style="margin-bottom:14px">
-            <label for="socio-email">Email</label>
-            <input id="socio-email" type="email" required name="socio_email"
-                   autocomplete="email" placeholder="tu@correo.es">
+    <section class="grid-2" style="margin-top:18px">
+      <article class="form-card">
+        <h2>Acceso de socios</h2>
+        <p class="muted">Entrada al área privada de perfiles, observatorio y mensajería.</p>
+        <form id="socioForm" class="form-grid" style="margin-top:16px">
+          <div class="field-full">
+            <label for="socioEmail">Email</label>
+            <input id="socioEmail" type="email" required autocomplete="username">
           </div>
-          <div class="field-full" style="margin-bottom:18px">
-            <label for="socio-pass">Contraseña</label>
-            <input id="socio-pass" type="password" required name="socio_password"
-                   autocomplete="new-password" placeholder="Tu contraseña">
+          <div class="field-full">
+            <label for="socioPassword">Contraseña</label>
+            <input id="socioPassword" type="password" required autocomplete="current-password">
           </div>
-          <button class="btn btn-primary btn-block btn-lg" id="btnSocio" type="submit">
-            Entrar como socio
-          </button>
+          <div class="field-full">
+            <button class="btn btn-primary" type="submit" id="socioBtn">Entrar como socio</button>
+          </div>
         </form>
+        <div id="socioMessage" class="message-box"></div>
+      </article>
 
-        <form id="formAdmin" autocomplete="off" name="login-admin" style="display:none">
-          <div class="field-full" style="margin-bottom:14px">
-            <label for="admin-email">Email de administración</label>
-            <input id="admin-email" type="email" required name="admin_email"
-                   autocomplete="off" placeholder="admin@agesport.org">
+      <article class="form-card">
+        <h2>Acceso de administración</h2>
+        <p class="muted">Gestión de altas, seguimiento general y supervisión de la plataforma.</p>
+        <form id="adminForm" class="form-grid" style="margin-top:16px">
+          <div class="field-full">
+            <label for="adminEmail">Email</label>
+            <input id="adminEmail" type="email" required autocomplete="username">
           </div>
-          <div class="field-full" style="margin-bottom:18px">
-            <label for="admin-pass">Contraseña de administración</label>
-            <input id="admin-pass" type="password" required name="admin_password"
-                   autocomplete="new-password" placeholder="Tu contraseña">
+          <div class="field-full">
+            <label for="adminPassword">Contraseña</label>
+            <input id="adminPassword" type="password" required autocomplete="current-password">
           </div>
-          <button class="btn btn-primary btn-block btn-lg" id="btnAdmin" type="submit">
-            Entrar a administración
-          </button>
+          <div class="field-full">
+            <button class="btn btn-primary" type="submit" id="adminBtn">Entrar a administración</button>
+          </div>
         </form>
-
-        <div id="msg" class="message-box"></div>
-
-        <!-- BLOQUE DESTACADO de "Solicitar acceso" -->
-        <div class="solicitar-link">
-          <div>
-            <strong>¿Aún no eres socio?</strong>
-            <span>Solicita tu alta en el clúster AGESPORT Andalucía.</span>
-          </div>
-          <a class="btn btn-cta-socio btn-sm" href="/registro.html">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Solicitar acceso
-          </a>
-        </div>
-
-        <p style="margin-top:22px;text-align:center;font-size:.86rem;color:var(--muted)">
-          <a href="/" style="color:var(--navy);font-weight:700;text-decoration:underline">Volver a la portada</a>
-        </p>
-
-      </div>
+        <div id="adminMessage" class="message-box"></div>
+      </article>
     </section>
   </main>
 
-  <script src="/assets/data.js"></script>
   <script src="/assets/portal.js"></script>
   <script src="/assets/access.js"></script>
 </body>

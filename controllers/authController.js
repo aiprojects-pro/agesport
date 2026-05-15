@@ -10,6 +10,7 @@ const {
 const db = require('../config/database');
 const geocodingService = require('../services/geocodingService');
 const emailService = require('../services/emailService');
+const catalogos = require('../config/catalogos');
 
 class AuthController {
 
@@ -21,16 +22,19 @@ class AuthController {
         // Datos personales
         email, password, nombre, apellidos, dni_nie, telefono, 
         linkedin_url, otras_redes,
-        
+
+        // v2: campos nuevos
+        tipo_socio, email_personal, email_preferido, nombre_organizacion,
+        comunidad_autonoma,
+
         // Datos profesionales
-        tipo_socio, tipo_corporativo, entidad, web_profesional, provincia, localidad, codigo_postal,
+        entidad, web_profesional, provincia, localidad, codigo_postal,
         direccion_completa, ambito, cargo_actual, anos_experiencia,
-        bio_profesional,
         
         // Rol en el clúster
         rol_cluster, b2b_ofrece, b2b_busca, b2b_licita,
         
-        // Especialidades (array de hasta 3)
+        // Especialidades (array)
         especialidades,
         
         // Disponibilidad
@@ -45,6 +49,13 @@ class AuthController {
         acepta_mensajeria, acepta_notificaciones_email,
         visible_telefono, visible_email_directo, visible_web_profesional, visible_linkedin
       } = req.body;
+
+      // Inferir CCAA si nos dieron solo la provincia
+      let ccaa = comunidad_autonoma;
+      if (!ccaa && provincia) {
+        const found = catalogos.findCcaaByProvincia(provincia);
+        if (found) ccaa = found.slug;
+      }
 
       // Verificar si el email ya existe
       const existingSocio = await db.findOne('socios', { email });
@@ -79,21 +90,46 @@ class AuthController {
 
       // Usar transacción para crear socio completo
       const nuevoSocio = await db.transaction(async (client) => {
-        
+
         // 1. Crear socio principal
         const socioResult = await client.query(`
           INSERT INTO socios (
-            email, password_hash, nombre, apellidos, dni_nie_encrypted, telefono_encrypted,
-            linkedin_url, otras_redes, tipo_socio, tipo_corporativo, entidad, web_profesional, provincia, localidad,
+            email, email_personal, email_preferido, password_hash,
+            nombre, apellidos, tipo_socio, nombre_organizacion,
+            dni_nie_encrypted, telefono, telefono_encrypted,
+            linkedin_url, otras_redes, entidad, web_profesional,
+            provincia, comunidad_autonoma, localidad,
             codigo_postal, direccion_completa, ambito, cargo_actual, anos_experiencia,
-            bio_profesional, latitud, longitud, estado
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+            latitud, longitud, estado
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
           RETURNING id, email, nombre, apellidos
         `, [
-          email, passwordHash, nombre, apellidos, dniEncrypted, telefonoEncrypted,
-          linkedin_url, otras_redes, tipo_socio || 'numero', tipo_corporativo || null, entidad, web_profesional, provincia, localidad,
-          codigo_postal, direccion_completa, ambito, cargo_actual, anos_experiencia,
-          bio_profesional || null, latitud, longitud, 'pendiente' // Requiere aprobación admin
+          email,
+          email_personal || null,
+          email_preferido || 'profesional',
+          passwordHash,
+          nombre,
+          apellidos,
+          tipo_socio || 'numero',
+          nombre_organizacion || null,
+          dniEncrypted,
+          telefono || null,
+          telefonoEncrypted,
+          linkedin_url || null,
+          otras_redes || null,
+          entidad || null,
+          web_profesional || null,
+          provincia,
+          ccaa || null,
+          localidad,
+          codigo_postal || null,
+          direccion_completa || null,
+          ambito || null,
+          cargo_actual || null,
+          anos_experiencia || 0,
+          latitud,
+          longitud,
+          'pendiente'
         ]);
 
         const socio = socioResult.rows[0];
@@ -108,11 +144,11 @@ class AuthController {
 
         // 3. Crear especialidades
         if (especialidades && Array.isArray(especialidades)) {
-          for (let i = 0; i < Math.min(especialidades.length, 3); i++) {
+          for (let i = 0; i < especialidades.length; i++) {
             await client.query(`
               INSERT INTO socio_especialidades (socio_id, especialidad, orden_prioridad)
               VALUES ($1, $2, $3)
-            `, [socio.id, especialidades[i], i + 1]);
+            `, [socio.id, especialidades[i], (i % 3) + 1]); // orden_prioridad cíclico 1-3
           }
         }
 
@@ -156,7 +192,7 @@ class AuthController {
       });
 
       // Notificar a administradores
-      await emailService.notifyAdminNewRegistration(nuevoSocio);
+      try { await emailService.notifyAdminNewRegistration(nuevoSocio); } catch (e) { console.warn('Email admin:', e.message); }
 
       // Auditar registro
       await auditAction(nuevoSocio.id, null, 'REGISTER', 'socios', null, nuevoSocio, req);
@@ -174,8 +210,8 @@ class AuthController {
 
     } catch (error) {
       console.error('Error en registro:', error);
-      res.status(500).json({ 
-        error: 'Error interno del servidor durante el registro' 
+      res.status(500).json({
+        error: 'Error interno del servidor durante el registro'
       });
     }
   }

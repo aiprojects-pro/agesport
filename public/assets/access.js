@@ -1,65 +1,55 @@
 (function () {
   const { request, verifySession, setMessage } = window.AgesportPortal;
-  const picks = document.querySelectorAll('.role-pick');
-  const formSocio = document.getElementById('formSocio');
-  const formAdmin = document.getElementById('formAdmin');
-  const msg = document.getElementById('msg');
-  const btnSocio = document.getElementById('btnSocio');
-  const btnAdmin = document.getElementById('btnAdmin');
+  const socioForm = document.getElementById('socioForm');
+  const adminForm = document.getElementById('adminForm');
+  const socioMessage = document.getElementById('socioMessage');
+  const adminMessage = document.getElementById('adminMessage');
+  const socioBtn = document.getElementById('socioBtn');
+  const adminBtn = document.getElementById('adminBtn');
 
   verifySession().then(function (session) {
-    window.location.href = session.type === 'admin' ? '/admin.html' : '/dashboard.html';
+    window.location.href = session.type === 'admin' ? '/admin.html' : '/panel.html';
   }).catch(function () {});
 
-  picks.forEach(function (pick) {
-    pick.addEventListener('click', function () {
-      picks.forEach(function (node) { node.classList.remove('active'); });
-      pick.classList.add('active');
-      const role = pick.getAttribute('data-role');
-      formSocio.style.display = role === 'socio' ? '' : 'none';
-      formAdmin.style.display = role === 'admin' ? '' : 'none';
-      msg.className = 'message-box';
-      msg.textContent = '';
-    });
-  });
-
-  formSocio.addEventListener('submit', async function (event) {
+  socioForm.addEventListener('submit', async function (event) {
     event.preventDefault();
-    btnSocio.disabled = true;
+    socioBtn.disabled = true;
+    socioBtn.textContent = 'Accediendo...';
     try {
       await request('/api/auth/login/socio', {
         method: 'POST',
         body: JSON.stringify({
-          email: document.getElementById('socio-email').value.trim(),
-          password: document.getElementById('socio-pass').value
+          email: document.getElementById('socioEmail').value.trim(),
+          password: document.getElementById('socioPassword').value
         })
       });
-      setMessage(msg, true, 'Acceso correcto. Redirigiendo al panel...');
-      window.setTimeout(function () { window.location.href = '/dashboard.html'; }, 300);
+      window.location.href = '/panel.html';
     } catch (error) {
-      setMessage(msg, false, error.message);
+      setMessage(socioMessage, false, error.message);
     } finally {
-      btnSocio.disabled = false;
+      socioBtn.disabled = false;
+      socioBtn.textContent = 'Entrar como socio';
     }
   });
 
-  formAdmin.addEventListener('submit', async function (event) {
+  adminForm.addEventListener('submit', async function (event) {
     event.preventDefault();
-    btnAdmin.disabled = true;
+    adminBtn.disabled = true;
+    adminBtn.textContent = 'Accediendo...';
     try {
       await request('/api/auth/login/admin', {
         method: 'POST',
         body: JSON.stringify({
-          email: document.getElementById('admin-email').value.trim(),
-          password: document.getElementById('admin-pass').value
+          email: document.getElementById('adminEmail').value.trim(),
+          password: document.getElementById('adminPassword').value
         })
       });
-      setMessage(msg, true, 'Acceso correcto. Redirigiendo a administración...');
-      window.setTimeout(function () { window.location.href = '/admin.html'; }, 300);
+      window.location.href = '/admin.html';
     } catch (error) {
-      setMessage(msg, false, error.message);
+      setMessage(adminMessage, false, error.message);
     } finally {
-      btnAdmin.disabled = false;
+      adminBtn.disabled = false;
+      adminBtn.textContent = 'Entrar a administración';
     }
   });
 })();

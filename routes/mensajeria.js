@@ -31,6 +31,13 @@ router.post('/mensajes',
   mensajeriaController.enviarMensaje
 );
 
+router.post('/mensajes/multi',
+  authenticateSocio,
+  messagingLimiter,
+  validateInput,
+  mensajeriaController.enviarMensajeMulti
+);
+
 router.post('/mensajes/:mensajeId/reportar', 
   authenticateSocio,
   validateInput,

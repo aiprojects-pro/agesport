@@ -3,106 +3,80 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Directorio de Socios · AGESPORT</title>
+  <title>AGESPORT · Directorio privado</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/portal.css">
 </head>
 <body>
-
-  <div id="topbar"></div>
-
-  <main class="page">
-    <div class="shell">
-
-      <header class="page-head">
-        <h1>Directorio de Socios</h1>
-        <p>Explora los profesionales y entidades del clúster del deporte andaluz. Filtra por provincia, rol, especialidad o disponibilidad para encontrar al socio adecuado.</p>
-      </header>
-
-      <div class="tabs">
-        <a class="tab active" href="/directorio.html">
-          Directorio <span class="tab-count" id="tabCount">32</span>
-        </a>
-        <a class="tab" href="/mapa.html">Mapa</a>
-      </div>
-
-      <div class="directorio-layout">
-
-        <!-- Sidebar de filtros -->
-        <aside class="filters-panel">
-          <div class="filters-head">
-            <h3>Filtros</h3>
-            <a id="resetFilters">Limpiar todo</a>
-          </div>
-
-          <div class="filter-group">
-            <h4>Buscar</h4>
-            <div class="search-input">
-              <input type="text" id="fSearch" placeholder="Nombre, entidad, cargo…">
-            </div>
-          </div>
-
-          <div class="filter-group">
-            <h4>Provincia</h4>
-            <div class="chip-group" id="fProvincia"></div>
-          </div>
-
-          <div class="filter-group">
-            <h4>Rol en clúster</h4>
-            <div class="role-list" id="fRol"></div>
-          </div>
-
-          <div class="filter-group">
-            <h4>Especialidad</h4>
-            <div class="chip-group" id="fEspecialidad"></div>
-          </div>
-
-          <div class="filter-group">
-            <h4>Años de experiencia (mín.)</h4>
-            <div class="range-row">
-              <input type="range" id="fAnos" min="0" max="30" value="0">
-              <span class="range-val" id="fAnosVal">0+ años</span>
-            </div>
-          </div>
-
-          <div class="filter-group">
-            <h4>Disponibilidad</h4>
-            <div class="role-list" id="fDisp"></div>
-          </div>
-
-          <div class="filter-group">
-            <h4>Tipo de socio</h4>
-            <div class="role-list" id="fTipo"></div>
-          </div>
-
-          <div class="filter-group">
-            <h4>Ecosistema B2B</h4>
-            <div class="role-list" id="fB2B"></div>
-          </div>
-        </aside>
-
-        <!-- Resultados -->
-        <section class="directorio-results">
-          <div class="results-head">
-            <span class="count" id="resCount">32 socios encontrados</span>
-            <select class="sort" id="sortBy">
-              <option value="nombre">Ordenar por nombre</option>
-              <option value="anos">Más experiencia</option>
-              <option value="provincia">Por provincia</option>
-              <option value="disp">Disponibilidad</option>
-            </select>
-          </div>
-
-          <div class="cards-grid" id="results"></div>
-        </section>
-
+  <header class="site-topbar">
+    <div class="shell inner">
+      <a class="site-brand" href="/">
+        <span class="site-brand-mark" aria-label="AGESPORT"></span>
+      </a>
+      <div class="topbar-actions">
+        <button class="btn btn-secondary" id="logoutBtn" type="button">Cerrar sesión</button>
       </div>
     </div>
+  </header>
+
+  <main class="page shell private-layout">
+    <aside class="sidebar panel">
+      <h3>Navegación</h3>
+      <nav class="nav-list">
+        <a class="nav-link" href="/panel.html">Dashboard</a>
+        <a class="nav-link active" href="/directorio.html">Directorio</a>
+        <a class="nav-link" href="/perfil.html">Mi perfil</a>
+        <a class="nav-link" href="/mensajes.html">Mensajes</a>
+      </nav>
+    </aside>
+
+    <section class="stack">
+      <article class="hero-block">
+        <div class="eyebrow">Directorio privado</div>
+        <h1>Profesionales y especialidades</h1>
+        <p>Consulta el mapa relacional del ecosistema. Filtra por provincia, rol del clúster o especialidad y accede a la ficha profesional de cada socio.</p>
+      </article>
+
+      <article class="form-card">
+        <div class="form-grid">
+          <div class="field">
+            <label for="search">Búsqueda</label>
+            <input id="search" placeholder="Nombre, entidad o especialidad">
+          </div>
+          <div class="field">
+            <label for="comunidad_autonoma">Comunidad autónoma</label>
+            <select id="comunidad_autonoma"><option value="">Todas</option></select>
+          </div>
+          <div class="field">
+            <label for="provincia">Provincia</label>
+            <select id="provincia"></select>
+          </div>
+          <div class="field">
+            <label for="rol_cluster">Rol del clúster</label>
+            <select id="rol_cluster"></select>
+          </div>
+          <div class="field-full">
+            <label for="especialidad">Especialidad</label>
+            <select id="especialidad"></select>
+          </div>
+        </div>
+        <div class="toolbar" style="margin-top:16px">
+          <div class="muted" id="resultsInfo">Cargando directorio.</div>
+          <div class="actions">
+            <button class="btn btn-secondary" id="clearBtn" type="button">Limpiar filtros</button>
+            <button class="btn btn-primary" id="searchBtn" type="button">Aplicar filtros</button>
+          </div>
+        </div>
+      </article>
+
+      <section class="cards-list" id="results"></section>
+      <div id="resultsEmpty" class="empty panel" style="display:none">No hay perfiles que coincidan con los filtros aplicados.</div>
+    </section>
   </main>
 
-  <script src="/assets/data.js"></script>
+  <script src="/assets/catalogos.js"></script>
   <script src="/assets/portal.js"></script>
   <script src="/assets/directorio.js"></script>
 </body>

@@ -8,6 +8,8 @@ const {
   decryptData 
 } = require('../middleware/auth');
 const geocodingService = require('../services/geocodingService');
+const uploadService = require('../services/uploadService');
+const catalogos = require('../config/catalogos');
 
 class SociosController {
 
@@ -196,23 +198,25 @@ class SociosController {
 
       const {
         nombre, apellidos, dni_nie, telefono, linkedin_url, otras_redes,
-        tipo_socio, tipo_corporativo, entidad, web_profesional, provincia, localidad, codigo_postal,
+        entidad, web_profesional, provincia, comunidad_autonoma, localidad, codigo_postal,
         direccion_completa, ambito, cargo_actual, anos_experiencia,
-        bio_profesional,
-        
+
+        // v2: campos nuevos
+        tipo_socio, email_personal, email_preferido, nombre_organizacion,
+
         // Rol cluster
         rol_cluster, b2b_ofrece, b2b_busca, b2b_licita,
-        
+
         // Especialidades
         especialidades,
-        
+
         // Disponibilidad
         disponibilidad, ponente, tutor_mentor, asistente,
         congreso_almeria, representacion, captacion_patrocinio,
-        
+
         // Proyecto innovación
         proyecto_descripcion, proyecto_tecnologias, proyecto_impacto,
-        
+
         // Consentimientos
         acepta_mensajeria, acepta_notificaciones_email,
         visible_telefono, visible_email_directo, visible_web_profesional, visible_linkedin
@@ -226,21 +230,36 @@ class SociosController {
         if (nombre !== undefined) socioUpdate.nombre = nombre;
         if (apellidos !== undefined) socioUpdate.apellidos = apellidos;
         if (dni_nie !== undefined) socioUpdate.dni_nie_encrypted = dni_nie ? encryptData(dni_nie) : null;
-        if (telefono !== undefined) socioUpdate.telefono_encrypted = telefono ? encryptData(telefono) : null;
+        if (telefono !== undefined) {
+          // Guardamos tanto en claro (columna nueva) como cifrado (columna histórica)
+          socioUpdate.telefono = telefono || null;
+          socioUpdate.telefono_encrypted = telefono ? encryptData(telefono) : null;
+        }
         if (linkedin_url !== undefined) socioUpdate.linkedin_url = linkedin_url;
         if (otras_redes !== undefined) socioUpdate.otras_redes = otras_redes;
-        if (tipo_socio !== undefined) socioUpdate.tipo_socio = tipo_socio;
-        if (tipo_corporativo !== undefined) socioUpdate.tipo_corporativo = tipo_corporativo;
         if (entidad !== undefined) socioUpdate.entidad = entidad;
         if (web_profesional !== undefined) socioUpdate.web_profesional = web_profesional;
-        if (provincia !== undefined) socioUpdate.provincia = provincia;
+        if (provincia !== undefined) {
+          socioUpdate.provincia = provincia;
+          // Si no nos pasan CCAA explícita, inferimos por la provincia
+          if (comunidad_autonoma === undefined && provincia) {
+            const ca = catalogos.findCcaaByProvincia(provincia);
+            if (ca) socioUpdate.comunidad_autonoma = ca.slug;
+          }
+        }
+        if (comunidad_autonoma !== undefined) socioUpdate.comunidad_autonoma = comunidad_autonoma;
         if (localidad !== undefined) socioUpdate.localidad = localidad;
         if (codigo_postal !== undefined) socioUpdate.codigo_postal = codigo_postal;
         if (direccion_completa !== undefined) socioUpdate.direccion_completa = direccion_completa;
         if (ambito !== undefined) socioUpdate.ambito = ambito;
         if (cargo_actual !== undefined) socioUpdate.cargo_actual = cargo_actual;
         if (anos_experiencia !== undefined) socioUpdate.anos_experiencia = parseInt(anos_experiencia);
-        if (bio_profesional !== undefined) socioUpdate.bio_profesional = bio_profesional;
+
+        // v2: nuevos campos del perfil
+        if (tipo_socio !== undefined) socioUpdate.tipo_socio = tipo_socio;
+        if (email_personal !== undefined) socioUpdate.email_personal = email_personal;
+        if (email_preferido !== undefined) socioUpdate.email_preferido = email_preferido;
+        if (nombre_organizacion !== undefined) socioUpdate.nombre_organizacion = nombre_organizacion;
 
         // Regeocoding si cambió la dirección
         if (direccion_completa && (direccion_completa !== datosAnteriores.direccion_completa)) {
@@ -265,24 +284,13 @@ class SociosController {
         }
 
         // 2. Actualizar rol cluster
-        if (rol_cluster !== undefined || b2b_ofrece !== undefined || b2b_busca !== undefined || b2b_licita !== undefined) {
-          const rolActual = await client.query('SELECT * FROM rol_cluster WHERE socio_id = $1 LIMIT 1', [socioId]);
-          const rolEfectivo = rol_cluster !== undefined
-            ? rol_cluster
-            : (rolActual.rows[0] ? rolActual.rows[0].rol : null);
-
+        if (rol_cluster !== undefined) {
           await client.query('DELETE FROM rol_cluster WHERE socio_id = $1', [socioId]);
-          if (rolEfectivo) {
+          if (rol_cluster) {
             await client.query(`
               INSERT INTO rol_cluster (socio_id, rol, b2b_ofrece, b2b_busca, b2b_licita)
               VALUES ($1, $2, $3, $4, $5)
-            `, [
-              socioId,
-              rolEfectivo,
-              b2b_ofrece !== undefined ? !!b2b_ofrece : !!(rolActual.rows[0] && rolActual.rows[0].b2b_ofrece),
-              b2b_busca !== undefined ? !!b2b_busca : !!(rolActual.rows[0] && rolActual.rows[0].b2b_busca),
-              b2b_licita !== undefined ? !!b2b_licita : !!(rolActual.rows[0] && rolActual.rows[0].b2b_licita)
-            ]);
+            `, [socioId, rol_cluster, !!b2b_ofrece, !!b2b_busca, !!b2b_licita]);
           }
         }
 
@@ -298,36 +306,17 @@ class SociosController {
         }
 
         // 4. Actualizar disponibilidad
-        if (
-          disponibilidad !== undefined ||
-          ponente !== undefined ||
-          tutor_mentor !== undefined ||
-          asistente !== undefined ||
-          congreso_almeria !== undefined ||
-          representacion !== undefined ||
-          captacion_patrocinio !== undefined
-        ) {
-          const disponibilidadActual = await client.query('SELECT * FROM disponibilidad WHERE socio_id = $1 LIMIT 1', [socioId]);
-          const nivelEfectivo = disponibilidad !== undefined
-            ? disponibilidad
-            : (disponibilidadActual.rows[0] ? disponibilidadActual.rows[0].nivel : null);
-
+        if (disponibilidad !== undefined) {
           await client.query('DELETE FROM disponibilidad WHERE socio_id = $1', [socioId]);
-          if (nivelEfectivo) {
+          if (disponibilidad) {
             await client.query(`
               INSERT INTO disponibilidad (
                 socio_id, nivel, ponente, tutor_mentor, asistente,
                 congreso_almeria, representacion, captacion_patrocinio
               ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             `, [
-              socioId,
-              nivelEfectivo,
-              ponente !== undefined ? !!ponente : !!(disponibilidadActual.rows[0] && disponibilidadActual.rows[0].ponente),
-              tutor_mentor !== undefined ? !!tutor_mentor : !!(disponibilidadActual.rows[0] && disponibilidadActual.rows[0].tutor_mentor),
-              asistente !== undefined ? !!asistente : !!(disponibilidadActual.rows[0] && disponibilidadActual.rows[0].asistente),
-              congreso_almeria !== undefined ? !!congreso_almeria : !!(disponibilidadActual.rows[0] && disponibilidadActual.rows[0].congreso_almeria),
-              representacion !== undefined ? !!representacion : !!(disponibilidadActual.rows[0] && disponibilidadActual.rows[0].representacion),
-              captacion_patrocinio !== undefined ? !!captacion_patrocinio : !!(disponibilidadActual.rows[0] && disponibilidadActual.rows[0].captacion_patrocinio)
+              socioId, disponibilidad, !!ponente, !!tutor_mentor, !!asistente,
+              !!congreso_almeria, !!representacion, !!captacion_patrocinio
             ]);
           }
         }
@@ -643,6 +632,99 @@ class SociosController {
     } catch (error) {
       console.error('Error eliminando cuenta:', error);
       res.status(500).json({ error: 'Error eliminando cuenta' });
+    }
+  }
+  // ==================== SUBIR FOTO DE PERFIL ====================
+
+  async uploadFoto(req, res) {
+    try {
+      const socioId = req.socioId;
+      if (!req.file) {
+        return res.status(400).json({ error: 'No se ha recibido ningún fichero' });
+      }
+
+      // Obtener foto antigua para borrarla después
+      const previo = await db.findOne('socios', { id: socioId }, 'foto_url');
+      const nuevaUrl = uploadService.toPublicUrl('fotos', req.file.filename);
+
+      await db.update('socios', { foto_url: nuevaUrl }, { id: socioId });
+
+      if (previo && previo.foto_url) uploadService.removeFile(previo.foto_url);
+
+      await auditAction(socioId, null, 'UPLOAD_PHOTO', 'socios', null, { foto_url: nuevaUrl }, req);
+      res.json({ message: 'Foto actualizada', foto_url: nuevaUrl });
+    } catch (error) {
+      console.error('Error subiendo foto:', error);
+      res.status(500).json({ error: 'Error subiendo foto' });
+    }
+  }
+
+  // ==================== SUBIR CV ====================
+
+  async uploadCV(req, res) {
+    try {
+      const socioId = req.socioId;
+      if (!req.file) {
+        return res.status(400).json({ error: 'No se ha recibido ningún fichero' });
+      }
+
+      const previo = await db.findOne('socios', { id: socioId }, 'cv_url');
+      const nuevaUrl = uploadService.toPublicUrl('cvs', req.file.filename);
+
+      await db.update('socios', { cv_url: nuevaUrl }, { id: socioId });
+
+      if (previo && previo.cv_url) uploadService.removeFile(previo.cv_url);
+
+      await auditAction(socioId, null, 'UPLOAD_CV', 'socios', null, { cv_url: nuevaUrl }, req);
+      res.json({ message: 'CV actualizado', cv_url: nuevaUrl });
+    } catch (error) {
+      console.error('Error subiendo CV:', error);
+      res.status(500).json({ error: 'Error subiendo CV' });
+    }
+  }
+
+  // ==================== ELIMINAR CV ====================
+
+  async deleteCV(req, res) {
+    try {
+      const socioId = req.socioId;
+      const previo = await db.findOne('socios', { id: socioId }, 'cv_url');
+      if (previo && previo.cv_url) uploadService.removeFile(previo.cv_url);
+      await db.update('socios', { cv_url: null }, { id: socioId });
+      await auditAction(socioId, null, 'DELETE_CV', 'socios', previo, null, req);
+      res.json({ message: 'CV eliminado' });
+    } catch (error) {
+      console.error('Error eliminando CV:', error);
+      res.status(500).json({ error: 'Error eliminando CV' });
+    }
+  }
+
+  // ==================== SOLICITAR BAJA ====================
+
+  async solicitarBaja(req, res) {
+    try {
+      const socioId = req.socioId;
+      const { motivo } = req.body;
+
+      // Verificar que no haya ya una baja pendiente
+      const existente = await db.findOne('bajas_pendientes', { socio_id: socioId, estado: 'pendiente' });
+      if (existente) {
+        return res.status(409).json({ error: 'Ya tienes una solicitud de baja pendiente' });
+      }
+
+      await db.insert('bajas_pendientes', {
+        socio_id: socioId,
+        motivo: motivo || null,
+        estado: 'pendiente'
+      });
+
+      await auditAction(socioId, null, 'REQUEST_UNSUBSCRIBE', 'bajas_pendientes', null, { motivo }, req);
+      res.status(201).json({
+        message: 'Solicitud de baja registrada. Te contactaremos para confirmarla.'
+      });
+    } catch (error) {
+      console.error('Error solicitando baja:', error);
+      res.status(500).json({ error: 'Error solicitando baja' });
     }
   }
 }

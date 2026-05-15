@@ -7,6 +7,7 @@ class MensajeriaController {
   constructor() {
     this.iniciarConversacion = this.iniciarConversacion.bind(this);
     this.enviarMensajeInterno = this.enviarMensajeInterno.bind(this);
+    this.enviarMensajeMulti = this.enviarMensajeMulti.bind(this);
   }
 
   // ==================== OBTENER CONVERSACIONES ====================
@@ -119,11 +120,100 @@ class MensajeriaController {
     }
   }
 
+  // ==================== ENVIAR MENSAJE MULTI-RECEPTOR ====================
+
+  async enviarMensajeMulti(req, res) {
+    try {
+      const { receptorIds, contenido, notificarPorEmail } = req.body;
+      const emisorId = req.socioId;
+
+      if (!Array.isArray(receptorIds) || receptorIds.length === 0) {
+        return res.status(400).json({ error: 'Lista de receptores requerida' });
+      }
+      if (!contenido || contenido.trim().length < 1 || contenido.length > 1000) {
+        return res.status(400).json({ error: 'El mensaje debe tener entre 1 y 1000 caracteres' });
+      }
+
+      const uniqIds = Array.from(new Set(receptorIds.map(Number).filter(Boolean)))
+        .filter(function (id) { return id !== emisorId; });
+
+      const resultados = [];
+      const emisor = await db.findOne('socios', { id: emisorId });
+
+      for (const rid of uniqIds) {
+        try {
+          const receptor = await db.findOne('socios', { id: rid, estado: 'aprobado', activo: true });
+          if (!receptor) { resultados.push({ id: rid, ok: false, error: 'Receptor no válido' }); continue; }
+
+          const consentimientos = await db.findOne('consentimientos', { socio_id: rid });
+          if (!consentimientos || !consentimientos.acepta_mensajeria) {
+            resultados.push({ id: rid, ok: false, error: 'No acepta mensajes' });
+            continue;
+          }
+
+          await db.transaction(async (client) => {
+            const socio1 = Math.min(emisorId, rid);
+            const socio2 = Math.max(emisorId, rid);
+
+            let conv = await client.query(
+              'SELECT id FROM conversaciones WHERE socio_1_id = $1 AND socio_2_id = $2',
+              [socio1, socio2]
+            );
+
+            if (conv.rows.length === 0) {
+              conv = await client.query(
+                'INSERT INTO conversaciones (socio_1_id, socio_2_id) VALUES ($1, $2) RETURNING id',
+                [socio1, socio2]
+              );
+            }
+            const conversacionId = conv.rows[0].id;
+
+            await client.query(
+              'INSERT INTO mensajes (conversacion_id, emisor_id, receptor_id, contenido) VALUES ($1, $2, $3, $4)',
+              [conversacionId, emisorId, rid, contenido.trim()]
+            );
+            await client.query('UPDATE conversaciones SET updated_at = NOW() WHERE id = $1', [conversacionId]);
+          });
+
+          // Notificación por email opcional
+          if (notificarPorEmail && consentimientos.acepta_notificaciones_email) {
+            try {
+              await emailService.notifyNewMessage(
+                { email: receptor.email, nombre: receptor.nombre, acepta_notificaciones_email: true },
+                { nombre: emisor.nombre, apellidos: emisor.apellidos },
+                contenido
+              );
+            } catch (e) { console.warn('Email notify falló:', e.message); }
+          }
+
+          resultados.push({ id: rid, ok: true });
+        } catch (err) {
+          console.error('Error multi-mensaje a ' + rid, err);
+          resultados.push({ id: rid, ok: false, error: err.message });
+        }
+      }
+
+      await auditAction(emisorId, null, 'SEND_MULTI_MESSAGE', 'mensajes', null, {
+        receptorIds: uniqIds, sent: resultados.filter(function (r) { return r.ok; }).length
+      }, req);
+
+      res.status(201).json({
+        message: 'Envío procesado',
+        enviados: resultados.filter(function (r) { return r.ok; }).length,
+        total: uniqIds.length,
+        resultados: resultados
+      });
+    } catch (error) {
+      console.error('Error enviando mensaje multi:', error);
+      res.status(500).json({ error: 'Error enviando mensaje multi-receptor' });
+    }
+  }
+
   // ==================== ENVIAR MENSAJE ====================
   
   async enviarMensaje(req, res) {
     try {
-      const { receptorId, contenido } = req.body;
+      const { receptorId, contenido, notificarPorEmail } = req.body;
       const emisorId = req.socioId;
 
       if (!receptorId || !contenido) {
@@ -196,20 +286,24 @@ class MensajeriaController {
         return { conversacionId, mensajeId: mensaje.rows[0].id, created_at: mensaje.rows[0].created_at };
       });
 
-      // Enviar notificación por email (si está habilitada)
-      if (consentimientos.acepta_notificaciones_email) {
-        await emailService.notifyNewMessage(
-          {
-            email: receptor.email,
-            nombre: receptor.nombre,
-            acepta_notificaciones_email: true
-          },
-          {
-            nombre: emisor.nombre,
-            apellidos: emisor.apellidos
-          },
-          contenido
-        );
+      // Enviar notificación por email si el receptor lo acepta y el emisor lo solicita (o por defecto)
+      const debeNotificar = (notificarPorEmail === undefined ? true : !!notificarPorEmail)
+                            && consentimientos.acepta_notificaciones_email;
+      if (debeNotificar) {
+        try {
+          await emailService.notifyNewMessage(
+            {
+              email: receptor.email,
+              nombre: receptor.nombre,
+              acepta_notificaciones_email: true
+            },
+            {
+              nombre: emisor.nombre,
+              apellidos: emisor.apellidos
+            },
+            contenido
+          );
+        } catch (e) { console.warn('Email notify falló:', e.message); }
       }
 
       // Auditar envío de mensaje

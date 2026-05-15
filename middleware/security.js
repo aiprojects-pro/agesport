@@ -1,6 +1,7 @@
 // middleware/security.js
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const config = require('../config/config');
+const catalogos = require('../config/catalogos');
 
 const authLimitMax = parseInt(process.env.RATE_LIMIT_AUTH_MAX || '20', 10);
 const registerLimitMax = parseInt(process.env.RATE_LIMIT_REGISTER_MAX || '10', 10);
@@ -88,7 +89,18 @@ const validateInput = (req, res, next) => {
 
   const sanitizeObject = (obj) => {
     if (typeof obj !== 'object' || obj === null) return obj;
-    
+
+    // CRÍTICO: preservar arrays como arrays. Si los procesamos como objeto plano
+    // se convertirían en { 0: ..., 1: ... } y se rompería Array.isArray() en los
+    // controladores (p. ej. al guardar especialidades en el perfil).
+    if (Array.isArray(obj)) {
+      return obj.map((item) => {
+        if (typeof item === 'string') return sanitizeString(item);
+        if (typeof item === 'object' && item !== null) return sanitizeObject(item);
+        return item;
+      });
+    }
+
     const sanitized = {};
     for (const [key, value] of Object.entries(obj)) {
       if (typeof value === 'string') {
@@ -116,10 +128,12 @@ const validateEmail = (email) => {
   return emailRegex.test(email);
 };
 
-// Validar formato de teléfono español
+// Validar formato de teléfono (acepta español, internacional o vacío)
 const validateSpanishPhone = (phone) => {
-  const phoneRegex = /^(\+34|0034|34)?[6789]\d{8}$/;
-  return phoneRegex.test(phone.replace(/[\s-]/g, ''));
+  if (!phone) return true;
+  const cleaned = String(phone).replace(/[\s\-().]/g, '');
+  // Acepta: +XX seguido de 6-15 dígitos, o 9 dígitos españoles, o número internacional sin +
+  return /^(\+?\d{6,15})$/.test(cleaned);
 };
 
 // Validar DNI/NIE español
@@ -162,16 +176,35 @@ const validateRegistrationData = (req, res, next) => {
     errors.push('Apellidos debe tener al menos 2 caracteres');
   }
   
-  if (!provincia || !['Almería','Cádiz','Córdoba','Granada','Huelva','Jaén','Málaga','Sevilla'].includes(provincia)) {
-    errors.push('Provincia debe ser una de las 8 provincias andaluzas');
+  if (!provincia || !catalogos.isValidProvincia(provincia)) {
+    errors.push('Provincia inválida');
   }
-  
+
+  if (req.body.comunidad_autonoma && !catalogos.COMUNIDADES_AUTONOMAS.some(ca => ca.slug === req.body.comunidad_autonoma)) {
+    errors.push('Comunidad autónoma inválida');
+  }
+
   if (!localidad || localidad.trim().length < 2) {
     errors.push('Localidad es requerida');
   }
-  
+
   if (!cargo_actual || cargo_actual.trim().length < 3) {
     errors.push('Cargo actual es requerido');
+  }
+
+  if (req.body.tipo_socio && !catalogos.isValidTipoSocio(req.body.tipo_socio)) {
+    errors.push('Tipo de socio inválido');
+  }
+
+  if (req.body.rol_cluster && !catalogos.isValidRolSlug(req.body.rol_cluster)) {
+    errors.push('Rol del clúster inválido');
+  }
+
+  if (Array.isArray(req.body.especialidades)) {
+    const invalid = req.body.especialidades.filter(e => !catalogos.isValidEspecialidadSlug(e));
+    if (invalid.length > 0) {
+      errors.push('Especialidades inválidas: ' + invalid.join(', '));
+    }
   }
   
   if (anos_experiencia === undefined || anos_experiencia < 0 || anos_experiencia > 50) {
@@ -221,8 +254,27 @@ const validateProfileData = (req, res, next) => {
     }
   }
   
-  if (req.body.provincia && !['Almería','Cádiz','Córdoba','Granada','Huelva','Jaén','Málaga','Sevilla'].includes(req.body.provincia)) {
-    errors.push('Provincia debe ser una de las 8 provincias andaluzas');
+  if (req.body.provincia && !catalogos.isValidProvincia(req.body.provincia)) {
+    errors.push('Provincia inválida');
+  }
+
+  if (req.body.comunidad_autonoma && !catalogos.COMUNIDADES_AUTONOMAS.some(ca => ca.slug === req.body.comunidad_autonoma)) {
+    errors.push('Comunidad autónoma inválida');
+  }
+
+  if (req.body.rol_cluster && !catalogos.isValidRolSlug(req.body.rol_cluster)) {
+    errors.push('Rol del clúster inválido');
+  }
+
+  if (Array.isArray(req.body.especialidades)) {
+    const invalid = req.body.especialidades.filter(e => !catalogos.isValidEspecialidadSlug(e));
+    if (invalid.length > 0) {
+      errors.push('Especialidades inválidas: ' + invalid.join(', '));
+    }
+  }
+
+  if (req.body.tipo_socio && !catalogos.isValidTipoSocio(req.body.tipo_socio)) {
+    errors.push('Tipo de socio inválido');
   }
 
   if (errors.length > 0) {

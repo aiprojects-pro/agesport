@@ -11,7 +11,6 @@ CREATE TYPE rol_cluster_enum AS ENUM ('gestion', 'servicios', 'infra', 'tech');
 CREATE TYPE disponibilidad_enum AS ENUM ('Alta', 'Media', 'Puntual');
 CREATE TYPE impacto_enum AS ENUM ('Local', 'Provincial/Regional', 'Nacional/Internacional');
 CREATE TYPE estado_socio_enum AS ENUM ('pendiente', 'aprobado', 'rechazado', 'suspendido');
-CREATE TYPE tipo_socio_enum AS ENUM ('numero', 'corporativo');
 CREATE TYPE especialidad_enum AS ENUM (
   'Gestión de Instalaciones',
   'Organización de Eventos', 
@@ -22,9 +21,7 @@ CREATE TYPE especialidad_enum AS ENUM (
   'Recursos Humanos',
   'Accesibilidad e Inclusión',
   'Actividad Física y Salud',
-  'Seguridad y Autoprotección',
-  'Formación',
-  'Turismo Activo'
+  'Seguridad y Autoprotección'
 );
 
 -- ==================== TABLA PRINCIPAL SOCIOS ====================
@@ -42,8 +39,6 @@ CREATE TABLE socios (
   otras_redes TEXT,
   
   -- Datos profesionales (secciones 2-3)
-  tipo_socio tipo_socio_enum DEFAULT 'numero',
-  tipo_corporativo VARCHAR(50),
   entidad VARCHAR(300),
   web_profesional TEXT,
   provincia VARCHAR(50) NOT NULL,
@@ -53,7 +48,6 @@ CREATE TABLE socios (
   ambito ambito_enum,
   cargo_actual VARCHAR(200),
   anos_experiencia INTEGER CHECK (anos_experiencia >= 0 AND anos_experiencia <= 50),
-  bio_profesional TEXT,
   
   -- Geolocalización
   latitud DECIMAL(10,8),
@@ -348,7 +342,6 @@ DROP VIEW IF EXISTS vista_socios_completos;
 CREATE VIEW vista_socios_completos AS
 SELECT 
   s.id, s.email, s.nombre, s.apellidos, s.entidad, s.web_profesional,
-  s.tipo_socio, s.tipo_corporativo, s.bio_profesional,
   s.provincia, s.localidad, s.ambito, s.cargo_actual, s.anos_experiencia,
   s.latitud, s.longitud, s.estado, s.linkedin_url, s.otras_redes,
   
@@ -392,6 +385,6 @@ CREATE VIEW vista_stats_observatorio AS
 SELECT 
   (SELECT COUNT(*) FROM socios WHERE estado = 'aprobado' AND activo = true) as total_socios,
   (SELECT COUNT(DISTINCT provincia) FROM socios WHERE estado = 'aprobado' AND activo = true) as provincias_activas,
-  (SELECT COUNT(*) FROM vista_socios_completos WHERE tutor_mentor = true) as mentores_disponibles,
+  (SELECT COUNT(*) FROM vista_socios_completos WHERE disponibilidad = 'Alta') as mentores_disponibles,
   (SELECT COUNT(*) FROM vista_socios_completos WHERE b2b_ofrece = true OR b2b_busca = true OR b2b_licita = true) as proyectos_b2b,
   (SELECT COUNT(*) FROM socios WHERE estado = 'pendiente') as socios_pendientes_aprobacion;

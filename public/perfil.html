@@ -3,179 +3,257 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mi perfil · AGESPORT</title>
+  <title>AGESPORT · Perfil</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/portal.css">
 </head>
 <body>
-
-  <div id="topbar"></div>
-
-  <main class="page">
-    <div class="shell">
-
-      <header class="page-head">
-        <h1 id="pageTitle">Mi perfil</h1>
-        <p id="pageSubtitle">Mantén actualizada tu información profesional. Estos datos alimentan el directorio, el mapa y los emparejamientos B2B.</p>
-      </header>
-
-      <div class="profile-grid">
-
-        <!-- Tarjeta lateral con foto -->
-        <aside class="profile-photo-card">
-          <div class="profile-photo" id="profilePhoto"></div>
-          <input type="file" id="photoInput" class="profile-photo-input" accept="image/*">
-          <div class="profile-name" id="profileName"></div>
-          <div class="profile-rol" id="profileRol"></div>
-          <div class="profile-photo-actions">
-            <button type="button" class="btn btn-secondary btn-sm" id="btnPhotoChange">Cambiar foto</button>
-            <button type="button" class="btn btn-ghost btn-sm" id="btnPhotoRemove">Quitar</button>
-          </div>
-
-          <div style="border-top:1px solid var(--line);margin-top:18px;padding-top:18px">
-            <div class="role-toggle">
-              <div class="role-toggle-label">
-                <strong>Estado de la cuenta</strong>
-                <span id="estadoTexto">Activa · visible en mapa y directorio</span>
-              </div>
-              <span class="switch on" id="switchActivo" role="switch" aria-checked="true" tabindex="0"></span>
-            </div>
-
-            <div class="role-toggle" id="rowMentor" style="display:none">
-              <div class="role-toggle-label">
-                <strong>¿Quieres ser mentor?</strong>
-                <span>Aparecerás como disponible para tutorizar a otros socios.</span>
-              </div>
-              <span class="switch" id="switchMentor" role="switch" aria-checked="false" tabindex="0"></span>
-            </div>
-          </div>
-        </aside>
-
-        <!-- Datos profesionales -->
-        <section class="card">
-          <div class="registro-section">
-            <h3>Datos personales</h3>
-            <div class="form-grid">
-              <div class="field">
-                <label>Nombre</label>
-                <input type="text" id="fNombre" autocomplete="off">
-              </div>
-              <div class="field">
-                <label>Apellidos</label>
-                <input type="text" id="fApellidos" autocomplete="off">
-              </div>
-              <div class="field">
-                <label>Email</label>
-                <input type="email" id="fEmail" disabled>
-              </div>
-              <div class="field">
-                <label>Teléfono</label>
-                <input type="tel" id="fTel" autocomplete="off">
-              </div>
-            </div>
-          </div>
-
-          <div class="registro-section">
-            <h3>Información profesional</h3>
-            <div class="form-grid">
-              <div class="field">
-                <label>Entidad / Organización</label>
-                <input type="text" id="fEntidad">
-              </div>
-              <div class="field">
-                <label>Cargo</label>
-                <input type="text" id="fCargo">
-              </div>
-              <div class="field">
-                <label>Años de experiencia</label>
-                <input type="number" id="fAnos" min="0" max="60">
-              </div>
-              <div class="field">
-                <label>Rol en clúster</label>
-                <select id="fRol"></select>
-              </div>
-              <div class="field">
-                <label>Provincia</label>
-                <select id="fProvincia"></select>
-              </div>
-              <div class="field">
-                <label>Localidad</label>
-                <input type="text" id="fLocalidad">
-              </div>
-              <div class="field">
-                <label>LinkedIn</label>
-                <input type="url" id="fLinkedin" placeholder="https://linkedin.com/in/...">
-              </div>
-              <div class="field">
-                <label>Web profesional</label>
-                <input type="url" id="fWeb" placeholder="https://...">
-              </div>
-              <div class="field-full">
-                <label>Biografía profesional</label>
-                <textarea id="fBio" rows="4"></textarea>
-              </div>
-            </div>
-          </div>
-
-          <div class="registro-section">
-            <h3>Especialidades</h3>
-            <p class="help">Marca todas las áreas en las que tengas experiencia. Estas etiquetas se usan en el directorio y el matchmaking.</p>
-            <div class="especialidades-grid" id="especialidadesPicker"></div>
-          </div>
-
-          <div class="registro-section">
-            <h3>Visibilidad y ecosistema B2B</h3>
-            <div class="role-toggle">
-              <div class="role-toggle-label">
-                <strong>Visibilidad de teléfono</strong>
-                <span>Mostrar mi teléfono al resto de socios.</span>
-              </div>
-              <span class="switch" id="switchVisTel" role="switch" tabindex="0"></span>
-            </div>
-            <div class="role-toggle">
-              <div class="role-toggle-label">
-                <strong>Ofrezco servicios B2B</strong>
-                <span>Aparecerás como proveedor en el ecosistema B2B.</span>
-              </div>
-              <span class="switch" id="switchOfrece" role="switch" tabindex="0"></span>
-            </div>
-            <div class="role-toggle">
-              <div class="role-toggle-label">
-                <strong>Busco colaboradores</strong>
-                <span>Aparecerás como abierto a colaboraciones.</span>
-              </div>
-              <span class="switch" id="switchBusca" role="switch" tabindex="0"></span>
-            </div>
-            <div class="role-toggle">
-              <div class="role-toggle-label">
-                <strong>Concurro a licitaciones</strong>
-                <span>Recibirás avisos de licitaciones afines.</span>
-              </div>
-              <span class="switch" id="switchLicita" role="switch" tabindex="0"></span>
-            </div>
-          </div>
-
-          <div class="registro-section" style="border-bottom:0">
-            <h3>Acciones</h3>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-              <button type="button" class="btn btn-primary" id="btnGuardar">Guardar cambios</button>
-              <button type="button" class="btn btn-secondary" id="btnCambiarPwd">Cambiar contraseña</button>
-              <button type="button" class="btn btn-danger" id="btnBaja">Solicitar baja</button>
-            </div>
-            <p class="help" style="margin-top:12px">Si tramitas la baja, dejarás de aparecer en el mapa, el directorio y el ecosistema B2B. Tus datos se conservarán inactivos durante 30 días por si reactivas la cuenta.</p>
-          </div>
-
-          <div class="message-box" id="okMsg">Cambios guardados correctamente.</div>
-        </section>
-
+  <header class="site-topbar">
+    <div class="shell inner">
+      <a class="site-brand" href="/">
+        <span class="site-brand-mark" aria-label="AGESPORT"></span>
+      </a>
+      <div class="topbar-actions">
+        <button class="btn btn-secondary" id="logoutBtn" type="button">Cerrar sesión</button>
       </div>
-
     </div>
+  </header>
+
+  <main class="page shell private-layout">
+    <aside class="sidebar panel">
+      <h3>Navegación</h3>
+      <nav class="nav-list">
+        <a class="nav-link" href="/panel.html">Dashboard</a>
+        <a class="nav-link" href="/directorio.html">Directorio</a>
+        <a class="nav-link active" href="/perfil.html">Mi perfil</a>
+        <a class="nav-link" href="/mensajes.html">Mensajes</a>
+      </nav>
+    </aside>
+
+    <section class="stack">
+      <article class="hero-block">
+        <div class="eyebrow">Perfil profesional</div>
+        <h1 id="profileTitle">Cargando perfil</h1>
+        <p id="profileIntro">Preparando información del perfil profesional.</p>
+        <div class="toolbar" id="profileActions" style="margin-top:16px;display:none">
+          <div class="actions">
+            <a class="btn btn-primary" id="contactBtn" href="/mensajes.html">Abrir conversación</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- Foto y documentos -->
+      <article class="form-card" id="mediaCard">
+        <h2>Foto y currículum</h2>
+        <p class="muted" style="margin-top:8px">Tu foto aparece en el directorio privado. El CV es opcional y solo visible para administración y para socios con quienes mantengas conversación.</p>
+
+        <div class="photo-uploader" style="margin-top:18px">
+          <div class="avatar placeholder" id="avatarPreview"></div>
+          <div class="meta">
+            <strong>Foto de perfil</strong>
+            <span>JPG, PNG o WEBP — máximo 3MB.</span>
+          </div>
+          <label class="btn-upload" for="fotoInput">Cambiar foto</label>
+          <input id="fotoInput" type="file" accept="image/jpeg,image/png,image/webp">
+        </div>
+
+        <div class="photo-uploader" style="margin-top:12px">
+          <div class="avatar placeholder" style="background:linear-gradient(135deg,#1c578d,#0d355f) !important" id="cvIcon">
+            <span style="position:relative;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;width:100%;height:100%">CV</span>
+          </div>
+          <div class="meta">
+            <strong>Currículum (opcional)</strong>
+            <span id="cvStatus">No has subido CV todavía.</span>
+          </div>
+          <a class="btn btn-secondary" id="cvViewBtn" target="_blank" rel="noopener" style="display:none">Ver CV</a>
+          <button class="btn-upload" id="cvDeleteBtn" type="button" style="display:none">Quitar</button>
+          <label class="btn-upload" for="cvInput">Subir CV</label>
+          <input id="cvInput" type="file" accept="application/pdf,.pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+        </div>
+
+        <div id="mediaMessage" class="message-box"></div>
+      </article>
+
+      <!-- Datos profesionales -->
+      <article class="form-card">
+        <h2>Datos profesionales</h2>
+        <form id="profileForm" class="form-grid" style="margin-top:18px">
+
+          <div class="field">
+            <label for="tipo_socio">Tipo de socio</label>
+            <select id="tipo_socio"></select>
+          </div>
+          <div class="field">
+            <label for="nombre">Nombre</label>
+            <input id="nombre">
+          </div>
+          <div class="field">
+            <label for="apellidos">Apellidos</label>
+            <input id="apellidos">
+          </div>
+
+          <div class="field" id="orgField" style="display:none">
+            <label for="nombre_organizacion">Nombre de la organización</label>
+            <input id="nombre_organizacion" placeholder="Si actúas como persona jurídica">
+          </div>
+
+          <div class="field">
+            <label for="email">Email profesional</label>
+            <input id="email" disabled>
+          </div>
+          <div class="field">
+            <label for="email_personal">Email personal (opcional)</label>
+            <input id="email_personal" type="email">
+          </div>
+
+          <div class="field-full">
+            <label>¿Qué email quieres usar como contacto principal?</label>
+            <div class="segmented" id="emailPreferido">
+              <button type="button" data-value="profesional">Profesional</button>
+              <button type="button" data-value="personal">Personal</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="telefono">Teléfono</label>
+            <input id="telefono" placeholder="+34 600 00 00 00">
+          </div>
+
+          <div class="field">
+            <label for="entidad">Entidad / empresa</label>
+            <input id="entidad">
+          </div>
+
+          <div class="field">
+            <label for="cargo_actual">Cargo actual</label>
+            <input id="cargo_actual">
+          </div>
+          <div class="field">
+            <label for="anos_experiencia">Años de experiencia</label>
+            <input id="anos_experiencia" type="number" min="0" max="50">
+          </div>
+
+          <div class="field">
+            <label for="comunidad_autonoma">Comunidad autónoma</label>
+            <select id="comunidad_autonoma">
+              <option value="">Selecciona CCAA</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="provincia">Provincia</label>
+            <select id="provincia"></select>
+          </div>
+          <div class="field">
+            <label for="localidad">Localidad</label>
+            <input id="localidad">
+          </div>
+          <div class="field">
+            <label for="ambito">Ámbito</label>
+            <select id="ambito">
+              <option value="">Selecciona ámbito</option>
+              <option value="Público">Público</option>
+              <option value="Privado">Privado</option>
+              <option value="Mixto / Otros">Mixto / Otros</option>
+            </select>
+          </div>
+
+          <div class="field-full">
+            <label for="rol_cluster">Rol en el clúster del deporte</label>
+            <select id="rol_cluster"></select>
+            <div class="muted" id="rolDescripcion" style="margin-top:6px;font-size:.88rem"></div>
+          </div>
+
+          <div class="field-full">
+            <label>Especialidades (selecciona las que se ajusten a tu actividad)</label>
+            <div id="especialidadesList" class="selectable-list"></div>
+          </div>
+
+          <div class="field">
+            <label for="linkedin_url">LinkedIn</label>
+            <input id="linkedin_url" placeholder="https://linkedin.com/in/...">
+          </div>
+          <div class="field">
+            <label for="web_profesional">Web profesional</label>
+            <input id="web_profesional" placeholder="https://...">
+          </div>
+          <div class="field-full">
+            <label for="direccion_completa">Dirección profesional (opcional, no se muestra públicamente)</label>
+            <input id="direccion_completa">
+          </div>
+
+          <div class="field-full">
+            <h3 style="margin:8px 0 6px;color:var(--navy)">Visibilidad en el directorio</h3>
+          </div>
+          <div class="field-full checkbox-row">
+            <input id="acepta_mensajeria" type="checkbox">
+            <label for="acepta_mensajeria">Acepto recibir mensajería interna de otros socios autenticados.</label>
+          </div>
+          <div class="field-full checkbox-row">
+            <input id="acepta_notificaciones_email" type="checkbox">
+            <label for="acepta_notificaciones_email">Enviarme una copia por email de los mensajes recibidos.</label>
+          </div>
+          <div class="field-full checkbox-row">
+            <input id="visible_telefono" type="checkbox">
+            <label for="visible_telefono">Mostrar mi teléfono en mi ficha de directorio.</label>
+          </div>
+          <div class="field-full checkbox-row">
+            <input id="visible_email_directo" type="checkbox">
+            <label for="visible_email_directo">Mostrar mi email de contacto en mi ficha de directorio.</label>
+          </div>
+          <div class="field-full checkbox-row">
+            <input id="visible_web_profesional" type="checkbox">
+            <label for="visible_web_profesional">Mostrar mi web profesional.</label>
+          </div>
+          <div class="field-full checkbox-row">
+            <input id="visible_linkedin" type="checkbox">
+            <label for="visible_linkedin">Mostrar mi perfil de LinkedIn.</label>
+          </div>
+
+          <div class="field-full">
+            <button class="btn btn-primary" type="submit" id="saveBtn">Guardar cambios</button>
+          </div>
+        </form>
+        <div id="profileMessage" class="message-box"></div>
+      </article>
+
+      <article class="form-card">
+        <h2>Seguridad</h2>
+        <form id="passwordForm" class="form-grid" style="margin-top:18px">
+          <div class="field">
+            <label for="currentPassword">Contraseña actual</label>
+            <input id="currentPassword" type="password">
+          </div>
+          <div class="field">
+            <label for="newPassword">Nueva contraseña</label>
+            <input id="newPassword" type="password">
+          </div>
+          <div class="field-full">
+            <button class="btn btn-secondary" type="submit" id="passwordBtn">Actualizar contraseña</button>
+          </div>
+        </form>
+        <div id="passwordMessage" class="message-box"></div>
+      </article>
+
+      <article class="form-card" id="bajaCard">
+        <h2>Solicitar baja</h2>
+        <p class="muted" style="margin-top:8px">Si necesitas darte de baja, indícanos brevemente el motivo. La administración revisará la solicitud y te contactará.</p>
+        <form id="bajaForm" class="form-grid" style="margin-top:14px">
+          <div class="field-full">
+            <label for="bajaMotivo">Motivo (opcional)</label>
+            <textarea id="bajaMotivo" rows="3" placeholder="Cuéntanos qué te ha llevado a tomar esta decisión"></textarea>
+          </div>
+          <div class="field-full">
+            <button class="btn btn-danger" id="bajaBtn" type="submit">Solicitar baja</button>
+          </div>
+        </form>
+        <div id="bajaMessage" class="message-box"></div>
+      </article>
+    </section>
   </main>
 
-  <script src="/assets/data.js"></script>
+  <script src="/assets/catalogos.js"></script>
   <script src="/assets/portal.js"></script>
   <script src="/assets/perfil.js"></script>
 </body>

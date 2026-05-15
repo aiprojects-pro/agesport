@@ -1,173 +1,497 @@
 (function () {
-  const { logout, request, escapeHtml } = window.AgesportPortal;
-  const metricsNode = document.getElementById('metrics');
-  const pendingBody = document.getElementById('pendingBody');
-  const pendingEmpty = document.getElementById('pendingEmpty');
-  const pendingCount = document.getElementById('pendingCount');
-  const activityBody = document.getElementById('activityBody');
-  const activityEmpty = document.getElementById('activityEmpty');
-  const adminName = document.getElementById('adminName');
-  const adminMeta = document.getElementById('adminMeta');
-  const refreshBtn = document.getElementById('refreshBtn');
-  const logoutBtn = document.getElementById('logoutBtn');
-  const flashMessage = document.getElementById('flashMessage');
+  const { requireSession, request, logout, escapeHtml, setMessage, formatDate } = window.AgesportPortal;
+  const cat = window.AgesportCatalogos;
+  const $ = (id) => document.getElementById(id);
 
-  const metricDefs = [
-    ['socios_activos', 'Socios activos', 'Perfiles aprobados y activos'],
-    ['socios_pendientes', 'Pendientes', 'Solicitudes por revisar'],
-    ['mensajes_ultimo_mes', 'Mensajes 30d', 'Actividad de mensajería reciente'],
-    ['conversaciones_activas', 'Conversaciones', 'Hilos activos en el último mes']
-  ];
+  document.getElementById('logoutBtn').addEventListener('click', logout);
 
-  async function getJson(url) {
-    const response = await fetch(url, { credentials: 'same-origin' });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || 'Error en ' + url);
-    }
-    return data;
-  }
-
-  function setFlash(ok, text) {
-    flashMessage.className = 'flash ' + (ok ? 'ok' : 'error');
-    flashMessage.textContent = text;
-  }
-
-  async function updateSocioStatus(id, action, payload) {
-    await request('/api/admin/socios/' + id + '/' + action, {
-      method: 'POST',
-      body: JSON.stringify(payload || {})
+  // ===== Tabs =====
+  const tabsRoot = document.getElementById('adminTabs');
+  tabsRoot.addEventListener('click', function (ev) {
+    const btn = ev.target.closest('.tab');
+    if (!btn) return;
+    Array.from(tabsRoot.querySelectorAll('.tab')).forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    const which = btn.dataset.tab;
+    Array.from(document.querySelectorAll('.tab-panel')).forEach(function (p) {
+      p.classList.toggle('active', p.dataset.panel === which);
     });
-  }
+    if (which === 'identidad' && !window._orgLoaded) loadOrganizacion();
+    if (which === 'pendientes' && !window._pendLoaded) loadPendientes();
+    if (which === 'accesos' && !window._accLoaded) loadAccesos();
+    if (which === 'bajas' && !window._bajasLoaded) loadBajas();
+  });
 
-  function renderMetrics(stats) {
-    metricsNode.innerHTML = metricDefs.map(function (item) {
-      const key = item[0];
-      const label = item[1];
-      const desc = item[2];
-      return (
-        '<article class="metric">' +
-          '<small>' + label + '</small>' +
-          '<strong>' + escapeHtml(stats[key] || '0') + '</strong>' +
-          '<span>' + desc + '</span>' +
-        '</article>'
-      );
-    }).join('');
-  }
+  document.getElementById('refreshBtn').addEventListener('click', function () {
+    window._orgLoaded = window._pendLoaded = window._accLoaded = window._bajasLoaded = false;
+    loadDashboard();
+    const activeTab = tabsRoot.querySelector('.tab.active').dataset.tab;
+    if (activeTab === 'identidad') loadOrganizacion();
+    if (activeTab === 'pendientes') loadPendientes();
+    if (activeTab === 'accesos') loadAccesos();
+    if (activeTab === 'bajas') loadBajas();
+  });
 
-  function renderPending(socios) {
-    pendingBody.innerHTML = '';
-    if (!socios.length) {
-      pendingEmpty.style.display = 'block';
-      pendingCount.textContent = '0 pendientes';
-      return;
-    }
-    pendingEmpty.style.display = 'none';
-    pendingCount.textContent = socios.length + ' pendientes';
-    pendingBody.innerHTML = socios.map(function (socio) {
-      return (
-        '<tr>' +
-          '<td><strong>' + escapeHtml(socio.nombre + ' ' + socio.apellidos) + '</strong><br><span>' + escapeHtml(socio.email) + '</span></td>' +
-          '<td>' + escapeHtml(socio.provincia || '-') + '</td>' +
-          '<td>' + escapeHtml(socio.entidad || '-') + '</td>' +
-          '<td>' + escapeHtml((socio.fecha_registro || '').slice(0, 10) || '-') + '</td>' +
-          '<td><div class="actions">' +
-            '<button class="btn btn-secondary js-approve" type="button" data-id="' + escapeHtml(socio.id) + '" data-name="' + escapeHtml(socio.nombre + ' ' + socio.apellidos) + '">Aprobar</button>' +
-            '<button class="btn btn-danger js-reject" type="button" data-id="' + escapeHtml(socio.id) + '" data-name="' + escapeHtml(socio.nombre + ' ' + socio.apellidos) + '">Rechazar</button>' +
-          '</div></td>' +
-        '</tr>'
-      );
-    }).join('');
-
-    Array.from(document.querySelectorAll('.js-approve')).forEach(function (button) {
-      button.addEventListener('click', async function () {
-        button.disabled = true;
-        try {
-          await updateSocioStatus(button.dataset.id, 'aprobar', { notas: 'Alta validada desde administración' });
-          setFlash(true, button.dataset.name + ' se ha aprobado correctamente.');
-          await loadDashboard();
-        } catch (error) {
-          setFlash(false, error.message);
-        } finally {
-          button.disabled = false;
-        }
-      });
-    });
-
-    Array.from(document.querySelectorAll('.js-reject')).forEach(function (button) {
-      button.addEventListener('click', async function () {
-        button.disabled = true;
-        try {
-          await updateSocioStatus(button.dataset.id, 'rechazar', {
-            motivo: 'Solicitud pendiente de revisión documental',
-            notas: 'Se requiere información adicional antes de continuar.'
-          });
-          setFlash(true, button.dataset.name + ' se ha marcado como no admitido.');
-          await loadDashboard();
-        } catch (error) {
-          setFlash(false, error.message);
-        } finally {
-          button.disabled = false;
-        }
-      });
-    });
-  }
-
-  function renderActivity(rows) {
-    activityBody.innerHTML = '';
-    if (!rows.length) {
-      activityEmpty.style.display = 'block';
-      return;
-    }
-    activityEmpty.style.display = 'none';
-    activityBody.innerHTML = rows.slice(0, 10).map(function (row) {
-      return (
-        '<tr>' +
-          '<td>' + escapeHtml((row.fecha || '').slice(0, 10)) + '</td>' +
-          '<td><strong>' + escapeHtml(row.accion) + '</strong></td>' +
-          '<td>' + escapeHtml(row.total) + '</td>' +
-        '</tr>'
-      );
-    }).join('');
-  }
-
+  // =============================================================
+  // ==================== DASHBOARD ==============================
+  // =============================================================
   async function loadDashboard() {
-    refreshBtn.disabled = true;
-    refreshBtn.textContent = 'Actualizando...';
     try {
-      const session = await getJson('/api/auth/verify');
-      if (session.type !== 'admin') {
-        window.location.href = '/';
+      const data = await request('/api/admin/estadisticas', { method: 'GET', headers: {} });
+      const stats = data.estadisticas || {};
+
+      const kpis = [
+        { label: 'Socios activos', value: stats.socios_activos || 0, desc: 'Aprobados y activos', highlight: true },
+        { label: 'Solicitudes pendientes', value: stats.socios_pendientes || 0, desc: 'Esperando aprobación' },
+        { label: 'Mensajes último mes', value: stats.mensajes_ultimo_mes || 0, desc: 'Volumen actividad mensajería' },
+        { label: 'Conversaciones activas', value: stats.conversaciones_activas || 0, desc: 'Hilos abiertos' }
+      ];
+      $('adminKpis').innerHTML = kpis.map(function (k) {
+        return '<article class="metric ' + (k.highlight ? 'highlight' : '') + '">' +
+          '<small>' + k.label + '</small><strong>' + escapeHtml(k.value) + '</strong>' +
+          '<span>' + k.desc + '</span></article>';
+      }).join('');
+
+      const tp = $('topProvincias');
+      tp.innerHTML = (stats.provincias_mas_activas || []).slice(0, 6).map(function (p) {
+        return '<li>' + escapeHtml(p.provincia || '-') + ' — ' + escapeHtml(p.total || 0) + ' socios</li>';
+      }).join('') || '<li>Sin datos</li>';
+
+      const te = $('topEspecialidades');
+      const obsRes = await request('/api/socios/observatorio/stats', { method: 'GET', headers: {} }).catch(function () { return null; });
+      const topEsp = obsRes && obsRes.charts ? (obsRes.charts.top_especialidades || []) : [];
+      te.innerHTML = topEsp.slice(0, 6).map(function (e) {
+        const esp = cat.findEspecialidadBySlug(e.especialidad);
+        return '<li>' + escapeHtml(esp ? esp.label : e.especialidad) + ' — ' + escapeHtml(e.total || 0) + '</li>';
+      }).join('') || '<li>Sin datos</li>';
+
+      const act = $('actividadReciente');
+      const acciones = (stats.actividad_reciente || []).slice(0, 12);
+      act.innerHTML = acciones.length
+        ? '<ul style="margin:0;padding-left:18px">' + acciones.map(function (a) {
+            return '<li>' + escapeHtml(a.accion || '') + ' · ' + escapeHtml(a.tabla_afectada || '') + ' · ' + escapeHtml(formatDate(a.created_at)) + '</li>';
+          }).join('') + '</ul>'
+        : 'Sin actividad reciente registrada.';
+    } catch (err) {
+      $('adminKpis').innerHTML = '<div class="empty">No se pudieron cargar las estadísticas: ' + escapeHtml(err.message) + '</div>';
+    }
+  }
+
+  // =============================================================
+  // ==================== IDENTIDAD ORG ==========================
+  // =============================================================
+  const orgCCAA = $('orgCCAA');
+  const orgProvincia = $('orgProvincia');
+  cat.COMUNIDADES_AUTONOMAS.forEach(function (ca) {
+    const opt = document.createElement('option');
+    opt.value = ca.slug; opt.textContent = ca.label;
+    orgCCAA.appendChild(opt);
+  });
+  cat.fillProvincesSelect(orgProvincia, { placeholder: 'Selecciona provincia' });
+  orgCCAA.addEventListener('change', function () {
+    if (!orgCCAA.value) { cat.fillProvincesSelect(orgProvincia, { placeholder: 'Selecciona provincia' }); return; }
+    const ca = cat.COMUNIDADES_AUTONOMAS.find(function (c) { return c.slug === orgCCAA.value; });
+    orgProvincia.innerHTML = '<option value="">Selecciona provincia</option>';
+    ca.provincias.forEach(function (p) {
+      const o = document.createElement('option');
+      o.value = p; o.textContent = p;
+      orgProvincia.appendChild(o);
+    });
+  });
+
+  const orgColoresEl = $('orgColores');
+  let coloresEditados = ['#0d355f', '#6da93f', '#37964f'];
+
+  function renderColores() {
+    orgColoresEl.innerHTML = coloresEditados.map(function (c, idx) {
+      return '<div class="color-swatch" style="background:' + escapeHtml(c) + '" data-idx="' + idx + '">' +
+        '<input type="color" value="' + escapeHtml(c) + '" data-idx="' + idx + '">' +
+        '<button type="button" class="remove" data-remove="' + idx + '" title="Quitar">×</button>' +
+      '</div>';
+    }).join('') + '<div class="color-swatch add" id="orgColorAdd">+</div>';
+  }
+  orgColoresEl.addEventListener('input', function (ev) {
+    if (ev.target.tagName === 'INPUT' && ev.target.type === 'color') {
+      coloresEditados[parseInt(ev.target.dataset.idx)] = ev.target.value;
+      const swatch = ev.target.closest('.color-swatch');
+      if (swatch) swatch.style.background = ev.target.value;
+    }
+  });
+  orgColoresEl.addEventListener('click', function (ev) {
+    if (ev.target.id === 'orgColorAdd' || ev.target.closest('#orgColorAdd')) {
+      coloresEditados.push('#37964f');
+      renderColores();
+    } else if (ev.target.dataset.remove !== undefined) {
+      ev.stopPropagation();
+      coloresEditados.splice(parseInt(ev.target.dataset.remove), 1);
+      renderColores();
+    }
+  });
+
+  async function loadOrganizacion() {
+    window._orgLoaded = true;
+    try {
+      const data = await request('/api/admin/organizacion', { method: 'GET', headers: {} });
+      const org = data.organizacion;
+      $('orgNombre').value = org.nombre || '';
+      $('orgTipo').value = org.tipo_organizacion || '';
+      $('orgWeb').value = org.web_institucional || '';
+      $('orgDescripcion').value = org.descripcion_breve || '';
+      $('orgEmailRem').value = org.email_remitente || '';
+      if (org.comunidad_autonoma) {
+        orgCCAA.value = org.comunidad_autonoma;
+        orgCCAA.dispatchEvent(new Event('change'));
+      }
+      if (org.provincia) orgProvincia.value = org.provincia;
+      if (org.logo_url) $('orgLogoPreview').src = org.logo_url;
+      const cols = Array.isArray(org.colores_corporativos)
+        ? org.colores_corporativos
+        : (typeof org.colores_corporativos === 'string' ? JSON.parse(org.colores_corporativos) : ['#0d355f','#6da93f','#37964f']);
+      coloresEditados = cols.length ? cols : ['#0d355f','#6da93f','#37964f'];
+      renderColores();
+    } catch (err) {
+      setMessage($('orgMessage'), false, err.message);
+    }
+  }
+
+  $('orgForm').addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    $('orgSaveBtn').disabled = true;
+    $('orgSaveBtn').textContent = 'Guardando...';
+    try {
+      await request('/api/admin/organizacion', {
+        method: 'PUT',
+        body: JSON.stringify({
+          nombre: $('orgNombre').value.trim(),
+          tipo_organizacion: $('orgTipo').value.trim(),
+          comunidad_autonoma: orgCCAA.value || null,
+          provincia: orgProvincia.value || null,
+          web_institucional: $('orgWeb').value.trim(),
+          descripcion_breve: $('orgDescripcion').value.trim(),
+          email_remitente: $('orgEmailRem').value.trim() || null,
+          colores_corporativos: coloresEditados
+        })
+      });
+      setMessage($('orgMessage'), true, 'Identidad guardada correctamente.');
+    } catch (err) {
+      setMessage($('orgMessage'), false, err.message);
+    } finally {
+      $('orgSaveBtn').disabled = false;
+      $('orgSaveBtn').textContent = 'Guardar identidad';
+    }
+  });
+
+  $('orgLogoInput').addEventListener('change', async function () {
+    if (!$('orgLogoInput').files || !$('orgLogoInput').files[0]) return;
+    const fd = new FormData();
+    fd.append('logo', $('orgLogoInput').files[0]);
+    setMessage($('orgMessage'), true, 'Subiendo logo...');
+    try {
+      const res = await fetch('/api/admin/organizacion/logo', { method: 'POST', credentials: 'same-origin', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error subiendo logo');
+      $('orgLogoPreview').src = data.logo_url;
+      setMessage($('orgMessage'), true, 'Logo actualizado.');
+    } catch (err) {
+      setMessage($('orgMessage'), false, err.message);
+    }
+  });
+
+  // =============================================================
+  // ==================== PENDIENTES =============================
+  // =============================================================
+  async function loadPendientes() {
+    window._pendLoaded = true;
+    try {
+      const data = await request('/api/admin/socios/pendientes', { method: 'GET', headers: {} });
+      const socios = data.socios || [];
+      if (!socios.length) {
+        $('pendientesList').innerHTML = '';
+        $('pendientesEmpty').style.display = 'block';
         return;
       }
+      $('pendientesEmpty').style.display = 'none';
+      $('pendientesList').innerHTML = '<table class="table-list"><thead><tr>' +
+          '<th style="width:36px"><input type="checkbox" id="pendSelectAll"></th>' +
+          '<th>Nombre</th><th>Email</th><th>Entidad</th><th>Provincia</th><th>Rol</th><th></th>' +
+        '</tr></thead><tbody>' +
+        socios.map(function (s) {
+          const rol = cat.findRolBySlug(s.rol_cluster);
+          return '<tr class="selectable-row" data-id="' + s.id + '">' +
+            '<td><input type="checkbox" class="pend-check" data-id="' + s.id + '"></td>' +
+            '<td>' + escapeHtml((s.nombre || '') + ' ' + (s.apellidos || '')) + '</td>' +
+            '<td>' + escapeHtml(s.email || '') + '</td>' +
+            '<td>' + escapeHtml(s.entidad || '') + '</td>' +
+            '<td>' + escapeHtml(s.provincia || '') + '</td>' +
+            '<td>' + (rol ? '<span class="rol-chip" data-rol="' + rol.slug + '">' + escapeHtml(rol.label) + '</span>' : '-') + '</td>' +
+            '<td><button class="btn-upload" type="button" data-reject="' + s.id + '">Rechazar</button></td>' +
+          '</tr>';
+        }).join('') +
+        '</tbody></table>';
 
-      adminName.textContent = session.user.nombre;
-      adminMeta.textContent = session.user.email + ' · ' + session.user.rol;
+      $('pendSelectAll').addEventListener('change', function () {
+        const checked = $('pendSelectAll').checked;
+        Array.from(document.querySelectorAll('.pend-check')).forEach(function (cb) {
+          cb.checked = checked;
+          cb.closest('tr').classList.toggle('selected', checked);
+        });
+      });
 
-      const stats = await getJson('/api/admin/estadisticas');
-      const pending = await getJson('/api/admin/socios/pendientes');
+      Array.from(document.querySelectorAll('.pend-check')).forEach(function (cb) {
+        cb.addEventListener('change', function () {
+          cb.closest('tr').classList.toggle('selected', cb.checked);
+        });
+      });
 
-      renderMetrics(stats.stats || {});
-      renderPending(pending.socios || []);
-      renderActivity(stats.actividad_reciente || []);
-    } catch (error) {
-      adminName.textContent = 'Sesión no disponible';
-      adminMeta.textContent = error.message;
-      metricsNode.innerHTML = '<article class="metric"><small>Error</small><strong>--</strong><span>No se han podido cargar los datos del panel.</span></article>';
-      pendingEmpty.style.display = 'block';
-      activityEmpty.style.display = 'block';
-      if (/No autenticado|Token|Acceso denegado|401/.test(error.message)) {
-        window.setTimeout(function () {
-          window.location.href = '/';
-        }, 1200);
-      }
-    } finally {
-      refreshBtn.disabled = false;
-      refreshBtn.textContent = 'Actualizar datos';
+      Array.from(document.querySelectorAll('[data-reject]')).forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          if (!window.confirm('¿Rechazar esta solicitud?')) return;
+          try {
+            await request('/api/admin/socios/' + btn.dataset.reject + '/rechazar', {
+              method: 'POST', body: JSON.stringify({ motivo: 'Rechazado por administración' })
+            });
+            await loadPendientes();
+          } catch (err) {
+            setMessage($('pendientesMessage'), false, err.message);
+          }
+        });
+      });
+    } catch (err) {
+      setMessage($('pendientesMessage'), false, err.message);
     }
   }
 
-  logoutBtn.addEventListener('click', logout);
-  refreshBtn.addEventListener('click', loadDashboard);
-  loadDashboard();
+  $('selectAllPendBtn').addEventListener('click', function () {
+    const sel = $('pendSelectAll');
+    if (sel) { sel.checked = !sel.checked; sel.dispatchEvent(new Event('change')); }
+  });
+
+  $('approveSelectedBtn').addEventListener('click', async function () {
+    const ids = Array.from(document.querySelectorAll('.pend-check:checked')).map(function (cb) { return cb.dataset.id; });
+    if (!ids.length) { setMessage($('pendientesMessage'), false, 'No has seleccionado ninguna solicitud.'); return; }
+    if (!window.confirm('¿Aprobar ' + ids.length + ' solicitudes? Se notificará a cada socio por email.')) return;
+
+    let ok = 0, fail = 0;
+    for (const id of ids) {
+      try {
+        await request('/api/admin/socios/' + id + '/aprobar', { method: 'POST', body: JSON.stringify({}) });
+        ok++;
+      } catch (err) {
+        fail++;
+        console.warn('Error aprobando ' + id, err);
+      }
+    }
+    setMessage($('pendientesMessage'), fail === 0, 'Aprobadas ' + ok + ' de ' + ids.length + (fail ? ' (' + fail + ' errores)' : ''));
+    await loadPendientes();
+  });
+
+  // =============================================================
+  // ==================== ACCESOS GENERADOS ======================
+  // =============================================================
+  async function loadAccesos() {
+    window._accLoaded = true;
+    try {
+      const data = await request('/api/admin/socios/accesos', { method: 'GET', headers: {} });
+      const socios = data.socios || [];
+      $('accesosList').innerHTML = '<table class="table-list"><thead><tr>' +
+          '<th>Nombre</th><th>Email</th><th>Entidad</th><th>Provincia</th><th>Tipo</th><th>Último acceso</th>' +
+        '</tr></thead><tbody>' +
+        socios.map(function (s) {
+          return '<tr>' +
+            '<td>' + escapeHtml((s.nombre || '') + ' ' + (s.apellidos || '')) + '</td>' +
+            '<td>' + escapeHtml(s.email || '') + '</td>' +
+            '<td>' + escapeHtml(s.entidad || '') + '</td>' +
+            '<td>' + escapeHtml(s.provincia || '') + '</td>' +
+            '<td>' + escapeHtml(s.tipo_socio || '') + '</td>' +
+            '<td>' + escapeHtml(s.ultimo_acceso ? formatDate(s.ultimo_acceso) : '—') + '</td>' +
+          '</tr>';
+        }).join('') +
+        '</tbody></table>';
+    } catch (err) {
+      $('accesosList').innerHTML = '<div class="empty">' + escapeHtml(err.message) + '</div>';
+    }
+  }
+
+  // ===== Exportar CSV de contactos =====
+  // Usamos fetch + blob para que las cookies/credenciales viajen igual que en el
+  // resto de llamadas autenticadas, y para poder forzar un nombre de fichero.
+  $('exportCsvBtn').addEventListener('click', async function () {
+    const btn = $('exportCsvBtn');
+    const estado = $('exportEstado').value;
+    btn.disabled = true;
+    btn.textContent = 'Generando CSV…';
+    try {
+      const url = '/api/admin/socios/exportar' + (estado ? ('?estado=' + encodeURIComponent(estado)) : '');
+      const res = await fetch(url, { method: 'GET', credentials: 'same-origin' });
+      if (!res.ok) {
+        let msg = 'Error generando CSV';
+        try { const j = await res.json(); msg = j.error || msg; } catch (e) { /* ignore */ }
+        throw new Error(msg);
+      }
+
+      // Extraer nombre de fichero del header si está disponible
+      const cd = res.headers.get('Content-Disposition') || '';
+      const match = cd.match(/filename="?([^"]+)"?/);
+      const fecha = new Date().toISOString().slice(0, 10);
+      const fallback = 'agesport-socios' + (estado ? ('-' + estado) : '') + '-' + fecha + '.csv';
+      const filename = match ? match[1] : fallback;
+
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () {
+        URL.revokeObjectURL(a.href);
+        a.remove();
+      }, 1000);
+
+      setMessage($('exportMessage'), true, 'Descarga iniciada: ' + filename);
+    } catch (err) {
+      setMessage($('exportMessage'), false, err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Descargar contactos (CSV)';
+    }
+  });
+
+  // =============================================================
+  // ==================== BAJAS ==================================
+  // =============================================================
+  async function loadBajas() {
+    window._bajasLoaded = true;
+    try {
+      const data = await request('/api/admin/bajas', { method: 'GET', headers: {} });
+      const bajas = data.bajas || [];
+      if (!bajas.length) {
+        $('bajasList').innerHTML = '';
+        $('bajasEmpty').style.display = 'block';
+        return;
+      }
+      $('bajasEmpty').style.display = 'none';
+      $('bajasList').innerHTML = bajas.map(function (b) {
+        return '<article class="card" style="margin-bottom:12px">' +
+          '<div class="toolbar">' +
+            '<div><strong>' + escapeHtml((b.nombre || '') + ' ' + (b.apellidos || '')) + '</strong>' +
+            '<div class="muted">' + escapeHtml(b.email || '') + ' · ' + escapeHtml(b.entidad || '') + '</div></div>' +
+            '<span class="pill ' + (b.estado === 'pendiente' ? 'warn' : '') + '">' + escapeHtml(b.estado) + '</span>' +
+          '</div>' +
+          '<div style="margin-top:8px"><strong>Motivo:</strong> <span class="muted">' + escapeHtml(b.motivo || '(sin motivo)') + '</span></div>' +
+          '<div class="form-grid" style="margin-top:12px">' +
+            '<div class="field-full checkbox-row">' +
+              '<input type="checkbox" id="llamada_' + b.id + '" ' + (b.llamada_realizada ? 'checked' : '') + '>' +
+              '<label for="llamada_' + b.id + '">Llamada de seguimiento realizada</label>' +
+            '</div>' +
+            '<div class="field-full">' +
+              '<label>Notas internas</label>' +
+              '<textarea id="notas_' + b.id + '" rows="2">' + escapeHtml(b.notas_admin || '') + '</textarea>' +
+            '</div>' +
+          '</div>' +
+          '<div class="actions" style="margin-top:12px">' +
+            '<button class="btn btn-secondary" type="button" data-baja-save="' + b.id + '">Guardar notas</button>' +
+            '<button class="btn btn-danger" type="button" data-baja-reject="' + b.id + '">Rechazar baja</button>' +
+            '<button class="btn btn-primary" type="button" data-baja-approve="' + b.id + '">Aprobar baja</button>' +
+          '</div>' +
+        '</article>';
+      }).join('');
+
+      function gestionar(id, accion) {
+        return request('/api/admin/bajas/' + id + '/gestionar', {
+          method: 'POST',
+          body: JSON.stringify({
+            accion: accion,
+            notas_admin: ($('notas_' + id) || {}).value,
+            llamada_realizada: ($('llamada_' + id) || {}).checked
+          })
+        });
+      }
+
+      Array.from(document.querySelectorAll('[data-baja-save]')).forEach(function (b) {
+        b.addEventListener('click', async function () {
+          try { await gestionar(b.dataset.bajaSave, 'guardar_notas'); setMessage($('bajasMessage'), true, 'Notas guardadas.'); } catch (e) { setMessage($('bajasMessage'), false, e.message); }
+        });
+      });
+      Array.from(document.querySelectorAll('[data-baja-approve]')).forEach(function (b) {
+        b.addEventListener('click', async function () {
+          if (!window.confirm('¿Aprobar la baja del socio?')) return;
+          try { await gestionar(b.dataset.bajaApprove, 'aprobar'); await loadBajas(); setMessage($('bajasMessage'), true, 'Baja aprobada.'); } catch (e) { setMessage($('bajasMessage'), false, e.message); }
+        });
+      });
+      Array.from(document.querySelectorAll('[data-baja-reject]')).forEach(function (b) {
+        b.addEventListener('click', async function () {
+          try { await gestionar(b.dataset.bajaReject, 'rechazar'); await loadBajas(); setMessage($('bajasMessage'), true, 'Baja rechazada.'); } catch (e) { setMessage($('bajasMessage'), false, e.message); }
+        });
+      });
+    } catch (err) {
+      setMessage($('bajasMessage'), false, err.message);
+    }
+  }
+
+  // =============================================================
+  // ==================== IMPORTACIÓN CSV ========================
+  // =============================================================
+  $('csvInput').addEventListener('change', async function () {
+    if (!$('csvInput').files || !$('csvInput').files[0]) return;
+    const fd = new FormData();
+    fd.append('archivo', $('csvInput').files[0]);
+    setMessage($('importMessage'), true, 'Procesando CSV...');
+    try {
+      const res = await fetch('/api/admin/socios/importar', { method: 'POST', credentials: 'same-origin', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error importando CSV');
+      renderCSVPreview(data);
+      setMessage($('importMessage'), true, 'CSV procesado. ' + data.total + ' filas analizadas.');
+    } catch (err) {
+      setMessage($('importMessage'), false, err.message);
+    }
+  });
+
+  function renderCSVPreview(data) {
+    const filas = data.filas || [];
+    $('csvPreviewArea').style.display = '';
+    const tbody = document.querySelector('#csvTable tbody');
+    tbody.innerHTML = filas.map(function (f) {
+      const checkboxDisabled = f.estado !== 'pendiente' ? 'disabled' : '';
+      return '<tr class="' + (f.estado === 'duplicado' ? 'selected' : '') + '">' +
+        '<td><input type="checkbox" class="csv-check" data-id="' + f.id + '" ' + checkboxDisabled + '></td>' +
+        '<td>' + escapeHtml(f.email || '') + '</td>' +
+        '<td>' + escapeHtml((f.nombre || '') + ' ' + (f.apellidos || '')) + '</td>' +
+        '<td>' + escapeHtml(f.entidad || '') + '</td>' +
+        '<td>' + escapeHtml(f.provincia || '') + '</td>' +
+        '<td>' + escapeHtml(f.rol_cluster || '') + '</td>' +
+        '<td>' + escapeHtml(f.estado) + (f.errores ? ' <span class="muted" title="' + escapeHtml(typeof f.errores === 'string' ? f.errores : JSON.stringify(f.errores)) + '">⚠</span>' : '') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    const dup = filas.filter(function (f) { return f.estado === 'duplicado'; }).length;
+    $('csvStats').textContent = filas.length + ' filas · ' + dup + ' duplicados detectados';
+
+    $('csvSelectAll').addEventListener('change', function () {
+      Array.from(document.querySelectorAll('.csv-check:not(:disabled)')).forEach(function (cb) {
+        cb.checked = $('csvSelectAll').checked;
+      });
+    });
+  }
+
+  $('approveInvitedBtn').addEventListener('click', async function () {
+    const ids = Array.from(document.querySelectorAll('.csv-check:checked')).map(function (cb) { return cb.dataset.id; });
+    if (!ids.length) { setMessage($('importMessage'), false, 'No has seleccionado ninguna fila.'); return; }
+    if (!window.confirm('¿Crear ' + ids.length + ' accesos y enviar email de bienvenida?')) return;
+
+    let ok = 0, fail = 0;
+    for (const id of ids) {
+      try { await request('/api/admin/socios/invitados/' + id + '/aprobar', { method: 'POST', body: JSON.stringify({}) }); ok++; }
+      catch (e) { fail++; console.warn(e); }
+    }
+    setMessage($('importMessage'), fail === 0, 'Procesados ' + ok + ' de ' + ids.length + (fail ? ' (' + fail + ' errores)' : ''));
+    // Tras aprobar, refrescamos accesos
+    window._accLoaded = false;
+  });
+
+  // =============================================================
+  requireSession('admin').then(function (session) {
+    $('adminWelcome').textContent = 'Hola, ' + (session.user.nombre || 'Gerencia AGESPORT');
+    loadDashboard();
+  }).catch(function () {});
 })();

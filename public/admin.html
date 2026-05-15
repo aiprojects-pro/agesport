@@ -3,158 +3,232 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Administración · AGESPORT</title>
+  <title>AGESPORT · Panel de administración</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/portal.css">
+  <style>
+    .table-list { width: 100%; border-collapse: collapse; }
+    .table-list th, .table-list td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      font-size: .92rem;
+    }
+    .table-list th { color: var(--muted); font-weight: 700; }
+    .table-list tr.selectable-row.selected { background: rgba(15,137,91,.06); }
+    .csv-preview { max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 12px; }
+  </style>
 </head>
 <body>
-
-  <div id="topbar"></div>
-
-  <main class="page">
-    <div class="shell">
-
-      <header class="page-head">
-        <h1>Panel de administración</h1>
-        <p>Personaliza la identidad de tu organización en el Mapa del Talento, gestiona socios pendientes y supervisa la actividad reciente.</p>
-      </header>
-
-      <div class="admin-grid">
-
-        <!-- Identidad de la organización -->
-        <section class="panel">
-          <h2 style="margin-top:0;color:var(--navy-deep);font-family:'Fraunces',serif;font-size:1.3rem">Identidad de la organización</h2>
-          <p style="color:var(--muted);font-size:.9rem;margin-bottom:18px">Estos datos personalizan cómo se muestra el portal a los socios de tu organización.</p>
-
-          <div class="org-logo-preview">
-            <img id="orgLogoImg" src="" alt="" style="display:none">
-            <div class="logo-placeholder" id="orgLogoPlaceholder">LOGO</div>
-            <input type="file" id="orgLogoInput" accept="image/*" style="display:none">
-            <div style="display:flex;gap:8px;justify-content:center">
-              <button class="btn btn-secondary btn-sm" id="btnUploadLogo">Subir logo</button>
-              <button class="btn btn-ghost btn-sm" id="btnRemoveLogo">Quitar</button>
-            </div>
-          </div>
-
-          <div class="form-grid" style="margin-top:14px">
-            <div class="field-full">
-              <label>Nombre de la organización</label>
-              <input type="text" id="orgNombre" placeholder="p.ej. Ayuntamiento de Almería">
-            </div>
-            <div class="field">
-              <label>Tipo de entidad</label>
-              <select id="orgTipo"></select>
-            </div>
-            <div class="field">
-              <label>Provincia</label>
-              <select id="orgProvincia"></select>
-            </div>
-            <div class="field-full">
-              <label>Web institucional</label>
-              <input type="url" id="orgWeb" placeholder="https://...">
-            </div>
-            <div class="field-full">
-              <label>Descripción breve</label>
-              <textarea id="orgDesc" rows="3" placeholder="Misión, ámbito de actuación, especialidades..."></textarea>
-            </div>
-            <div class="field">
-              <label>Color corporativo</label>
-              <input type="color" id="orgColor" value="#0d355f" style="height:42px;padding:4px">
-            </div>
-            <div class="field">
-              <label>NIF / CIF</label>
-              <input type="text" id="orgNif">
-            </div>
-          </div>
-
-          <div style="margin-top:14px;display:flex;gap:10px">
-            <button class="btn btn-primary" id="btnSaveOrg">Guardar cambios</button>
-          </div>
-
-          <div class="message-box" id="okMsg">Cambios guardados correctamente.</div>
-        </section>
-
-        <!-- Estadísticas + pendientes -->
-        <section class="panel">
-          <h2 style="margin-top:0;color:var(--navy-deep);font-family:'Fraunces',serif;font-size:1.3rem">Resumen de actividad</h2>
-
-          <div class="kpi-grid" id="adminKpis" style="margin-bottom:20px"></div>
-
-          <h3 style="font-family:'Fraunces',serif;color:var(--navy);margin:18px 0 10px;font-size:1.05rem">Socios pendientes de aprobación</h3>
-          <div id="pendientes"></div>
-
-          <h3 style="font-family:'Fraunces',serif;color:var(--navy);margin:24px 0 10px;font-size:1.05rem">Actividad reciente</h3>
-          <ul id="actividad" style="list-style:none;padding:0;margin:0;display:grid;gap:8px"></ul>
-        </section>
-
+  <header class="site-topbar">
+    <div class="shell inner">
+      <a class="site-brand" href="/">
+        <span class="site-brand-mark" aria-label="AGESPORT"></span>
+      </a>
+      <div class="topbar-actions">
+        <button class="btn btn-secondary" id="refreshBtn" type="button">Actualizar datos</button>
+        <button class="btn btn-secondary" id="logoutBtn" type="button">Cerrar sesión</button>
       </div>
+    </div>
+  </header>
 
-      <!-- Subida masiva de socios + accesos -->
-      <section class="panel" style="margin-top:24px">
-        <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:14px">
-          <div style="flex:1;min-width:240px">
-            <h2 style="margin:0 0 4px;color:var(--navy-deep);font-family:'Fraunces',serif;font-size:1.3rem">Subida masiva de socios</h2>
-            <p style="margin:0;color:var(--muted);font-size:.92rem">Importa un archivo CSV con los nuevos socios y genera un enlace individual de activación para cada alta. Después podrás abrirlo o copiarlo y compartirlo desde el panel.</p>
+  <main class="page shell">
+    <section class="hero-block">
+      <div class="eyebrow">Panel de administración</div>
+      <h1 id="adminWelcome">Gerencia AGESPORT</h1>
+      <p>Gestión de la asociación: identidad corporativa, solicitudes de acceso, bajas, accesos activos, importación masiva y observatorio de actividad.</p>
+    </section>
+
+    <div class="tabs" id="adminTabs">
+      <button class="tab active" data-tab="dashboard">Dashboard</button>
+      <button class="tab" data-tab="identidad">Identidad organización</button>
+      <button class="tab" data-tab="pendientes">Pendientes</button>
+      <button class="tab" data-tab="accesos">Accesos generados</button>
+      <button class="tab" data-tab="bajas">Bajas</button>
+      <button class="tab" data-tab="importacion">Importación masiva</button>
+    </div>
+
+    <!-- ============ DASHBOARD ============ -->
+    <section class="tab-panel active" data-panel="dashboard">
+      <section class="grid-4" id="adminKpis"></section>
+
+      <section class="grid-2" style="margin-top:18px">
+        <article class="card">
+          <h3>Provincias con más socios</h3>
+          <ol class="muted" id="topProvincias" style="margin:14px 0 0;padding-left:18px"></ol>
+        </article>
+        <article class="card">
+          <h3>Especialidades destacadas</h3>
+          <ol class="muted" id="topEspecialidades" style="margin:14px 0 0;padding-left:18px"></ol>
+        </article>
+      </section>
+
+      <article class="card" style="margin-top:18px">
+        <h3>Actividad reciente</h3>
+        <div id="actividadReciente" class="muted" style="margin-top:12px">Cargando actividad.</div>
+      </article>
+    </section>
+
+    <!-- ============ IDENTIDAD ORGANIZACIÓN ============ -->
+    <section class="tab-panel" data-panel="identidad">
+      <article class="form-card">
+        <h2>Identidad de la organización</h2>
+        <p class="muted" style="margin-top:6px">Esta información se utiliza en la plataforma, en las comunicaciones por email y en la presentación general del entorno privado.</p>
+
+        <div class="identity-card" style="margin-top:18px">
+          <div>
+            <form id="orgForm" class="form-grid">
+              <div class="field">
+                <label for="orgNombre">Nombre</label>
+                <input id="orgNombre">
+              </div>
+              <div class="field">
+                <label for="orgTipo">Tipo de organización</label>
+                <input id="orgTipo" placeholder="p.ej. Asociación profesional">
+              </div>
+              <div class="field">
+                <label for="orgCCAA">Comunidad autónoma</label>
+                <select id="orgCCAA"><option value="">Selecciona CCAA</option></select>
+              </div>
+              <div class="field">
+                <label for="orgProvincia">Provincia</label>
+                <select id="orgProvincia"></select>
+              </div>
+              <div class="field-full">
+                <label for="orgWeb">Web institucional</label>
+                <input id="orgWeb" placeholder="https://...">
+              </div>
+              <div class="field-full">
+                <label for="orgDescripcion">Descripción breve</label>
+                <textarea id="orgDescripcion" rows="2"></textarea>
+              </div>
+              <div class="field-full">
+                <label for="orgEmailRem">Email remitente de notificaciones</label>
+                <input id="orgEmailRem" placeholder="notificaciones@agesport.org">
+              </div>
+
+              <div class="field-full">
+                <label>Colores corporativos</label>
+                <div class="color-swatches" id="orgColores"></div>
+              </div>
+
+              <div class="field-full">
+                <button class="btn btn-primary" type="submit" id="orgSaveBtn">Guardar identidad</button>
+              </div>
+            </form>
+            <div id="orgMessage" class="message-box"></div>
           </div>
-          <button class="btn btn-secondary btn-sm" id="btnDownloadTemplate" type="button">Descargar plantilla CSV</button>
+
+          <div class="identity-preview">
+            <img id="orgLogoPreview" alt="Logo" src="/assets/agesport-logo.svg">
+            <div class="photo-uploader" style="padding:12px">
+              <div class="meta" style="text-align:left">
+                <strong>Logo</strong>
+                <span>JPG, PNG, WEBP o SVG · 2MB máx.</span>
+              </div>
+              <label class="btn-upload" for="orgLogoInput">Subir nuevo logo</label>
+              <input id="orgLogoInput" type="file" accept="image/*" style="display:none">
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ============ PENDIENTES ============ -->
+    <section class="tab-panel" data-panel="pendientes">
+      <article class="form-card">
+        <div class="toolbar">
+          <h2 style="margin:0">Solicitudes pendientes</h2>
+          <div class="actions">
+            <button class="btn btn-secondary" id="selectAllPendBtn" type="button">Seleccionar todos</button>
+            <button class="btn btn-primary" id="approveSelectedBtn" type="button">Aprobar seleccionados</button>
+          </div>
+        </div>
+        <div id="pendientesList" style="margin-top:14px"></div>
+        <div id="pendientesEmpty" class="empty" style="display:none">No hay solicitudes pendientes.</div>
+        <div id="pendientesMessage" class="message-box"></div>
+      </article>
+    </section>
+
+    <!-- ============ ACCESOS GENERADOS ============ -->
+    <section class="tab-panel" data-panel="accesos">
+      <article class="form-card">
+        <div class="toolbar">
+          <div>
+            <h2 style="margin:0">Accesos generados</h2>
+            <p class="muted" style="margin:6px 0 0">Listado de socios aprobados activos. Ordenado por último acceso.</p>
+          </div>
+          <div class="actions">
+            <select id="exportEstado" style="padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;font:inherit">
+              <option value="">Todos los socios (activos)</option>
+              <option value="aprobado">Solo aprobados</option>
+              <option value="pendiente">Solo pendientes</option>
+              <option value="suspendido">Solo suspendidos</option>
+            </select>
+            <button class="btn btn-primary" id="exportCsvBtn" type="button">Descargar contactos (CSV)</button>
+          </div>
+        </div>
+        <div id="accesosList" style="margin-top:14px"></div>
+        <div id="exportMessage" class="message-box"></div>
+      </article>
+    </section>
+
+    <!-- ============ BAJAS ============ -->
+    <section class="tab-panel" data-panel="bajas">
+      <article class="form-card">
+        <h2>Solicitudes de baja</h2>
+        <p class="muted" style="margin-top:6px">Gestiona las solicitudes de baja. Puedes marcar si se ha realizado la llamada de seguimiento, dejar notas internas y aprobar o rechazar la baja definitiva.</p>
+        <div id="bajasList" style="margin-top:14px"></div>
+        <div id="bajasEmpty" class="empty" style="display:none">No hay solicitudes de baja por gestionar.</div>
+        <div id="bajasMessage" class="message-box"></div>
+      </article>
+    </section>
+
+    <!-- ============ IMPORTACIÓN MASIVA ============ -->
+    <section class="tab-panel" data-panel="importacion">
+      <article class="form-card">
+        <h2>Importación masiva de socios</h2>
+        <p class="muted" style="margin-top:6px">Sube un CSV con los datos básicos de varios socios. Tras la importación se mostrará una vista previa con marcado de duplicados y errores; podrás seleccionar cuáles aprobar (se enviará email de bienvenida con contraseña temporal a cada uno).</p>
+
+        <div class="toolbar" style="margin-top:14px">
+          <div>
+            <a class="btn btn-secondary" href="/api/admin/socios/plantilla-csv" id="downloadTemplateBtn">Descargar plantilla CSV</a>
+          </div>
+          <div class="actions">
+            <label class="btn btn-primary" for="csvInput" style="cursor:pointer">Subir CSV</label>
+            <input id="csvInput" type="file" accept=".csv,text/csv" style="display:none">
+          </div>
         </div>
 
-        <!-- Drop zone -->
-        <label class="upload-zone" id="uploadZone" for="csvFile">
-          <span class="upload-zone-icon">📥</span>
-          <strong>Arrastra tu CSV aquí o haz clic para seleccionar</strong>
-          <span>Formato esperado: <code style="background:#fff;padding:2px 6px;border-radius:6px;font-size:.78rem">nombre, apellidos, email, tipo_socio, tipo_corporativo, organizacion, provincia, localidad, cargo, rol_cluster, especialidades</code></span>
-          <input type="file" id="csvFile" accept=".csv,text/csv">
-        </label>
-
-        <!-- Preview -->
-        <div id="previewWrap" style="display:none;margin-top:18px">
-          <h3 style="font-family:'Fraunces',serif;color:var(--navy);margin:0 0 8px;font-size:1.05rem">Vista previa</h3>
-          <div class="table-wrap">
-            <table class="simple-table" id="previewTable">
-              <thead></thead>
+        <div id="csvPreviewArea" style="margin-top:18px;display:none">
+          <h3>Vista previa del lote</h3>
+          <div class="csv-preview">
+            <table class="table-list" id="csvTable">
+              <thead>
+                <tr>
+                  <th style="width:36px"><input type="checkbox" id="csvSelectAll"></th>
+                  <th>Email</th><th>Nombre</th><th>Entidad</th><th>Provincia</th><th>Rol</th><th>Estado</th>
+                </tr>
+              </thead>
               <tbody></tbody>
             </table>
           </div>
-          <div class="bulk-actions">
-            <div class="bulk-summary" id="bulkSummary"></div>
-            <button class="btn btn-ghost btn-sm" type="button" id="btnCancelBulk">Cancelar</button>
-            <button class="btn btn-primary" type="button" id="btnProcessBulk">Generar accesos</button>
+          <div class="toolbar" style="margin-top:14px">
+            <div class="muted" id="csvStats"></div>
+            <div class="actions">
+              <button class="btn btn-primary" id="approveInvitedBtn" type="button">Aprobar seleccionados y enviar acceso</button>
+            </div>
           </div>
         </div>
-
-        <div class="message-box" id="bulkMsg" style="margin-top:14px"></div>
-
-        <!-- Lista de accesos generados -->
-        <div style="margin-top:30px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-            <h3 style="font-family:'Fraunces',serif;color:var(--navy);margin:0;font-size:1.05rem;flex:1">Accesos generados</h3>
-            <span class="row-status pendiente" id="invStatPending">0 pendientes</span>
-            <span class="row-status aceptada" id="invStatAccepted">0 aceptadas</span>
-          </div>
-          <div class="table-wrap" id="invitationsWrap">
-            <table class="simple-table" id="invitationsTable">
-              <thead>
-                <tr>
-                  <th style="width:30%">Destinatario</th>
-                  <th>Tipo</th>
-                  <th>Estado</th>
-                  <th>Enviada</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="invitationsBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-    </div>
+        <div id="importMessage" class="message-box"></div>
+      </article>
+    </section>
   </main>
 
-  <script src="/assets/data.js"></script>
+  <script src="/assets/catalogos.js"></script>
   <script src="/assets/portal.js"></script>
-  <script src="/assets/admin.js"></script>
+  <script src="/assets/admin-dashboard.js"></script>
 </body>
 </html>

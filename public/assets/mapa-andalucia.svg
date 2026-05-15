@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" role="img" aria-label="Mapa de Andalucía con sus 8 provincias">
+  <defs>
+    <linearGradient id="andSea" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#dceafc"/>
+      <stop offset="1" stop-color="#bcd6f4"/>
+    </linearGradient>
+    <linearGradient id="andLand" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#6da93f"/>
+      <stop offset=".5" stop-color="#37964f"/>
+      <stop offset="1" stop-color="#0f895b"/>
+    </linearGradient>
+    <filter id="andShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="6"/>
+      <feOffset dx="0" dy="4"/>
+      <feComponentTransfer><feFuncA type="linear" slope=".18"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Sea / background -->
+  <rect width="1000" height="560" fill="url(#andSea)"/>
+
+  <!-- Portugal silhouette (west) -->
+  <path d="M 0 0 L 110 0 L 130 110 L 100 200 L 130 290 L 90 380 L 50 470 L 0 480 Z"
+        fill="#e7eef6" stroke="#cad8e7" stroke-width="1"/>
+  <text x="40" y="240" font-family="Manrope, sans-serif" font-size="14" fill="#92a5b9" font-weight="600">Portugal</text>
+
+  <!-- Spain north (Extremadura, Castilla, Murcia) -->
+  <path d="M 110 0 L 1000 0 L 1000 90 L 920 100 L 820 70 L 700 80 L 600 60 L 480 70 L 360 50 L 240 80 L 130 110 Z"
+        fill="#e7eef6" stroke="#cad8e7" stroke-width="1"/>
+  <text x="490" y="40" font-family="Manrope, sans-serif" font-size="14" fill="#92a5b9" font-weight="600">España (norte)</text>
+  <text x="900" y="55" font-family="Manrope, sans-serif" font-size="12" fill="#92a5b9" font-weight="600">Murcia</text>
+
+  <!-- ANDALUCÍA — 8 provincias -->
+  <g filter="url(#andShadow)">
+
+    <!-- Huelva (SW, costa atlántica) -->
+    <path id="prov-huelva"
+          class="province"
+          data-name="Huelva"
+          d="M 130 110 L 240 80 L 270 200 L 250 290 L 200 350 L 130 290 L 100 200 L 130 110 Z"
+          fill="#37964f" stroke="#ffffff" stroke-width="2"/>
+
+    <!-- Sevilla (centro-oeste, la más grande) -->
+    <path id="prov-sevilla"
+          class="province"
+          data-name="Sevilla"
+          d="M 240 80 L 360 50 L 440 120 L 460 230 L 410 320 L 320 340 L 270 280 L 270 200 Z"
+          fill="#0f895b" stroke="#ffffff" stroke-width="2"/>
+
+    <!-- Cádiz (sur-oeste, costa) -->
+    <path id="prov-cadiz"
+          class="province"
+          data-name="Cádiz"
+          d="M 130 290 L 200 350 L 250 290 L 320 340 L 360 390 L 320 470 L 220 490 L 130 440 L 90 380 Z"
+          fill="#008460" stroke="#ffffff" stroke-width="2"/>
+
+    <!-- Córdoba (centro-norte) -->
+    <path id="prov-cordoba"
+          class="province"
+          data-name="Córdoba"
+          d="M 360 50 L 480 70 L 540 80 L 580 170 L 540 250 L 460 230 L 440 120 Z"
+          fill="#6da93f" stroke="#ffffff" stroke-width="2"/>
+
+    <!-- Málaga (sur-centro, costa) -->
+    <path id="prov-malaga"
+          class="province"
+          data-name="Málaga"
+          d="M 320 340 L 410 320 L 480 360 L 540 380 L 540 440 L 480 480 L 380 490 L 320 470 L 360 390 Z"
+          fill="#2f7d32" stroke="#ffffff" stroke-width="2"/>
+
+    <!-- Jaén (norte-este) -->
+    <path id="prov-jaen"
+          class="province"
+          data-name="Jaén"
+          d="M 540 80 L 600 60 L 700 80 L 740 160 L 700 240 L 620 250 L 580 170 Z"
+          fill="#1c578d" stroke="#ffffff" stroke-width="2"/>
+
+    <!-- Granada (centro-este) -->
+    <path id="prov-granada"
+          class="province"
+          data-name="Granada"
+          d="M 540 250 L 620 250 L 700 240 L 740 320 L 720 410 L 640 440 L 540 440 L 540 380 L 480 360 L 460 230 Z"
+          fill="#0d355f" stroke="#ffffff" stroke-width="2"/>
+
+    <!-- Almería (sur-este) -->
+    <path id="prov-almeria"
+          class="province"
+          data-name="Almería"
+          d="M 700 240 L 820 230 L 880 320 L 860 410 L 770 460 L 720 410 L 740 320 Z"
+          fill="#37964f" stroke="#ffffff" stroke-width="2"/>
+
+  </g>
+
+  <!-- Labels -->
+  <g font-family="Manrope, sans-serif" font-weight="700" fill="#ffffff" text-anchor="middle" pointer-events="none">
+    <text x="185" y="225" font-size="16">Huelva</text>
+    <text x="360" y="200" font-size="18">Sevilla</text>
+    <text x="225" y="420" font-size="16">Cádiz</text>
+    <text x="490" y="170" font-size="16">Córdoba</text>
+    <text x="430" y="430" font-size="16">Málaga</text>
+    <text x="640" y="160" font-size="16">Jaén</text>
+    <text x="600" y="350" font-size="18">Granada</text>
+    <text x="790" y="345" font-size="16">Almería</text>
+  </g>
+
+  <!-- Cities (small markers) -->
+  <g fill="#ffffff" stroke="#0d355f" stroke-width="1.5">
+    <circle cx="185" cy="240" r="4"/>
+    <circle cx="360" cy="215" r="4"/>
+    <circle cx="225" cy="435" r="4"/>
+    <circle cx="490" cy="185" r="4"/>
+    <circle cx="430" cy="445" r="4"/>
+    <circle cx="640" cy="175" r="4"/>
+    <circle cx="600" cy="365" r="4"/>
+    <circle cx="790" cy="360" r="4"/>
+  </g>
+
+  <!-- Compass rose -->
+  <g transform="translate(940, 480)" font-family="Manrope, sans-serif" font-size="11" fill="#92a5b9" font-weight="700">
+    <circle r="22" fill="#fff" stroke="#cad8e7" stroke-width="1"/>
+    <path d="M 0 -16 L 4 0 L 0 16 L -4 0 Z" fill="#0d355f"/>
+    <path d="M -16 0 L 0 4 L 16 0 L 0 -4 Z" fill="#bcd6f4"/>
+    <text y="-26" text-anchor="middle">N</text>
+  </g>
+
+  <!-- Sea label -->
+  <text x="500" y="540" font-family="Manrope, sans-serif" font-size="13" fill="#7896b6" font-weight="600" font-style="italic" text-anchor="middle">Mar Mediterráneo</text>
+  <text x="120" y="520" font-family="Manrope, sans-serif" font-size="12" fill="#7896b6" font-weight="600" font-style="italic">Océano Atlántico</text>
+</svg>

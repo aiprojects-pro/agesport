@@ -84,4 +84,76 @@ router.post('/admins',
   adminController.crearAdmin
 );
 
+// ==================== v2: IDENTIDAD ORGANIZACIÓN ====================
+const { uploadLogo, uploadCSV } = require('../services/uploadService');
+const wrapMulter = (uploader) => (req, res, next) => {
+  uploader(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message || 'Error subiendo fichero' });
+    next();
+  });
+};
+
+router.get('/organizacion',
+  authenticateAdmin,
+  adminController.getOrganizacion
+);
+
+router.put('/organizacion',
+  authenticateAdmin,
+  validateInput,
+  adminController.updateOrganizacion
+);
+
+router.post('/organizacion/logo',
+  authenticateAdmin,
+  wrapMulter(uploadLogo),
+  adminController.uploadOrganizacionLogo
+);
+
+// ==================== v2: BAJAS PENDIENTES ====================
+router.get('/bajas',
+  authenticateAdmin,
+  adminController.getBajasPendientes
+);
+
+router.post('/bajas/:bajaId/gestionar',
+  authenticateAdmin,
+  validateInput,
+  adminController.gestionarBaja
+);
+
+// ==================== v2: IMPORTACIÓN MASIVA CSV ====================
+router.get('/socios/plantilla-csv',
+  authenticateAdmin,
+  adminController.descargarPlantillaCSV
+);
+
+router.post('/socios/importar',
+  authenticateAdmin,
+  wrapMulter(uploadCSV),
+  adminController.importarCSV
+);
+
+router.get('/socios/invitados',
+  authenticateAdmin,
+  adminController.getAccesosInvitados
+);
+
+router.post('/socios/invitados/:invitadoId/aprobar',
+  authenticateAdmin,
+  adminController.aprobarAccesoInvitado
+);
+
+// ==================== v2: ACCESOS GENERADOS ====================
+router.get('/socios/accesos',
+  authenticateAdmin,
+  adminController.getAccesosGenerados
+);
+
+// ==================== v2: EXPORTACIÓN CSV DE CONTACTOS ====================
+router.get('/socios/exportar',
+  authenticateAdmin,
+  adminController.exportarSociosCSV
+);
+
 module.exports = router;
