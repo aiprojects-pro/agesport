@@ -1,0 +1,13 @@
+.git
+.github
+node_modules
+npm-debug.log*
+.env
+.env.*
+logs
+backups
+uploads
+.DS_Store
+._*
+**/._*
+deploy/openshift/generated

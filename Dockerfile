@@ -1,8 +1,8 @@
 # ===================================================================
 # DOCKERFILE - MAPA DEL TALENTO AGESPORT
 # ===================================================================
-# Imagen base con Node.js LTS
-FROM node:18-alpine
+# Imagen base con Node.js LTS compatible con el despliegue OKD.
+FROM node:20-alpine
 
 # Metadatos
 LABEL maintainer="AGESPORT <tech@agesport.org>"
@@ -20,10 +20,6 @@ RUN apk add --no-cache \
 ENV TZ=Europe/Madrid
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Crear usuario para la aplicación
-RUN addgroup -g 1001 -S agesport && \
-    adduser -S agesport -u 1001 -G agesport
-
 # Crear directorio de trabajo
 WORKDIR /app
 
@@ -31,21 +27,22 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instalar dependencias
-RUN npm ci --only=production && \
+RUN npm ci --omit=dev && \
     npm cache clean --force
 
 # Copiar código fuente
-COPY --chown=agesport:agesport . .
+COPY --chown=:0 . .
 
-# Crear directorios necesarios
+# Crear directorios necesarios con permisos compatibles con UID aleatorio de OpenShift.
 RUN mkdir -p logs uploads backups && \
-    chown -R agesport:agesport logs uploads backups
+    chgrp -R 0 /app && \
+    chmod -R g=u /app
 
 # Exponer puerto
 EXPOSE 3001
 
-# Cambiar a usuario no-root
-USER agesport
+# UID no-root por defecto; OpenShift lo sustituira por un UID aleatorio.
+USER 1001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

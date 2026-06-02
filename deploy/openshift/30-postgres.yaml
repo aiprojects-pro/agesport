@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agesport-postgres
+  namespace: agesport
+  labels:
+    app: agesport-postgres
+    app.kubernetes.io/name: agesport-postgres
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: agesport-postgres
+  template:
+    metadata:
+      labels:
+        app: agesport-postgres
+        app.kubernetes.io/name: agesport-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: docker.io/postgis/postgis:15-3.4
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: agesport_mapa_talento
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: agesport-config
+                  key: DB_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: agesport-config
+                  key: DB_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "agesport", "-d", "agesport_mapa_talento"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "agesport", "-d", "agesport_mapa_talento"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: agesport-postgres-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agesport-postgres
+  namespace: agesport
+  labels:
+    app: agesport-postgres
+spec:
+  type: ClusterIP
+  selector:
+    app: agesport-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

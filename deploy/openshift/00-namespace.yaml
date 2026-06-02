@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agesport
+  labels:
+    name: agesport
+    app.kubernetes.io/part-of: agesport
+  annotations:
+    openshift.io/display-name: "AGESPORT Mapa del Talento"
+    openshift.io/description: "Plataforma de networking y gestion del talento para AGESPORT"

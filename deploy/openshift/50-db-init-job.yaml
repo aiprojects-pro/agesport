@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: agesport-db-init
+  namespace: agesport
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: agesport-db-init
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: init
+          image: image-registry.openshift-image-registry.svc:5000/agesport/agesport:latest
+          imagePullPolicy: Always
+          command: ["node", "scripts/openshift-init-db.js"]
+          envFrom:
+            - secretRef:
+                name: agesport-config

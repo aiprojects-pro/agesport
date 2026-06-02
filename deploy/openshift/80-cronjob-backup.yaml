@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: agesport-backup
+  namespace: agesport
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: docker.io/postgis/postgis:15-3.4
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  TS=$(date -u +%Y%m%dT%H%M%SZ)
+                  mkdir -p /backups
+                  pg_dump -h agesport-postgres -U "$DB_USER" "$DB_NAME" | gzip > "/backups/agesport-db-$TS.sql.gz"
+                  tar -czf "/backups/agesport-uploads-$TS.tar.gz" -C /uploads . || true
+                  ls -1t /backups/agesport-db-*.sql.gz | tail -n +31 | xargs -r rm -f
+                  ls -1t /backups/agesport-uploads-*.tar.gz | tail -n +31 | xargs -r rm -f
+                  ls -lh /backups | tail -20
+              envFrom:
+                - secretRef:
+                    name: agesport-config
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: agesport-config
+                      key: DB_PASSWORD
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+                - name: uploads
+                  mountPath: /uploads
+          volumes:
+            - name: backups
+              persistentVolumeClaim:
+                claimName: agesport-backups
+            - name: uploads
+              persistentVolumeClaim:
+                claimName: agesport-uploads

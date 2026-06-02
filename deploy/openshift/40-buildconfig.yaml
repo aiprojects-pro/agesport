@@ -1,0 +1,46 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: agesport
+  namespace: agesport
+spec:
+  lookupPolicy:
+    local: false
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: agesport
+  namespace: agesport
+  labels:
+    app: agesport
+spec:
+  successfulBuildsHistoryLimit: 3
+  failedBuildsHistoryLimit: 3
+  runPolicy: Serial
+  output:
+    to:
+      kind: ImageStreamTag
+      name: agesport:latest
+  resources:
+    limits:
+      cpu: "2"
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  source:
+    type: Git
+    contextDir: /
+    git:
+      uri: https://github.com/aiprojects-pro/agesport.git
+      ref: main
+  triggers:
+    - type: GitHub
+      github:
+        secretReference:
+          name: github-webhook
