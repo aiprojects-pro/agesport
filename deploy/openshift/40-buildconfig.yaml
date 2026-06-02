@@ -37,7 +37,7 @@ spec:
     type: Git
     contextDir: /
     git:
-      uri: https://github.com/aiprojects-pro/agesport.git
+      uri: https://github.com/aiprojects-pro/agesport
       ref: main
   triggers:
     - type: GitHub
