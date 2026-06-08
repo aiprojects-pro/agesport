@@ -212,34 +212,11 @@ const isValidRolSlug = (slug) => ROLES_CLUSTER.some((r) => r.slug === slug);
 const isValidEspecialidadSlug = (slug) => ESPECIALIDADES.some((e) => e.slug === slug);
 const isValidTipoSocio = (slug) => TIPOS_SOCIO.some((t) => t.slug === slug);
 
-// Mapping legacy → nuevos slugs (para datos antiguos en BD)
-const LEGACY_ROL_MAP = {
-  gestion: 'operador_deportivo',
-  servicios: 'proveedor_servicios_profesionales',
-  infra: 'gestor_infraestructuras_instalaciones',
-  tech: 'proveedor_tecnologico_innovacion'
-};
-
-const LEGACY_ESPECIALIDAD_MAP = {
-  'Gestión de Instalaciones': 'gestion_instalaciones',
-  'Organización de Eventos': 'organizacion_eventos',
-  'Derecho Deportivo': 'derecho_deportivo',
-  'Contratación y Patrimonio': 'contratacion_compras_patrimonio',
-  'Marketing y Patrocinio': 'marketing_comunicacion_patrocinio',
-  'Digitalización e IA': 'digitalizacion_datos_ia',
-  'Recursos Humanos': 'recursos_humanos_talento',
-  'Accesibilidad e Inclusión': 'accesibilidad_inclusion_igualdad',
-  'Actividad Física y Salud': 'actividad_fisica_salud_bienestar',
-  'Seguridad y Autoprotección': 'seguridad_riesgos_autoproteccion'
-};
-
 module.exports = {
   TIPOS_SOCIO,
   ROLES_CLUSTER,
   ESPECIALIDADES,
   COMUNIDADES_AUTONOMAS,
-  LEGACY_ROL_MAP,
-  LEGACY_ESPECIALIDAD_MAP,
   allProvinces,
   findRolBySlug,
   findEspecialidadBySlug,

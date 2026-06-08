@@ -1,6 +1,6 @@
 // scripts/seed-database.js
 const db = require('../config/database');
-const { hashPassword, encryptData } = require('../middleware/auth');
+const { hashPassword } = require('../middleware/auth');
 const catalogos = require('../config/catalogos');
 
 const PROVINCIAS = catalogos.allProvinces();

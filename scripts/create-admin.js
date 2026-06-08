@@ -37,14 +37,14 @@ async function createAdmin(email, password, nombre) {
       email, 
       passwordHash, 
       nombre, 
-      'super_admin', 
+      'superadmin',
       true
     ]);
     
     console.log('✅ Administrador creado exitosamente');
     console.log(`📧 Email: ${email}`);
     console.log(`👤 Nombre: ${nombre}`);
-    console.log(`🔑 Rol: super_admin`);
+    console.log(`🔑 Rol: superadmin`);
     
     process.exit(0);
     
@@ -69,7 +69,7 @@ Ejemplo:
 Notas:
 - El password debe tener al menos 8 caracteres
 - El email debe ser válido
-- El rol será super_admin por defecto
+- El rol será superadmin por defecto
 `);
   process.exit(1);
 }

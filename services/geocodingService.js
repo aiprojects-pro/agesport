@@ -2,6 +2,18 @@
 const https = require('https');
 const config = require('../config/config');
 
+// Timeout para llamadas HTTP a Nominatim / Mapbox. Sin esto, una pausa
+// del upstream colgaba el socket sin límite y bloqueaba la request
+// HTTP original (p. ej. register, updatePerfil). 8s es generoso para
+// estos servicios y suficientemente bajo para no agotar el pool.
+const GEOCODE_TIMEOUT_MS = 8000;
+
+function attachTimeout(httpsReq, label) {
+  httpsReq.setTimeout(GEOCODE_TIMEOUT_MS, () => {
+    httpsReq.destroy(new Error(`${label} timeout (${GEOCODE_TIMEOUT_MS}ms)`));
+  });
+}
+
 class GeocodingService {
   
   async geocode(address) {
@@ -79,7 +91,7 @@ class GeocodingService {
             } else {
               resolve(null);
             }
-          } catch (error) {
+          } catch {
             reject(new Error('Error parseando respuesta de Mapbox'));
           }
         });
@@ -104,7 +116,7 @@ class GeocodingService {
           await delay(1000);
         }
       } catch (error) {
-        console.error(`Error geocodificando "${address}":`, error.message);
+        console.warn(`[geocode] batch: "${address}" failed:`, error.message);
         results.push({ address, result: null, error: error.message });
       }
     }

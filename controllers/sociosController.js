@@ -1,5 +1,6 @@
 // controllers/sociosController.js
 const db = require('../config/database');
+const sociosQueries = require('../services/sociosQueries');
 const { 
   filterSensitiveData, 
   canViewSocio, 
@@ -10,6 +11,7 @@ const {
 const geocodingService = require('../services/geocodingService');
 const uploadService = require('../services/uploadService');
 const catalogos = require('../config/catalogos');
+const sentinels = require('../services/messageSentinels');
 
 class SociosController {
 
@@ -47,7 +49,7 @@ class SociosController {
           filters[key] === undefined && delete filters[key]
         );
 
-        socios = await db.searchSocios(search, filters);
+        socios = await sociosQueries.searchSocios(search, filters);
       } else {
         // Construir query con filtros
         let query = 'SELECT * FROM vista_socios_completos WHERE 1=1';
@@ -105,10 +107,16 @@ class SociosController {
         socios = result.rows;
       }
 
-      // Filtrar datos sensibles según permisos del viewer
-      const sociosFiltrados = socios.map(socio => {
+      // Descifrar teléfono y filtrar datos sensibles según permisos del viewer.
+      // filterSensitiveData decide si el teléfono se queda visible según el
+      // consentimiento `visible_telefono` (y siempre lo descarta para no-owners
+      // sin consentimiento).
+      const sociosFiltrados = socios.map((socio) => {
         const isOwner = socio.id === req.socioId;
         const isAdmin = !!req.adminId;
+        if (socio.telefono_encrypted) {
+          socio.telefono = decryptData(socio.telefono_encrypted);
+        }
         return filterSensitiveData(socio, isOwner, isAdmin);
       });
 
@@ -159,15 +167,15 @@ class SociosController {
 
       const socio = result.rows[0];
       const isOwner = socio.id === req.socioId;
-      
-      // Descifrar datos sensibles si es el propietario o admin
-      if (isOwner || isAdmin) {
-        if (socio.dni_nie_encrypted) {
-          socio.dni_nie = decryptData(socio.dni_nie_encrypted);
-        }
-        if (socio.telefono_encrypted) {
-          socio.telefono = decryptData(socio.telefono_encrypted);
-        }
+
+      // DNI sólo se descifra para owner/admin.
+      if ((isOwner || isAdmin) && socio.dni_nie_encrypted) {
+        socio.dni_nie = decryptData(socio.dni_nie_encrypted);
+      }
+      // Teléfono se descifra siempre; filterSensitiveData decide visibilidad
+      // según el consentimiento `visible_telefono`.
+      if (socio.telefono_encrypted) {
+        socio.telefono = decryptData(socio.telefono_encrypted);
       }
 
       const perfilFiltrado = filterSensitiveData(socio, isOwner, isAdmin);
@@ -231,8 +239,6 @@ class SociosController {
         if (apellidos !== undefined) socioUpdate.apellidos = apellidos;
         if (dni_nie !== undefined) socioUpdate.dni_nie_encrypted = dni_nie ? encryptData(dni_nie) : null;
         if (telefono !== undefined) {
-          // Guardamos tanto en claro (columna nueva) como cifrado (columna histórica)
-          socioUpdate.telefono = telefono || null;
           socioUpdate.telefono_encrypted = telefono ? encryptData(telefono) : null;
         }
         if (linkedin_url !== undefined) socioUpdate.linkedin_url = linkedin_url;
@@ -272,7 +278,7 @@ class SociosController {
               socioUpdate.longitud = coords.lng;
             }
           } catch (geoError) {
-            console.log('Advertencia geocoding:', geoError.message);
+            console.warn('[geocode] updatePerfil: could not geocode address:', geoError.message);
           }
         }
 
@@ -397,7 +403,7 @@ class SociosController {
         especialidad: req.query.especialidad
       };
 
-      const socios = await db.findNearby(latitude, longitude, radiusKm, filters);
+      const socios = await sociosQueries.findNearby(latitude, longitude, radiusKm, filters);
 
       const sociosFiltrados = socios.map(socio => {
         const isOwner = socio.id === req.socioId;

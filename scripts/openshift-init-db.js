@@ -5,10 +5,10 @@ const path = require('path');
 const { Client } = require('pg');
 const bcrypt = require('bcryptjs');
 const config = require('../config/config');
+const migrate = require('./migrate-database');
 
 const root = path.join(__dirname, '..');
 const schemaPath = path.join(root, 'database', 'schema.sql');
-const migrationsDir = path.join(root, 'database', 'migrations');
 
 async function tableExists(client, tableName) {
   const result = await client.query(
@@ -16,37 +16,6 @@ async function tableExists(client, tableName) {
     [`public.${tableName}`],
   );
   return !!result.rows[0]?.name;
-}
-
-async function ensureMigrationsTable(client) {
-  await client.query(`
-    CREATE TABLE IF NOT EXISTS _migrations (
-      name TEXT PRIMARY KEY,
-      applied_at TIMESTAMP NOT NULL DEFAULT NOW()
-    )
-  `);
-}
-
-async function applyMigrations(client) {
-  await ensureMigrationsTable(client);
-  if (!fs.existsSync(migrationsDir)) return;
-
-  const files = fs.readdirSync(migrationsDir)
-    .filter((name) => name.endsWith('.sql'))
-    .sort();
-
-  for (const file of files) {
-    const seen = await client.query('SELECT 1 FROM _migrations WHERE name = $1', [file]);
-    if (seen.rowCount) {
-      console.log(`[db:init] migration already applied: ${file}`);
-      continue;
-    }
-
-    console.log(`[db:init] applying migration: ${file}`);
-    const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-    await client.query(sql);
-    await client.query('INSERT INTO _migrations (name) VALUES ($1)', [file]);
-  }
 }
 
 async function upsertInitialAdmin(client) {
@@ -102,7 +71,7 @@ async function main() {
       console.log('[db:init] base schema already present');
     }
 
-    await applyMigrations(client);
+    await migrate();
     await upsertInitialAdmin(client);
     console.log('[db:init] complete');
   } finally {

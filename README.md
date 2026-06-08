@@ -54,7 +54,7 @@ Sistema completo de networking B2B para profesionales del sector deportivo en An
 ### **Opción 1: Script Automático**
 ```bash
 # Clonar y configurar
-git clone <repo-url>
+git clone https://github.com/aiprojects-pro/agesport.git
 cd agesport-production
 chmod +x deploy.sh
 ./deploy.sh
@@ -120,9 +120,6 @@ CORS_ORIGINS=https://mapatalento.agesport.org
 ```bash
 # Configurar certificados SSL automáticos
 ./scripts/setup-ssl.sh
-
-# Renovación automática (crontab)
-0 3 1 * * /ruta/proyecto/scripts/ssl-renew.sh
 ```
 
 ---
@@ -178,11 +175,8 @@ docker-compose exec app npm run admin:create admin@agesport.org password123 "Jua
 # Check completo del sistema
 npm run health
 
-# Monitoreo continuo
-npm run start scripts/monitoring.js start
-
-# Con PM2
-pm2 start scripts/monitoring.js --name agesport-monitor -- start
+# Endpoint de salud
+curl http://localhost:3001/health
 ```
 
 ### **Backups Automáticos**
@@ -220,7 +214,6 @@ docker-compose logs -f app
 | `create-admin.js` | Crear administradores | `npm run admin:create email pass name` |
 | `health-check.js` | Verificación de salud | `npm run health` |
 | `backup.sh` | Backup de BD y archivos | `./scripts/backup.sh` |
-| `monitoring.js` | Monitoreo con alertas | `node scripts/monitoring.js start` |
 | `setup-ssl.sh` | Configurar HTTPS | `./scripts/setup-ssl.sh` |
 
 ---
@@ -348,24 +341,29 @@ tar -xzf backups/uploads-20240416-120000.tar.gz
 
 ---
 
-## 🚨 **ALERTAS Y NOTIFICACIONES**
+## ✅ **CHECKLIST DE DEPLOYMENT**
 
-### **Sistema de Alertas**
-El sistema incluye monitoreo automático con alertas por email:
+### **Antes de desplegar**
+- [ ] Node.js ≥ 16, PostgreSQL ≥ 15 con PostGIS y pgcrypto instalados
+- [ ] `.env` creado a partir de `.env.example` con `DB_PASSWORD`, `JWT_SECRET` (>32 chars), `ENCRYPTION_KEY` (=32 chars), `EMAIL_USER`/`EMAIL_PASS`, `CORS_ORIGINS`
+- [ ] `NODE_ENV=production`
+- [ ] Base de datos creada y `database/schema.sql` aplicado
 
-- 🐌 **Base de datos lenta** (>1s respuesta)
-- 💾 **Alto uso memoria** (>80%)
-- 💽 **Alto uso disco** (>90%)
-- ❌ **Alta tasa errores** (>5/min)
-- 🔌 **Muchas conexiones** BD (>100)
+### **Verificación post-deploy**
+- [ ] `npm run health` pasa
+- [ ] `curl /health` responde 200
+- [ ] Login admin funciona (crear con `npm run admin:create`)
+- [ ] Registro de socio + aprobación funciona
+- [ ] Directorio NO accesible sin auth
+- [ ] HTTPS y headers de seguridad activos
+- [ ] Backup probado (`./scripts/backup.sh`)
 
-### **Configurar Alertas**
+### **Rollback rápido**
 ```bash
-# En .env
-ALERT_EMAIL=admin@agesport.org
-
-# Iniciar monitoreo
-pm2 start scripts/monitoring.js --name agesport-monitor -- start
+pm2 stop mapa-talento-agesport
+gunzip -c backups/db-YYYYMMDD-HHMMSS.sql.gz | psql -h $DB_HOST -U $DB_USER -d $DB_NAME
+git checkout <commit-anterior>
+pm2 restart mapa-talento-agesport
 ```
 
 ---
@@ -375,7 +373,6 @@ pm2 start scripts/monitoring.js --name agesport-monitor -- start
 ### **Logs Importantes**
 - `logs/app.log` - Log principal aplicación
 - `logs/error.log` - Errores críticos
-- `logs/monitoring.log` - Salud del sistema
 - `/var/log/nginx/` - Logs del proxy
 
 ### **Comandos Útiles**
@@ -407,8 +404,6 @@ sudo systemctl status postgresql
 ```bash
 # Verificar certificados
 openssl x509 -in nginx/ssl/cert.pem -text -noout
-# Renovar certificados
-./scripts/ssl-renew.sh
 ```
 
 **🔴 Alta memoria**

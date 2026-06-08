@@ -16,6 +16,7 @@
     Array.from(document.querySelectorAll('.tab-panel')).forEach(function (p) {
       p.classList.toggle('active', p.dataset.panel === which);
     });
+    if (which === 'dashboard') loadDashboard();
     if (which === 'identidad' && !window._orgLoaded) loadOrganizacion();
     if (which === 'pendientes' && !window._pendLoaded) loadPendientes();
     if (which === 'accesos' && !window._accLoaded) loadAccesos();
@@ -38,7 +39,8 @@
   async function loadDashboard() {
     try {
       const data = await request('/api/admin/estadisticas', { method: 'GET', headers: {} });
-      const stats = data.estadisticas || {};
+      // El backend devuelve la clave `stats` (no `estadisticas`).
+      const stats = data.stats || data.estadisticas || {};
 
       const kpis = [
         { label: 'Socios activos', value: stats.socios_activos || 0, desc: 'Aprobados y activos', highlight: true },
@@ -294,7 +296,8 @@
       const data = await request('/api/admin/socios/accesos', { method: 'GET', headers: {} });
       const socios = data.socios || [];
       $('accesosList').innerHTML = '<table class="table-list"><thead><tr>' +
-          '<th>Nombre</th><th>Email</th><th>Entidad</th><th>Provincia</th><th>Tipo</th><th>Último acceso</th>' +
+          '<th>Nombre</th><th>Email</th><th>Entidad</th><th>Provincia</th><th>Tipo</th>' +
+          '<th>Último acceso</th><th style="text-align:right">Acciones</th>' +
         '</tr></thead><tbody>' +
         socios.map(function (s) {
           return '<tr>' +
@@ -304,9 +307,47 @@
             '<td>' + escapeHtml(s.provincia || '') + '</td>' +
             '<td>' + escapeHtml(s.tipo_socio || '') + '</td>' +
             '<td>' + escapeHtml(s.ultimo_acceso ? formatDate(s.ultimo_acceso) : '—') + '</td>' +
+            '<td style="text-align:right;white-space:nowrap">' +
+              '<button class="btn-upload" type="button" data-suspend="' + s.id + '">Suspender</button> ' +
+              '<button class="btn-upload" type="button" data-baja="' + s.id + '" style="color:#a33">Dar de baja</button>' +
+            '</td>' +
           '</tr>';
         }).join('') +
         '</tbody></table>';
+
+      // Wire suspender
+      Array.from(document.querySelectorAll('[data-suspend]')).forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          const motivo = window.prompt('Motivo de la suspensión (se guarda en notas de moderación):');
+          if (motivo === null) return;
+          if (!motivo.trim()) { window.alert('El motivo es requerido.'); return; }
+          try {
+            await request('/api/admin/socios/' + btn.dataset.suspend + '/suspender', {
+              method: 'POST', body: JSON.stringify({ motivo: motivo.trim() })
+            });
+            await loadAccesos();
+          } catch (err) {
+            window.alert('Error: ' + err.message);
+          }
+        });
+      });
+
+      // Wire dar de baja administrativa
+      Array.from(document.querySelectorAll('[data-baja]')).forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          if (!window.confirm('¿Dar de baja a este socio? Sus mensajes quedarán anonimizados y desaparecerá del directorio. La acción es reversible reactivando manualmente.')) return;
+          const motivo = window.prompt('Motivo de la baja (ej. "impago de cuota"):', 'Impago de cuota');
+          if (motivo === null) return;
+          try {
+            await request('/api/admin/socios/' + btn.dataset.baja + '/dar-baja', {
+              method: 'POST', body: JSON.stringify({ motivo: (motivo || '').trim() || null })
+            });
+            await loadAccesos();
+          } catch (err) {
+            window.alert('Error: ' + err.message);
+          }
+        });
+      });
     } catch (err) {
       $('accesosList').innerHTML = '<div class="empty">' + escapeHtml(err.message) + '</div>';
     }

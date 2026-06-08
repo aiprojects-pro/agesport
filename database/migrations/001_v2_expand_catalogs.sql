@@ -158,7 +158,7 @@ CREATE TABLE IF NOT EXISTS accesos_invitados (
   rol_cluster VARCHAR(60),
   tipo_socio VARCHAR(40) DEFAULT 'numero',
   estado VARCHAR(20) DEFAULT 'pendiente'
-    CHECK (estado IN ('pendiente','aprobado','rechazado','duplicado')),
+    CHECK (estado IN ('pendiente','aprobado','rechazado','duplicado','con_errores')),
   errores JSONB,
   socio_creado_id INTEGER REFERENCES socios(id),
   subido_por INTEGER REFERENCES administradores(id),

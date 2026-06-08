@@ -1,0 +1,17 @@
+services:
+  postgres-test:
+    image: postgis/postgis:15-3.4-alpine
+    container_name: agesport-postgres-test
+    environment:
+      POSTGRES_DB: agesport_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test_password
+    ports:
+      - '5433:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d agesport_test']
+      interval: 1s
+      timeout: 3s
+      retries: 20
+    tmpfs:
+      - /var/lib/postgresql/data

@@ -417,17 +417,19 @@ async function main() {
       process.stdin.resume();
       break;
       
-    case 'check':
+    case 'check': {
       const results = await monitoring.runHealthCheck();
       console.log(JSON.stringify(results, null, 2));
       process.exit(0);
       break;
+    }
       
-    case 'metrics':
+    case 'metrics': {
       const metrics = monitoring.getMetrics();
       console.log(JSON.stringify(metrics, null, 2));
       process.exit(0);
       break;
+    }
       
     default:
       console.log(`

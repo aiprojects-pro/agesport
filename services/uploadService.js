@@ -10,16 +10,34 @@ const config = require('../config/config');
 
 // Carpetas destino (creadas si no existen)
 const UPLOADS_ROOT = path.resolve(config.uploads.path || './uploads');
-const SUBDIRS = ['fotos', 'cvs', 'logos'];
+const SUBDIRS = ['fotos', 'cvs', 'logos', 'landing'];
 
 SUBDIRS.forEach((sub) => {
   const dir = path.join(UPLOADS_ROOT, sub);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// Generador de nombres únicos
-const generateFilename = (originalname) => {
-  const ext = path.extname(originalname).toLowerCase().slice(0, 8);
+// Mapa mimetype → extensión canónica. Usado por generateFilename para no
+// confiar en la extensión del cliente (que puede subir `.html` con
+// Content-Type: image/png y servirse luego como text/html → XSS).
+const MIME_TO_EXT = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  // Nota: SVG NO se incluye — es ejecutable en navegador (<script> dentro).
+  // Si el filtro lo permite se cae aquí y generateFilename usa fallback.
+  'application/pdf': '.pdf',
+  'application/msword': '.doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+  'text/csv': '.csv',
+  'application/vnd.ms-excel': '.csv',
+  'text/plain': '.csv',
+};
+
+// Generador de nombres únicos. La extensión deriva del mimetype validado,
+// no del originalname (defensa contra `.html` con Content-Type spoofado).
+const generateFilename = (originalname, mimetype) => {
+  const ext = MIME_TO_EXT[mimetype] || '.bin';
   const stamp = Date.now();
   const rand = crypto.randomBytes(6).toString('hex');
   return `${stamp}-${rand}${ext}`;

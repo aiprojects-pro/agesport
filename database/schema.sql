@@ -10,7 +10,11 @@ CREATE TYPE ambito_enum AS ENUM ('Público', 'Privado', 'Mixto / Otros');
 CREATE TYPE rol_cluster_enum AS ENUM ('gestion', 'servicios', 'infra', 'tech');
 CREATE TYPE disponibilidad_enum AS ENUM ('Alta', 'Media', 'Puntual');
 CREATE TYPE impacto_enum AS ENUM ('Local', 'Provincial/Regional', 'Nacional/Internacional');
-CREATE TYPE estado_socio_enum AS ENUM ('pendiente', 'aprobado', 'rechazado', 'suspendido');
+-- 'baja' fue añadido por migración 003. Se incluye aquí para que las
+-- instalaciones limpias (que sólo cargan schema.sql sin migraciones)
+-- tengan el enum completo y `gestionarBaja` / `darBajaAdministrativa`
+-- funcionen sin necesidad de aplicar la 003 manualmente.
+CREATE TYPE estado_socio_enum AS ENUM ('pendiente', 'aprobado', 'rechazado', 'suspendido', 'baja');
 CREATE TYPE especialidad_enum AS ENUM (
   'Gestión de Instalaciones',
   'Organización de Eventos', 
@@ -134,7 +138,10 @@ CREATE TABLE disponibilidad (
 -- ==================== CONSENTIMIENTOS RGPD ====================
 CREATE TABLE consentimientos (
   id SERIAL PRIMARY KEY,
-  socio_id INTEGER REFERENCES socios(id) ON DELETE CASCADE,
+  -- UNIQUE: cada socio tiene como máximo una fila de consentimientos.
+  -- El código (controllers/authController.js, sociosController.js,
+  -- middleware/auth.js) asume que findOne devuelve la fila única.
+  socio_id INTEGER REFERENCES socios(id) ON DELETE CASCADE UNIQUE,
   
   -- Consentimiento principal (sección 8 ficha)
   acepta_mapa_interactivo BOOLEAN NOT NULL DEFAULT false,
@@ -158,23 +165,29 @@ CREATE TABLE consentimientos (
 );
 
 -- ==================== MENSAJERÍA INTERNA ====================
+-- IMPORTANTE: `socio_1_id`/`socio_2_id` y `mensajes.emisor_id`/`receptor_id`
+-- usan ON DELETE SET NULL (no CASCADE). Si un socio borra su cuenta o un
+-- admin lo da de baja, las conversaciones y mensajes SOBREVIVEN para el
+-- otro participante con el emisor anonimizado. Migración 006 hizo este
+-- cambio sobre instalaciones existentes; aquí lo dejamos explícito para
+-- fresh installs. Cambiar esto a CASCADE rompe la anonimización RGPD.
 CREATE TABLE conversaciones (
   id SERIAL PRIMARY KEY,
-  socio_1_id INTEGER REFERENCES socios(id) ON DELETE CASCADE,
-  socio_2_id INTEGER REFERENCES socios(id) ON DELETE CASCADE,
-  
+  socio_1_id INTEGER REFERENCES socios(id) ON DELETE SET NULL,
+  socio_2_id INTEGER REFERENCES socios(id) ON DELETE SET NULL,
+
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  
-  CHECK (socio_1_id < socio_2_id), -- evitar duplicados
+
+  CHECK (socio_1_id IS NULL OR socio_2_id IS NULL OR socio_1_id < socio_2_id), -- evitar duplicados
   UNIQUE(socio_1_id, socio_2_id)
 );
 
 CREATE TABLE mensajes (
   id SERIAL PRIMARY KEY,
   conversacion_id INTEGER REFERENCES conversaciones(id) ON DELETE CASCADE,
-  emisor_id INTEGER REFERENCES socios(id) ON DELETE CASCADE,
-  receptor_id INTEGER REFERENCES socios(id) ON DELETE CASCADE,
+  emisor_id INTEGER REFERENCES socios(id) ON DELETE SET NULL,
+  receptor_id INTEGER REFERENCES socios(id) ON DELETE SET NULL,
   
   contenido TEXT NOT NULL,
   leido BOOLEAN DEFAULT false,
@@ -311,9 +324,11 @@ CREATE TRIGGER trigger_auditoria_socios
 
 -- ==================== DATOS INICIALES ====================
 
--- Administrador por defecto
-INSERT INTO administradores (email, password_hash, nombre, rol) VALUES 
-('admin@agesport.org', '$2b$12$example_hash_change_in_production', 'Administrador AGESPORT', 'superadmin');
+-- NOTA: el administrador inicial se crea con `scripts/setup-database.js`
+-- (usa `ADMIN_INITIAL_PASSWORD` del .env y bcrypt). Antes había aquí un
+-- INSERT con un hash placeholder inválido (`$2b$12$example_hash_...`)
+-- que dejaba al admin canónico imposible de loguear si el setup script
+-- no se ejecutaba después — se ha eliminado.
 
 -- Provincias y coordenadas para referencia
 CREATE TABLE provincias_referencia (

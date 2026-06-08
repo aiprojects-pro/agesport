@@ -3,6 +3,7 @@ const db = require('../config/database');
 const { auditAction, hashPassword } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 const uploadService = require('../services/uploadService');
+const csv = require('../services/csv');
 const catalogos = require('../config/catalogos');
 const crypto = require('crypto');
 
@@ -745,12 +746,10 @@ class AdminController {
       'Club Deportivo Demo','Directora deportiva',
       'Sevilla','andalucia','operador_deportivo','numero'
     ];
-    const csv = header.join(',') + '\n' + ejemplo.map(function (v) {
-      return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
-    }).join(',') + '\n';
+    const body = header.join(',') + '\n' + ejemplo.map(csv.escape).join(',') + '\n';
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="plantilla-socios-agesport.csv"');
-    res.send(csv);
+    res.send(body);
   }
 
   async importarCSV(req, res) {
@@ -762,27 +761,12 @@ class AdminController {
       const lines = buffer.split(/\r?\n/).filter(function (l) { return l.trim().length > 0; });
       if (lines.length < 2) return res.status(400).json({ error: 'El CSV está vacío' });
 
-      const parseLine = function (line) {
-        const out = [];
-        let curr = '';
-        let inQuotes = false;
-        for (let i = 0; i < line.length; i++) {
-          const ch = line[i];
-          if (ch === '"' && line[i + 1] === '"') { curr += '"'; i++; continue; }
-          if (ch === '"') { inQuotes = !inQuotes; continue; }
-          if (ch === ',' && !inQuotes) { out.push(curr); curr = ''; continue; }
-          curr += ch;
-        }
-        out.push(curr);
-        return out;
-      };
-
-      const header = parseLine(lines[0]).map(function (h) { return h.trim().toLowerCase(); });
+      const header = csv.parseLine(lines[0]).map((h) => h.trim().toLowerCase());
       const loteId = crypto.randomUUID ? crypto.randomUUID() : require('crypto').randomBytes(16).toString('hex');
       const filas = [];
 
       for (let i = 1; i < lines.length; i++) {
-        const cols = parseLine(lines[i]);
+        const cols = csv.parseLine(lines[i]);
         const r = {};
         header.forEach(function (h, idx) { r[h] = (cols[idx] || '').trim() || null; });
         const errores = [];
@@ -1028,14 +1012,7 @@ class AdminController {
       };
 
       // Construir CSV (RFC 4180, separador coma, encoding UTF-8 con BOM para Excel)
-      const escapeCSV = (val) => {
-        if (val === null || val === undefined) return '';
-        const s = String(val);
-        if (/[",\n\r]/.test(s)) {
-          return '"' + s.replace(/"/g, '""') + '"';
-        }
-        return s;
-      };
+      const escapeCSV = csv.escape;
 
       const header = [
         'ID', 'Email profesional', 'Email personal', 'Email preferido',

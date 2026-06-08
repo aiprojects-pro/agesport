@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 
 const adminController = require('../controllers/adminController');
-const { authenticateAdmin } = require('../middleware/auth');
+const { authenticateAdmin, requireSuperadmin } = require('../middleware/auth');
 const { validateInput } = require('../middleware/security');
 
 // ==================== GESTIÓN SOCIOS PENDIENTES ====================

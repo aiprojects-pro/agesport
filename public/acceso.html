@@ -52,8 +52,28 @@
           <div class="field-full">
             <button class="btn btn-primary" type="submit" id="socioBtn">Entrar como socio</button>
           </div>
+          <div class="field-full" style="text-align:center">
+            <a href="#" id="forgotLink" style="font-size:.9rem;color:var(--muted)">¿Has olvidado tu contraseña?</a>
+          </div>
         </form>
         <div id="socioMessage" class="message-box"></div>
+
+        <!-- Formulario embebido de recuperación, oculto por defecto -->
+        <form id="forgotForm" class="form-grid" style="margin-top:16px;display:none">
+          <h3 style="margin:0">Recuperar contraseña</h3>
+          <p class="muted" style="margin:4px 0 0">
+            Introduce tu email y te enviaremos un enlace para restablecer tu contraseña.
+          </p>
+          <div class="field-full">
+            <label for="forgotEmail">Email</label>
+            <input id="forgotEmail" type="email" required autocomplete="username">
+          </div>
+          <div class="field-full" style="display:flex;gap:8px">
+            <button class="btn btn-primary" type="submit" id="forgotBtn">Enviar enlace</button>
+            <button class="btn btn-secondary" type="button" id="forgotCancel">Cancelar</button>
+          </div>
+        </form>
+        <div id="forgotMessage" class="message-box"></div>
       </article>
 
       <article class="form-card">
@@ -71,8 +91,27 @@
           <div class="field-full">
             <button class="btn btn-primary" type="submit" id="adminBtn">Entrar a administración</button>
           </div>
+          <div class="field-full" style="text-align:center">
+            <a href="#" id="forgotAdminLink" style="font-size:.9rem;color:var(--muted)">¿Has olvidado tu contraseña de administrador?</a>
+          </div>
         </form>
         <div id="adminMessage" class="message-box"></div>
+
+        <form id="forgotAdminForm" class="form-grid" style="margin-top:16px;display:none">
+          <h3 style="margin:0">Recuperar contraseña de administrador</h3>
+          <p class="muted" style="margin:4px 0 0">
+            Introduce tu email administrativo y te enviaremos un enlace para restablecerla.
+          </p>
+          <div class="field-full">
+            <label for="forgotAdminEmail">Email</label>
+            <input id="forgotAdminEmail" type="email" required autocomplete="username">
+          </div>
+          <div class="field-full" style="display:flex;gap:8px">
+            <button class="btn btn-primary" type="submit" id="forgotAdminBtn">Enviar enlace</button>
+            <button class="btn btn-secondary" type="button" id="forgotAdminCancel">Cancelar</button>
+          </div>
+        </form>
+        <div id="forgotAdminMessage" class="message-box"></div>
       </article>
     </section>
   </main>

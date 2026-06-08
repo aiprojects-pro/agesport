@@ -5,7 +5,9 @@ const config = require('./config');
 class Database {
   constructor() {
     this.pool = new Pool(config.database);
-    this.connect();
+    if (process.env.NODE_ENV !== 'test') {
+      this.connect();
+    }
   }
 
   async connect() {
@@ -143,89 +145,10 @@ class Database {
     return result.rows[0];
   }
 
-  // Query específica para búsqueda geográfica
-  async findNearby(lat, lng, radiusKm = 50, filters = {}) {
-    const baseQuery = `
-      SELECT *, 
-             ST_Distance(punto_geografico, ST_SetSRID(ST_MakePoint($1, $2), 4326)) / 1000 as distancia_km
-      FROM vista_socios_completos 
-      WHERE ST_DWithin(
-        punto_geografico, 
-        ST_SetSRID(ST_MakePoint($1, $2), 4326),
-        $3 * 1000
-      )
-    `;
-    
-    let query = baseQuery;
-    let values = [lng, lat, radiusKm];
-    let paramIndex = 4;
-    
-    // Añadir filtros adicionales
-    if (filters.provincia) {
-      query += ` AND provincia = $${paramIndex}`;
-      values.push(filters.provincia);
-      paramIndex++;
-    }
-    
-    if (filters.rol_cluster) {
-      query += ` AND rol_cluster = $${paramIndex}`;
-      values.push(filters.rol_cluster);
-      paramIndex++;
-    }
-    
-    if (filters.especialidad) {
-      query += ` AND $${paramIndex} = ANY(especialidades)`;
-      values.push(filters.especialidad);
-      paramIndex++;
-    }
-    
-    query += ` ORDER BY distancia_km`;
-    
-    const result = await this.query(query, values);
-    return result.rows;
-  }
-
   // Estadísticas para dashboard
   async getObservatorioStats() {
     const result = await this.query('SELECT * FROM vista_stats_observatorio');
     return result.rows[0];
-  }
-
-  // Búsqueda full-text
-  async searchSocios(searchTerm, filters = {}) {
-    let query = `
-      SELECT *, 
-             ts_rank(to_tsvector('spanish', nombre || ' ' || apellidos || ' ' || COALESCE(entidad, '')), 
-                     plainto_tsquery('spanish', $1)) as relevancia
-      FROM vista_socios_completos 
-      WHERE to_tsvector('spanish', nombre || ' ' || apellidos || ' ' || COALESCE(entidad, ''))
-            @@ plainto_tsquery('spanish', $1)
-    `;
-    
-    let values = [searchTerm];
-    let paramIndex = 2;
-    
-    // Aplicar filtros
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        if (key === 'especialidad' && Array.isArray(value)) {
-          query += ` AND especialidades && $${paramIndex}`;
-          values.push(value);
-        } else if (key === 'anos_experiencia_min') {
-          query += ` AND anos_experiencia >= $${paramIndex}`;
-          values.push(value);
-        } else {
-          query += ` AND ${key} = $${paramIndex}`;
-          values.push(value);
-        }
-        paramIndex++;
-      }
-    });
-    
-    query += ` ORDER BY relevancia DESC, nombre`;
-    
-    const result = await this.query(query, values);
-    return result.rows;
   }
 
   async close() {

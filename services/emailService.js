@@ -1,6 +1,31 @@
 // services/emailService.js
 const nodemailer = require('nodemailer');
 const config = require('../config/config');
+const db = require('../config/database');
+
+// Lee un prefijo de claves de landing_content (las plantillas de email
+// editables viven ahí). Si la BD no responde o no hay claves, devuelve {}
+// y el caller usa sus defaults.
+async function loadEditableContent(prefix) {
+  try {
+    const result = await db.query(
+      'SELECT clave, valor FROM landing_content WHERE clave LIKE $1',
+      [prefix + '%']
+    );
+    const out = {};
+    for (const row of result.rows) out[row.clave] = row.valor;
+    return out;
+  } catch (e) {
+    console.warn('[email] loadEditableContent failed:', e.message);
+    return {};
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
+  }[c]));
+}
 
 const PLACEHOLDER_VALUES = new Set([
   'noreply@agesport.org',
@@ -252,7 +277,7 @@ class EmailService {
           </div>
           
           <p style="text-align: center; margin: 30px 0;">
-            <a href="${config.app.publicBaseUrl}/mensajes" class="button">
+            <a href="${config.app.publicBaseUrl}/mensajes.html" class="button">
               Ver Mensaje Completo
             </a>
           </p>
@@ -327,26 +352,5 @@ Equipo AGESPORT`;
     return await this.sendEmail(testEmail, subject, html);
   }
 }
-
-// Instalar nodemailer si no está
-const installNodemailer = async () => {
-  try {
-    require('nodemailer');
-  } catch (error) {
-    console.log('📧 Instalando nodemailer...');
-    const { exec } = require('child_process');
-    return new Promise((resolve, reject) => {
-      exec('npm install nodemailer', (error, stdout, stderr) => {
-        if (error) {
-          console.error('Error instalando nodemailer:', error);
-          reject(error);
-        } else {
-          console.log('✅ Nodemailer instalado');
-          resolve();
-        }
-      });
-    });
-  }
-};
 
 module.exports = new EmailService();

@@ -48,6 +48,7 @@
       <button class="tab" data-tab="accesos">Accesos generados</button>
       <button class="tab" data-tab="bajas">Bajas</button>
       <button class="tab" data-tab="importacion">Importación masiva</button>
+      <button class="tab" data-tab="landing">Landing pública</button>
     </div>
 
     <!-- ============ DASHBOARD ============ -->
@@ -225,10 +226,26 @@
         <div id="importMessage" class="message-box"></div>
       </article>
     </section>
+
+    <!-- ============ LANDING PÚBLICA ============ -->
+    <section class="tab-panel" data-panel="landing">
+      <article class="form-card">
+        <h2>Editor de la landing pública</h2>
+        <p class="muted" style="margin-top:6px">
+          Cada clave corresponde a un texto editable de la página pública
+          (<a href="/" target="_blank">/</a>). Los cambios se aplican al instante
+          en cuanto el visitante recarga la página — el mapa público es agregado por
+          provincia y no contiene datos personales de los socios.
+        </p>
+        <div id="landingEditor" style="margin-top:18px"></div>
+        <div id="landingMessage" class="message-box"></div>
+      </article>
+    </section>
   </main>
 
   <script src="/assets/catalogos.js"></script>
   <script src="/assets/portal.js"></script>
   <script src="/assets/admin-dashboard.js"></script>
+  <script src="/assets/admin-landing.js"></script>
 </body>
 </html>

@@ -335,6 +335,14 @@
     .login-panel h3 { margin: 0 0 6px; font-size: 1.08rem; }
     .login-panel p { margin: 0 0 14px; color: rgba(255,255,255,.76); line-height: 1.6; font-size: .94rem; }
     .login-panel .button-row .btn { flex: 1; }
+    /* btn-secondary por defecto es navy-sobre-mist, ilegible sobre el panel oscuro.
+       Lo ajustamos para que tenga buen contraste en este contexto. */
+    .login-panel .btn-secondary {
+      color: white;
+      background: rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.28);
+    }
+    .login-panel .btn-secondary:hover { background: rgba(255,255,255,.22); }
 
     .footer { padding: 24px 0 50px; color: var(--muted); font-size: .95rem; }
     .footer-inner {
@@ -362,22 +370,23 @@
       .brand-logo { height: 36px; }
     }
   </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 </head>
 <body>
   <header class="topbar">
     <div class="shell topbar-inner">
       <a class="brand" href="#inicio">
-        <img class="brand-logo" src="/assets/agesport-logo.svg" alt="AGEsport · Asociación Andaluza de Gestores del Deporte">
+        <img class="brand-logo" data-cms-img="topbar.logo" src="/assets/agesport-logo.svg" alt="AGEsport · Asociación Andaluza de Gestores del Deporte">
       </a>
       <nav class="navlinks">
-        <a href="#proyecto">Conocer el proyecto</a>
-        <a href="#capacidades">Capacidades</a>
-        <a href="#fases">Implementación</a>
-        <a href="#acceso">Acceso</a>
+        <a href="#proyecto" data-cms="topbar.nav1.label">Conocer el proyecto</a>
+        <a href="#capacidades" data-cms="topbar.nav2.label">Capacidades</a>
+        <a href="#fases" data-cms="topbar.nav3.label">Implementación</a>
+        <a href="#acceso" data-cms="topbar.nav4.label">Acceso</a>
       </nav>
       <div class="button-row">
-        <a class="btn btn-ghost" href="/acceso.html">Acceso socio</a>
-        <a class="btn btn-navy" href="/acceso.html#admin">Acceso administración</a>
+        <a class="btn btn-ghost" href="/acceso.html" data-cms="topbar.cta1.label">Acceso socio</a>
+        <a class="btn btn-navy" href="/acceso.html#admin" data-cms="topbar.cta2.label">Acceso administración</a>
       </div>
     </div>
   </header>
@@ -386,43 +395,43 @@
     <section class="hero">
       <div class="shell hero-grid">
         <div class="hero-copy">
-          <span class="eyebrow">Plataforma estratégica para AGESPORT</span>
-          <h1>Conectar <em>talento</em>, territorio e industria del deporte andaluz.</h1>
-          <p class="lead">
+          <span class="eyebrow" data-cms="hero.eyebrow">Plataforma estratégica para AGESPORT</span>
+          <h1 data-cms="hero.title">Conectar <em>talento</em>, territorio e industria del deporte andaluz.</h1>
+          <p class="lead" data-cms="hero.lead">
             El Mapa del Talento AGESPORT organiza el capital profesional de la asociación,
             lo geolocaliza por provincia, lo hace visible dentro de un entorno privado y lo
             orienta a colaboración, networking inteligente y activación del clúster deportivo
             en Andalucía y el resto del territorio nacional.
           </p>
           <div class="button-row" style="margin-top:24px">
-            <a class="btn btn-primary" href="#proyecto">Conocer el proyecto</a>
-            <a class="btn btn-secondary" href="/acceso.html">Acceso socio</a>
+            <a class="btn btn-primary" href="#proyecto" data-cms="hero.cta1.label">Conocer el proyecto</a>
+            <a class="btn btn-secondary" href="/acceso.html" data-cms="hero.cta2.label">Acceso socio</a>
           </div>
           <div class="hero-points">
-            <div class="point">Geolocalización profesional<span>Quién es quién, dónde opera y en qué destaca.</span></div>
-            <div class="point">Clúster e industria<span>Conexión entre gestión, servicios, tecnología, infraestructura, formación, eventos y más.</span></div>
-            <div class="point">Networking útil<span>Filtros por provincia, especialidad y disponibilidad real.</span></div>
-            <div class="point">Observatorio sectorial<span>Lectura territorial del ecosistema deportivo andaluz.</span></div>
+            <div class="point"><strong data-cms="hero.point1.title">Geolocalización profesional</strong><span data-cms="hero.point1.body">Quién es quién, dónde opera y en qué destaca.</span></div>
+            <div class="point"><strong data-cms="hero.point2.title">Clúster e industria</strong><span data-cms="hero.point2.body">Conexión entre gestión, servicios, tecnología, infraestructura, formación, eventos y más.</span></div>
+            <div class="point"><strong data-cms="hero.point3.title">Networking útil</strong><span data-cms="hero.point3.body">Filtros por provincia, especialidad y disponibilidad real.</span></div>
+            <div class="point"><strong data-cms="hero.point4.title">Observatorio sectorial</strong><span data-cms="hero.point4.body">Lectura territorial del ecosistema deportivo andaluz.</span></div>
           </div>
         </div>
 
         <div class="hero-visual">
           <article class="hero-map-card">
-            <div class="cap">El visor del talento — provincias de Andalucía</div>
+            <div class="cap" data-cms="hero.visor.caption">El visor del talento — provincias de Andalucía</div>
             <div class="body">
-              <img src="/assets/mapa-andalucia.svg" alt="Mapa de Andalucía con sus 8 provincias">
+              <div id="landing-map" style="height:340px;border-radius:12px;overflow:hidden"></div>
               <div class="hero-meta">
                 <div class="mini">
-                  <strong>8</strong>
-                  <span>provincias andaluzas en una única capa de lectura.</span>
+                  <strong data-cms="hero.stat1.value">8</strong>
+                  <span data-cms="hero.stat1.label">provincias andaluzas en una única capa de lectura.</span>
                 </div>
                 <div class="mini">
-                  <strong>17 CCAA</strong>
-                  <span>cobertura ampliable al resto del territorio nacional.</span>
+                  <strong data-cms="hero.stat2.value">17 CCAA</strong>
+                  <span data-cms="hero.stat2.label">cobertura ampliable al resto del territorio nacional.</span>
                 </div>
                 <div class="mini">
-                  <strong>Privado</strong>
-                  <span>acceso restringido a socios y administración.</span>
+                  <strong data-cms="hero.stat3.value">Privado</strong>
+                  <span data-cms="hero.stat3.label">acceso restringido a socios y administración.</span>
                 </div>
               </div>
             </div>
@@ -435,25 +444,25 @@
       <div class="shell">
         <div class="section-head">
           <div>
-            <h2>Qué resuelve el Mapa del Talento</h2>
-            <p>Una infraestructura de relación para AGESPORT, el clúster y el tejido profesional del deporte andaluz. Identifica, valida y conecta a quienes hacen deporte posible en el territorio.</p>
+            <h2 data-cms="proyecto.h2">Qué resuelve el Mapa del Talento</h2>
+            <p data-cms="proyecto.lead">Una infraestructura de relación para AGESPORT, el clúster y el tejido profesional del deporte andaluz. Identifica, valida y conecta a quienes hacen deporte posible en el territorio.</p>
           </div>
         </div>
         <div class="cards-3">
           <article class="card">
-            <span class="tag">Propósito</span>
-            <h3>Identificar y ordenar el talento</h3>
-            <p>Ubica físicamente la actividad profesional de cada socio y la conecta con experiencia, cargo, entidad y especialización técnica.</p>
+            <span class="tag" data-cms="proyecto.card1.tag">Propósito</span>
+            <h3 data-cms="proyecto.card1.title">Identificar y ordenar el talento</h3>
+            <p data-cms="proyecto.card1.body">Ubica físicamente la actividad profesional de cada socio y la conecta con experiencia, cargo, entidad y especialización técnica.</p>
           </article>
           <article class="card">
-            <span class="tag">Valor sectorial</span>
-            <h3>Activar sinergias reales</h3>
-            <p>Permite localizar expertos, colaboradores, mentores, consultores y agentes con capacidad de aportar a proyectos concretos.</p>
+            <span class="tag" data-cms="proyecto.card2.tag">Valor sectorial</span>
+            <h3 data-cms="proyecto.card2.title">Activar sinergias reales</h3>
+            <p data-cms="proyecto.card2.body">Permite localizar expertos, colaboradores, mentores, consultores y agentes con capacidad de aportar a proyectos concretos.</p>
           </article>
           <article class="card">
-            <span class="tag navy">Clúster</span>
-            <h3>Extender AGESPORT al ecosistema B2B</h3>
-            <p>Abre una lectura industrial del sector: gestión, proveedores, tecnología, servicios, formación, eventos y administración pública.</p>
+            <span class="tag navy" data-cms="proyecto.card3.tag">Clúster</span>
+            <h3 data-cms="proyecto.card3.title">Extender AGESPORT al ecosistema B2B</h3>
+            <p data-cms="proyecto.card3.body">Abre una lectura industrial del sector: gestión, proveedores, tecnología, servicios, formación, eventos y administración pública.</p>
           </article>
         </div>
       </div>
@@ -463,26 +472,26 @@
       <div class="shell">
         <div class="section-head">
           <div>
-            <h2>Capacidades planteadas</h2>
-            <p>La plataforma se articula en torno a capacidades de identificación, conexión, colaboración sectorial y lectura territorial del talento.</p>
+            <h2 data-cms="capacidades.h2">Capacidades planteadas</h2>
+            <p data-cms="capacidades.lead">La plataforma se articula en torno a capacidades de identificación, conexión, colaboración sectorial y lectura territorial del talento.</p>
           </div>
         </div>
         <div class="cards-4">
           <article class="card">
-            <h3>Geolocalización profesional</h3>
-            <p>Dirección, localidad, provincia, comunidad autónoma y área de influencia para lectura territorial útil.</p>
+            <h3 data-cms="capacidades.card1.title">Geolocalización profesional</h3>
+            <p data-cms="capacidades.card1.body">Dirección, localidad, provincia, comunidad autónoma y área de influencia para lectura territorial útil.</p>
           </article>
           <article class="card">
-            <h3>Especialización por áreas</h3>
-            <p>15 especialidades: instalaciones, eventos, derecho, marketing, digitalización, RRHH, formación, sostenibilidad y más.</p>
+            <h3 data-cms="capacidades.card2.title">Especialización por áreas</h3>
+            <p data-cms="capacidades.card2.body">15 especialidades: instalaciones, eventos, derecho, marketing, digitalización, RRHH, formación, sostenibilidad y más.</p>
           </article>
           <article class="card">
-            <h3>Disponibilidad asociativa</h3>
-            <p>Mentorías, grupos de trabajo, ponencias y participación en iniciativas clave del clúster.</p>
+            <h3 data-cms="capacidades.card3.title">Disponibilidad asociativa</h3>
+            <p data-cms="capacidades.card3.body">Mentorías, grupos de trabajo, ponencias y participación en iniciativas clave del clúster.</p>
           </article>
           <article class="card">
-            <h3>Observatorio de gestión</h3>
-            <p>Lectura de densidad profesional, especialidades dominantes y peso territorial del ecosistema.</p>
+            <h3 data-cms="capacidades.card4.title">Observatorio de gestión</h3>
+            <p data-cms="capacidades.card4.body">Lectura de densidad profesional, especialidades dominantes y peso territorial del ecosistema.</p>
           </article>
         </div>
       </div>
@@ -493,37 +502,37 @@
         <div>
           <div class="section-head" style="margin-bottom:18px">
             <div>
-              <h2>Implementación en 4 fases</h2>
-              <p>La propuesta se organiza en cuatro etapas para estructurar la recogida de información, su validación, la visualización privada y la activación del ecosistema profesional.</p>
+              <h2 data-cms="fases.h2">Implementación en 4 fases</h2>
+              <p data-cms="fases.lead">La propuesta se organiza en cuatro etapas para estructurar la recogida de información, su validación, la visualización privada y la activación del ecosistema profesional.</p>
             </div>
           </div>
           <div class="timeline">
             <div class="step">
               <div class="step-num">1</div>
               <div class="card">
-                <h3>Ficha del talento</h3>
-                <p>Captura normalizada de datos de perfil profesional, especialidad, localización y relación con el clúster, con consentimientos RGPD explícitos.</p>
+                <h3 data-cms="fases.fase1.title">Ficha del talento</h3>
+                <p data-cms="fases.fase1.body">Captura normalizada de datos de perfil profesional, especialidad, localización y relación con el clúster, con consentimientos RGPD explícitos.</p>
               </div>
             </div>
             <div class="step">
               <div class="step-num">2</div>
               <div class="card">
-                <h3>Procesamiento y validación por AGESPORT</h3>
-                <p>Revisión por Gerencia, alta del socio en el entorno privado y segmentación de la base para asegurar consistencia operativa.</p>
+                <h3 data-cms="fases.fase2.title">Procesamiento y validación por AGESPORT</h3>
+                <p data-cms="fases.fase2.body">Revisión por Gerencia, alta del socio en el entorno privado y segmentación de la base para asegurar consistencia operativa.</p>
               </div>
             </div>
             <div class="step">
               <div class="step-num">3</div>
               <div class="card">
-                <h3>Visualización privada del ecosistema</h3>
-                <p>Acceso restringido para consulta del directorio, lectura del mapa territorial y localización de perfiles relevantes.</p>
+                <h3 data-cms="fases.fase3.title">Visualización privada del ecosistema</h3>
+                <p data-cms="fases.fase3.body">Acceso restringido para consulta del directorio, lectura del mapa territorial y localización de perfiles relevantes.</p>
               </div>
             </div>
             <div class="step">
               <div class="step-num">4</div>
               <div class="card">
-                <h3>Dinamización del clúster</h3>
-                <p>Activación del sistema como base de networking, asesoramiento, contacto directo entre socios y generación de oportunidades B2B.</p>
+                <h3 data-cms="fases.fase4.title">Dinamización del clúster</h3>
+                <p data-cms="fases.fase4.body">Activación del sistema como base de networking, asesoramiento, contacto directo entre socios y generación de oportunidades B2B.</p>
               </div>
             </div>
           </div>
@@ -534,39 +543,39 @@
             <div class="status-line">
               <span class="pulse" aria-hidden="true"></span>
               <div>
-                <strong>Plataforma disponible</strong><br>
-                <span style="color:rgba(255,255,255,.72)">Entorno privado accesible con conexión segura</span>
+                <strong data-cms="estado.titulo">Plataforma disponible</strong><br>
+                <span style="color:rgba(255,255,255,.72)" data-cms="estado.subtitulo">Entorno privado accesible con conexión segura</span>
               </div>
             </div>
 
             <div class="status-grid">
               <div class="status-box">
-                <strong>Dominio</strong>
-                <span>agesport.aiprojects.pro</span>
+                <strong data-cms="estado.box1.label">Dominio</strong>
+                <span data-cms="estado.box1.value">agesport.aiprojects.pro</span>
               </div>
               <div class="status-box">
-                <strong>HTTPS</strong>
-                <span>Let's Encrypt activo</span>
+                <strong data-cms="estado.box2.label">HTTPS</strong>
+                <span data-cms="estado.box2.value">Let's Encrypt activo</span>
               </div>
               <div class="status-box">
-                <strong>Backend</strong>
-                <span>Node.js + PostgreSQL/PostGIS</span>
+                <strong data-cms="estado.box3.label">Backend</strong>
+                <span data-cms="estado.box3.value">Node.js + PostgreSQL/PostGIS</span>
               </div>
               <div class="status-box">
-                <strong>Proxy</strong>
-                <span>Nginx con redirección a HTTPS</span>
+                <strong data-cms="estado.box4.label">Proxy</strong>
+                <span data-cms="estado.box4.value">Nginx con redirección a HTTPS</span>
               </div>
             </div>
 
             <div class="login-panel" id="acceso">
-              <h3>Acceso al entorno privado</h3>
-              <p>Una vez dentro, accede al directorio del socio, al observatorio del talento, al visor gráfico y a la mensajería privada con el resto del clúster.</p>
+              <h3 data-cms="acceso.h3">Acceso al entorno privado</h3>
+              <p data-cms="acceso.lead">Una vez dentro, accede al directorio del socio, al observatorio del talento, al visor gráfico y a la mensajería privada con el resto del clúster.</p>
               <div class="button-row" style="margin-top: 14px">
-                <a class="btn btn-primary" href="/acceso.html">Acceso socio</a>
-                <a class="btn btn-secondary" href="/registro.html">Solicitar acceso</a>
+                <a class="btn btn-primary" href="/acceso.html" data-cms="acceso.cta1.label">Acceso socio</a>
+                <a class="btn btn-secondary" href="/registro.html" data-cms="acceso.cta2.label">Solicitar acceso</a>
               </div>
               <div class="button-row" style="margin-top: 10px">
-                <a class="btn btn-navy" href="/acceso.html#admin" style="width:100%">Acceso administración</a>
+                <a class="btn btn-navy" href="/acceso.html#admin" style="width:100%" data-cms="acceso.cta3.label">Acceso administración</a>
               </div>
             </div>
           </div>
@@ -577,10 +586,12 @@
 
   <footer class="footer">
     <div class="shell footer-inner">
-      <div>AGESPORT · Mapa del Talento · Andalucía</div>
-      <div>Plataforma privada orientada a conexión, conocimiento y activación sectorial.</div>
+      <div data-cms="footer.line1">AGESPORT · Mapa del Talento · Andalucía</div>
+      <div data-cms="footer.line2">Plataforma privada orientada a conexión, conocimiento y activación sectorial.</div>
     </div>
   </footer>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="/assets/landing.js"></script>
 </body>
 </html>

@@ -24,7 +24,7 @@ const generateRefreshToken = (payload) => {
 const verifyToken = (token) => {
   try {
     return jwt.verify(token, config.jwt.secret);
-  } catch (error) {
+  } catch {
     throw new Error('Token inválido');
   }
 };
@@ -129,6 +129,19 @@ const authenticateAdmin = async (req, res, next) => {
   }
 };
 
+// Restringe el endpoint a admins con rol='superadmin'. Debe usarse
+// SIEMPRE encadenado tras `authenticateAdmin` — depende de `req.admin`.
+// Sin esto, cualquier admin (incluido moderador) podía crear nuevos
+// admins con rol arbitrario y escalar a superadmin.
+const requireSuperadmin = (req, res, next) => {
+  if (!req.admin || req.admin.rol !== 'superadmin') {
+    return res.status(403).json({
+      error: 'Acceso denegado. Esta acción requiere rol de superadministrador.',
+    });
+  }
+  next();
+};
+
 // Middleware opcional - permite tanto socios como admins
 const authenticateAny = async (req, res, next) => {
   try {
@@ -171,7 +184,7 @@ const authenticateAny = async (req, res, next) => {
     }
 
     next();
-  } catch (error) {
+  } catch {
     res.status(401).json({ error: 'Token inválido.' });
   }
 };
@@ -288,19 +301,23 @@ const canViewSocio = async (viewerId, targetSocioId) => {
 
 // Filtrar datos sensibles según consentimientos
 const filterSensitiveData = (socioData, viewerIsOwner = false, viewerIsAdmin = false) => {
-  if (viewerIsAdmin) return socioData; // Admin ve todo
-  if (viewerIsOwner) return socioData; // Propio perfil ve todo
-  
-  // Para otros socios, filtrar según consentimientos
   const filtered = { ...socioData };
-  
-  // Datos que siempre se ocultan de otros socios
+
+  // Cifrados internos: NUNCA deben viajar al cliente, ni siquiera al
+  // propio owner/admin. Los controladores ya añaden `telefono`/`dni_nie`
+  // descifrados como propiedades separadas cuando procede; el blob
+  // cifrado no aporta nada al cliente y simplemente expone storage.
+  delete filtered.telefono_encrypted;
   delete filtered.dni_nie_encrypted;
+
+  if (viewerIsAdmin || viewerIsOwner) return filtered;
+
+  // Datos que siempre se ocultan de otros socios
   delete filtered.email;
-  
+
   // Datos condicionados por consentimientos
   if (!socioData.visible_telefono) {
-    delete filtered.telefono_encrypted;
+    delete filtered.telefono;
   }
   if (!socioData.visible_email_directo) {
     delete filtered.email;
@@ -327,6 +344,7 @@ module.exports = {
   authenticateSocio,
   authenticateAdmin,
   authenticateAny,
+  requireSuperadmin,
   encryptData,
   decryptData,
   hashPassword,

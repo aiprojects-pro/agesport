@@ -1,0 +1,7 @@
+node_modules/
+public/
+logs/
+backups/
+uploads/
+coverage/
+package-lock.json

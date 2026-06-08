@@ -52,6 +52,25 @@ const authLimiter = rateLimit({
   legacyHeaders: false
 });
 
+// Rate limiting para forgot-password. NO usa skipSuccessfulRequests porque
+// forgotPassword devuelve 200 siempre por seguridad (no revela cuentas);
+// si usásemos authLimiter con skipSuccessfulRequests:true se podrían
+// enviar mails ilimitados.
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  keyGenerator: (req) => {
+    const email =
+      req.body && typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : 'anon';
+    return `${ipKeyGenerator(req.ip)}:${email}`;
+  },
+  message: {
+    error: 'Demasiados intentos. Espera unos minutos antes de volver a probar.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Rate limiting para registro
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
@@ -114,9 +133,23 @@ const validateInput = (req, res, next) => {
     return sanitized;
   };
 
-  // Aplicar sanitización
+  // Aplicar sanitización.
+  // CRÍTICO Express 5: `req.query` es un getter que parsea `qs.parse(
+  // querystring)` en CADA acceso (no está cacheado). Reasignar
+  // `req.query = …` es no-op, y mutar el objeto devuelto tampoco
+  // persiste — el siguiente acceso descarta esa mutación y devuelve
+  // un objeto fresco. La única forma fiable es overridear el getter
+  // con un valor estático via Object.defineProperty.
   if (req.body) req.body = sanitizeObject(req.body);
-  if (req.query) req.query = sanitizeObject(req.query);
+  if (req.query) {
+    const cleaned = sanitizeObject(req.query);
+    Object.defineProperty(req, 'query', {
+      value: cleaned,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
   if (req.params) req.params = sanitizeObject(req.params);
 
   next();
@@ -151,141 +184,79 @@ const validatePassword = (password) => {
 };
 
 // Middleware de validación de registro
-const validateRegistrationData = (req, res, next) => {
-  const { 
-    email, password, nombre, apellidos, provincia, 
-    localidad, cargo_actual, anos_experiencia 
-  } = req.body;
-
+// Validador unificado para alta y actualización de perfil.
+// mode='registration': todos los required deben venir; mode='profile':
+// sólo se valida lo presente. Reglas de formato idénticas en ambos modos.
+const validateSocioFields = (mode) => (req, res, next) => {
+  const b = req.body || {};
+  const required = mode === 'registration';
   const errors = [];
 
-  // Validaciones requeridas
-  if (!email || !validateEmail(email)) {
-    errors.push('Email inválido');
-  }
-  
-  if (!password || !validatePassword(password)) {
-    errors.push('Contraseña debe tener mínimo 8 caracteres, 1 mayúscula, 1 minúscula y 1 número');
-  }
-  
-  if (!nombre || nombre.trim().length < 2) {
-    errors.push('Nombre debe tener al menos 2 caracteres');
-  }
-  
-  if (!apellidos || apellidos.trim().length < 2) {
-    errors.push('Apellidos debe tener al menos 2 caracteres');
-  }
-  
-  if (!provincia || !catalogos.isValidProvincia(provincia)) {
-    errors.push('Provincia inválida');
-  }
+  const isEmpty = (v) => v === undefined || v === null || v === '';
 
-  if (req.body.comunidad_autonoma && !catalogos.COMUNIDADES_AUTONOMAS.some(ca => ca.slug === req.body.comunidad_autonoma)) {
-    errors.push('Comunidad autónoma inválida');
-  }
-
-  if (!localidad || localidad.trim().length < 2) {
-    errors.push('Localidad es requerida');
-  }
-
-  if (!cargo_actual || cargo_actual.trim().length < 3) {
-    errors.push('Cargo actual es requerido');
-  }
-
-  if (req.body.tipo_socio && !catalogos.isValidTipoSocio(req.body.tipo_socio)) {
-    errors.push('Tipo de socio inválido');
-  }
-
-  if (req.body.rol_cluster && !catalogos.isValidRolSlug(req.body.rol_cluster)) {
-    errors.push('Rol del clúster inválido');
-  }
-
-  if (Array.isArray(req.body.especialidades)) {
-    const invalid = req.body.especialidades.filter(e => !catalogos.isValidEspecialidadSlug(e));
-    if (invalid.length > 0) {
-      errors.push('Especialidades inválidas: ' + invalid.join(', '));
+  const check = (val, formatOk, msg) => {
+    if (isEmpty(val)) {
+      if (required) errors.push(msg);
+      return;
     }
-  }
-  
-  if (anos_experiencia === undefined || anos_experiencia < 0 || anos_experiencia > 50) {
-    errors.push('Años de experiencia debe ser entre 0 y 50');
-  }
+    if (!formatOk(val)) errors.push(msg);
+  };
 
-  // Validaciones opcionales
-  if (req.body.dni_nie && !validateSpanishID(req.body.dni_nie)) {
-    errors.push('DNI/NIE inválido');
-  }
-  
-  if (req.body.telefono && !validateSpanishPhone(req.body.telefono)) {
-    errors.push('Teléfono inválido (formato español)');
-  }
+  check(b.email, validateEmail, 'Email inválido');
+  check(
+    b.password,
+    validatePassword,
+    'Contraseña debe tener mínimo 8 caracteres, 1 mayúscula, 1 minúscula y 1 número'
+  );
+  check(b.nombre, (v) => v.trim().length >= 2, 'Nombre debe tener al menos 2 caracteres');
+  check(b.apellidos, (v) => v.trim().length >= 2, 'Apellidos debe tener al menos 2 caracteres');
+  check(b.provincia, catalogos.isValidProvincia, 'Provincia inválida');
+  check(b.localidad, (v) => v.trim().length >= 2, 'Localidad es requerida');
+  check(b.cargo_actual, (v) => v.trim().length >= 3, 'Cargo actual es requerido');
 
-  if (errors.length > 0) {
-    return res.status(400).json({ 
-      error: 'Datos de registro inválidos', 
-      details: errors 
-    });
-  }
-
-  next();
-};
-
-// Middleware de validación de datos de perfil
-const validateProfileData = (req, res, next) => {
-  const errors = [];
-  
-  // Solo validar campos que se están actualizando
-  if (req.body.email && !validateEmail(req.body.email)) {
-    errors.push('Email inválido');
-  }
-  
-  if (req.body.dni_nie && !validateSpanishID(req.body.dni_nie)) {
-    errors.push('DNI/NIE inválido');
-  }
-  
-  if (req.body.telefono && !validateSpanishPhone(req.body.telefono)) {
-    errors.push('Teléfono inválido');
-  }
-  
-  if (req.body.anos_experiencia !== undefined) {
-    const exp = parseInt(req.body.anos_experiencia);
-    if (isNaN(exp) || exp < 0 || exp > 50) {
+  // anos_experiencia: required en registro, rango 0-50 cuando presente
+  if (b.anos_experiencia === undefined) {
+    if (required) errors.push('Años de experiencia debe ser entre 0 y 50');
+  } else {
+    const n = parseInt(b.anos_experiencia);
+    if (isNaN(n) || n < 0 || n > 50) {
       errors.push('Años de experiencia debe ser entre 0 y 50');
     }
   }
-  
-  if (req.body.provincia && !catalogos.isValidProvincia(req.body.provincia)) {
-    errors.push('Provincia inválida');
-  }
 
-  if (req.body.comunidad_autonoma && !catalogos.COMUNIDADES_AUTONOMAS.some(ca => ca.slug === req.body.comunidad_autonoma)) {
+  // Siempre opcionales (sólo se valida formato cuando vienen)
+  if (b.dni_nie && !validateSpanishID(b.dni_nie)) errors.push('DNI/NIE inválido');
+  if (b.telefono && !validateSpanishPhone(b.telefono)) errors.push('Teléfono inválido');
+  if (
+    b.comunidad_autonoma &&
+    !catalogos.COMUNIDADES_AUTONOMAS.some((ca) => ca.slug === b.comunidad_autonoma)
+  ) {
     errors.push('Comunidad autónoma inválida');
   }
-
-  if (req.body.rol_cluster && !catalogos.isValidRolSlug(req.body.rol_cluster)) {
+  if (b.tipo_socio && !catalogos.isValidTipoSocio(b.tipo_socio)) {
+    errors.push('Tipo de socio inválido');
+  }
+  if (b.rol_cluster && !catalogos.isValidRolSlug(b.rol_cluster)) {
     errors.push('Rol del clúster inválido');
   }
-
-  if (Array.isArray(req.body.especialidades)) {
-    const invalid = req.body.especialidades.filter(e => !catalogos.isValidEspecialidadSlug(e));
+  if (Array.isArray(b.especialidades)) {
+    const invalid = b.especialidades.filter((e) => !catalogos.isValidEspecialidadSlug(e));
     if (invalid.length > 0) {
       errors.push('Especialidades inválidas: ' + invalid.join(', '));
     }
   }
 
-  if (req.body.tipo_socio && !catalogos.isValidTipoSocio(req.body.tipo_socio)) {
-    errors.push('Tipo de socio inválido');
-  }
-
   if (errors.length > 0) {
-    return res.status(400).json({ 
-      error: 'Datos de perfil inválidos', 
-      details: errors 
+    return res.status(400).json({
+      error: required ? 'Datos de registro inválidos' : 'Datos de perfil inválidos',
+      details: errors,
     });
   }
-
   next();
 };
+
+const validateRegistrationData = validateSocioFields('registration');
+const validateProfileData = validateSocioFields('profile');
 
 // Middleware para logging de seguridad
 const securityLogger = (req, res, next) => {
@@ -343,6 +314,7 @@ const securityHeaders = (req, res, next) => {
 module.exports = {
   generalLimiter,
   authLimiter,
+  forgotPasswordLimiter,
   registerLimiter,
   messagingLimiter,
   validateInput,

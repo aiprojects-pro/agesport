@@ -706,11 +706,16 @@ textarea:focus {
 }
 
 /* ====================== Selección múltiple (checkbox list) */
+/* Estos estilos están pensados para listas tipo "tarjeta" (usadas en bajas).
+ * Se acotan a .selectable-list > .selectable-row para no colisionar con
+ * <tr class="selectable-row"> dentro de .table-list (haría display:grid
+ * sobre la fila de tabla y reventaría el alineamiento de columnas).
+ */
 .selectable-list {
   display: grid;
   gap: 8px;
 }
-.selectable-row {
+.selectable-list > .selectable-row {
   display: grid;
   grid-template-columns: 28px 1fr auto;
   align-items: center;
@@ -721,7 +726,7 @@ textarea:focus {
   background: #fff;
   transition: background .15s;
 }
-.selectable-row:hover { background: var(--bg-soft); }
+.selectable-list > .selectable-row:hover { background: var(--bg-soft); }
 .selectable-row.selected { background: rgba(15,137,91,.06); border-color: rgba(15,137,91,.2); }
 
 /* ====================== Admin: identidad de organización */

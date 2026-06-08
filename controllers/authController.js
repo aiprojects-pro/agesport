@@ -84,7 +84,7 @@ class AuthController {
             longitud = coords.lng;
           }
         } catch (geoError) {
-          console.log('Advertencia: No se pudo geocodificar la dirección:', geoError.message);
+          console.warn('[geocode] register: could not geocode address:', geoError.message);
         }
       }
 
@@ -96,12 +96,12 @@ class AuthController {
           INSERT INTO socios (
             email, email_personal, email_preferido, password_hash,
             nombre, apellidos, tipo_socio, nombre_organizacion,
-            dni_nie_encrypted, telefono, telefono_encrypted,
+            dni_nie_encrypted, telefono_encrypted,
             linkedin_url, otras_redes, entidad, web_profesional,
             provincia, comunidad_autonoma, localidad,
             codigo_postal, direccion_completa, ambito, cargo_actual, anos_experiencia,
             latitud, longitud, estado
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
           RETURNING id, email, nombre, apellidos
         `, [
           email,
@@ -113,7 +113,6 @@ class AuthController {
           tipo_socio || 'numero',
           nombre_organizacion || null,
           dniEncrypted,
-          telefono || null,
           telefonoEncrypted,
           linkedin_url || null,
           otras_redes || null,
