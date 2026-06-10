@@ -105,6 +105,15 @@ const uploadCSV = multer({
   }
 }).single('archivo');
 
+// Uploader del CMS de landing (imágenes que aparecen en index.html).
+// Mismo filtro que `uploadFoto` (sin SVG) pero límite más generoso —
+// los banners de la landing pueden ser hasta 4 MB.
+const uploadLandingImage = multer({
+  storage: buildStorage('landing'),
+  limits: { fileSize: 4 * 1024 * 1024 },
+  fileFilter: imageFilter,
+}).single('imagen');
+
 // URL pública desde la ruta interna
 const toPublicUrl = (subdir, filename) => `/uploads/${subdir}/${filename}`;
 
@@ -127,6 +136,7 @@ module.exports = {
   uploadCV,
   uploadLogo,
   uploadCSV,
+  uploadLandingImage,
   toPublicUrl,
   removeFile
 };

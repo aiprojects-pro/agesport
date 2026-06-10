@@ -73,7 +73,17 @@
       : await response.text();
 
     if (!response.ok) {
-      const message = typeof data === 'object' && data && data.error ? data.error : 'Error inesperado';
+      let message = 'Error inesperado';
+      if (typeof data === 'object' && data) {
+        message = data.error || message;
+        // Si el backend manda `details: [...]` (validación con
+        // campos concretos), los concatenamos. Antes el usuario sólo
+        // veía "Datos de registro inválidos" sin saber qué campo —
+        // hallazgo MEDIA auditoría 10 jun.
+        if (Array.isArray(data.details) && data.details.length > 0) {
+          message += ': ' + data.details.join('; ');
+        }
+      }
       throw new Error(message);
     }
 

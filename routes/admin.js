@@ -3,8 +3,12 @@ const express = require('express');
 const router = express.Router();
 
 const adminController = require('../controllers/adminController');
+const landingController = require('../controllers/admin/landing');
 const { authenticateAdmin, requireSuperadmin } = require('../middleware/auth');
 const { validateInput } = require('../middleware/security');
+const { uploadLandingImage } = require('../services/uploadService');
+// `wrapMulter` se declara más abajo (era el existente para uploads de
+// logo/CSV); reutilizamos esa misma función para las rutas de landing.
 
 // ==================== GESTIÓN SOCIOS PENDIENTES ====================
 router.get('/socios/pendientes', 
@@ -154,6 +158,32 @@ router.get('/socios/accesos',
 router.get('/socios/exportar',
   authenticateAdmin,
   adminController.exportarSociosCSV
+);
+
+// ==================== CMS DE LANDING PÚBLICA ====================
+// Antes el frontend admin-landing.js llamaba a estos endpoints y la
+// pestaña mostraba "Error cargando contenido: Endpoint no encontrado"
+// porque NO estaban montados (hallazgo ALTA nº 2 de la auditoría del
+// 10 jun). El controller ya existía en controllers/admin/landing.js.
+
+// GET /api/admin/landing  → listar todas las claves de landing_content
+router.get('/landing',
+  authenticateAdmin,
+  landingController.listContent
+);
+
+// PUT /api/admin/landing/:clave  → actualizar valor de texto
+router.put('/landing/:clave',
+  authenticateAdmin,
+  validateInput,
+  landingController.updateContent
+);
+
+// POST /api/admin/landing/:clave/imagen  → subir imagen y actualizar URL
+router.post('/landing/:clave/imagen',
+  authenticateAdmin,
+  wrapMulter(uploadLandingImage),
+  landingController.uploadImage
 );
 
 module.exports = router;

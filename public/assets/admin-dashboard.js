@@ -3,6 +3,25 @@
   const cat = window.AgesportCatalogos;
   const $ = (id) => document.getElementById(id);
 
+  // Mapea el slug del tipo de socio a la etiqueta legible.
+  // Sin esto, las tablas mostraban el valor crudo "numero" en lugar
+  // de "Socio/a de número" (hallazgo BAJA auditoría 10 jun).
+  function tipoSocioLabel(slug) {
+    if (!slug) return '';
+    const tipos = (cat && cat.TIPOS_SOCIO) || [];
+    const t = tipos.find(function (x) { return x.slug === slug; });
+    return t ? t.label : slug;
+  }
+
+  // Normaliza variantes mal escritas del nombre "AGESPORT" (p. ej.
+  // "AGSport" introducido manualmente en BD) — auditoría 10 jun B1.
+  function normalizeBrand(text) {
+    if (!text) return text;
+    return String(text)
+      .replace(/\bAGSport\b/gi, 'AGESPORT')
+      .replace(/\bAgesport\b/g, 'AGESPORT');
+  }
+
   document.getElementById('logoutBtn').addEventListener('click', logout);
 
   // ===== Tabs =====
@@ -207,6 +226,14 @@
     try {
       const data = await request('/api/admin/socios/pendientes', { method: 'GET', headers: {} });
       const socios = data.socios || [];
+      // B3 (auditoría 10 jun): los botones masivos no deben estar
+      // habilitados cuando no hay nada que aprobar. Ajustamos su
+      // estado tanto en el caso vacío como en el caso poblado.
+      const selectAllBtn = $('selectAllPendBtn');
+      const approveBtn = $('approveSelectedBtn');
+      if (selectAllBtn) selectAllBtn.disabled = socios.length === 0;
+      if (approveBtn) approveBtn.disabled = socios.length === 0;
+
       if (!socios.length) {
         $('pendientesList').innerHTML = '';
         $('pendientesEmpty').style.display = 'block';
@@ -305,7 +332,7 @@
             '<td>' + escapeHtml(s.email || '') + '</td>' +
             '<td>' + escapeHtml(s.entidad || '') + '</td>' +
             '<td>' + escapeHtml(s.provincia || '') + '</td>' +
-            '<td>' + escapeHtml(s.tipo_socio || '') + '</td>' +
+            '<td>' + escapeHtml(tipoSocioLabel(s.tipo_socio)) + '</td>' +
             '<td>' + escapeHtml(s.ultimo_acceso ? formatDate(s.ultimo_acceso) : '—') + '</td>' +
             '<td style="text-align:right;white-space:nowrap">' +
               '<button class="btn-upload" type="button" data-suspend="' + s.id + '">Suspender</button> ' +
@@ -532,7 +559,9 @@
 
   // =============================================================
   requireSession('admin').then(function (session) {
-    $('adminWelcome').textContent = 'Hola, ' + (session.user.nombre || 'Gerencia AGESPORT');
+    // Normaliza el nombre del admin para corregir variantes tipográficas
+    // ("AGSport" → "AGESPORT") que pudieran venir de la BD.
+    $('adminWelcome').textContent = 'Hola, ' + normalizeBrand(session.user.nombre || 'Gerencia AGESPORT');
     loadDashboard();
   }).catch(function () {});
 })();

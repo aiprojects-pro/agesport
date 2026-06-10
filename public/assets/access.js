@@ -7,9 +7,45 @@
   const socioBtn = document.getElementById('socioBtn');
   const adminBtn = document.getElementById('adminBtn');
 
-  verifySession().then(function (session) {
-    window.location.href = session.type === 'admin' ? '/admin.html' : '/panel.html';
-  }).catch(function () {});
+  // Detección de sesión activa: en lugar de auto-redirigir (lo que
+  // hacía que el CTA "Acceso socio" llevara a un admin al panel admin
+  // y viceversa — hallazgo MEDIA auditoría 10 jun), mostramos un aviso
+  // explícito al inicio de la página con dos opciones: "Ir al panel"
+  // o "Cerrar sesión y entrar con otra cuenta". El usuario decide.
+  //
+  // Si se pasa ?force=socio o ?force=admin en la URL, ignoramos la
+  // sesión activa y mostramos el formulario directamente.
+  const forceMode = new URLSearchParams(window.location.search).get('force');
+  if (!forceMode) {
+    verifySession().then(function (session) {
+      const tipoTxt = session.type === 'admin' ? 'administrador' : 'socio';
+      const panelUrl = session.type === 'admin' ? '/admin.html' : '/panel.html';
+      const banner = document.createElement('div');
+      banner.className = 'message-box info';
+      banner.style.margin = '20px auto';
+      banner.style.maxWidth = '720px';
+      banner.style.padding = '14px 18px';
+      banner.style.border = '1px solid #cbd5e0';
+      banner.style.borderRadius = '8px';
+      banner.style.background = '#f7fafc';
+      banner.innerHTML =
+        'Ya tienes una sesión activa como <strong>' + tipoTxt + '</strong>. ' +
+        '<a href="' + panelUrl + '" style="margin-left:8px">Ir al panel</a> · ' +
+        '<a href="#" id="forceLogoutLink" style="margin-left:8px">Cerrar sesión y entrar con otra cuenta</a>';
+      const main = document.querySelector('main') || document.body;
+      main.insertBefore(banner, main.firstChild);
+      const link = document.getElementById('forceLogoutLink');
+      if (link) {
+        link.addEventListener('click', async function (e) {
+          e.preventDefault();
+          try {
+            await request('/api/auth/logout', { method: 'POST' });
+          } catch (_) { /* nada */ }
+          window.location.href = '/acceso.html?force=socio';
+        });
+      }
+    }).catch(function () { /* sin sesión → muestra el form normal */ });
+  }
 
   socioForm.addEventListener('submit', async function (event) {
     event.preventDefault();

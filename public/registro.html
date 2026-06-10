@@ -272,21 +272,32 @@
         </div>
 
         <!-- ====== Consentimientos ====== -->
+        <!-- RGPD: casillas SIN checked por defecto (art. 7 RGPD; sentencia
+             Planet49, TJUE 2019). Los dos primeros son required; el de
+             mensajería queda opcional. Aviso de tratamiento al final con
+             enlace a la política de privacidad. -->
         <div class="field-full form-section">
           <h3>Consentimientos</h3>
         </div>
         <div class="field-full checkbox-row">
-          <input id="acepta_mapa_interactivo" type="checkbox" checked>
-          <label for="acepta_mapa_interactivo">Autorizo la participación de mi perfil en el entorno privado y en las dinámicas internas de relación profesional.</label>
+          <input id="acepta_mapa_interactivo" type="checkbox" required>
+          <label for="acepta_mapa_interactivo">Autorizo la participación de mi perfil en el entorno privado y en las dinámicas internas de relación profesional. <span class="req">(obligatorio)</span></label>
         </div>
         <div class="field-full checkbox-row">
-          <input id="acepta_visibilidad_datos" type="checkbox" checked>
-          <label for="acepta_visibilidad_datos">Acepto la visibilidad de mis datos profesionales dentro del espacio privado de la plataforma.</label>
+          <input id="acepta_visibilidad_datos" type="checkbox" required>
+          <label for="acepta_visibilidad_datos">Acepto la visibilidad de mis datos profesionales dentro del espacio privado de la plataforma. <span class="req">(obligatorio)</span></label>
         </div>
         <div class="field-full checkbox-row">
-          <input id="acepta_mensajeria" type="checkbox" checked>
-          <label for="acepta_mensajeria">Acepto el uso de mensajería interna por parte de otros socios autenticados.</label>
+          <input id="acepta_mensajeria" type="checkbox">
+          <label for="acepta_mensajeria">Acepto el uso de mensajería interna por parte de otros socios autenticados. <span class="opt">(opcional)</span></label>
         </div>
+        <p class="consent-note field-full">
+          Al enviar la solicitud, tus datos serán tratados por <strong>AGESPORT</strong>
+          como responsable del tratamiento, con la finalidad de gestionar tu alta y
+          participación en el Mapa del Talento. Puedes ejercer tus derechos de acceso,
+          rectificación, supresión y oposición según se describe en nuestra
+          <a href="/privacidad.html" target="_blank" rel="noopener">Política de Privacidad</a>.
+        </p>
 
         <div class="field-full">
           <button class="btn btn-primary" type="submit" id="registerBtn">Enviar solicitud</button>

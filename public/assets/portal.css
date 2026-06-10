@@ -884,3 +884,30 @@ textarea:focus {
     max-width: 88%;
   }
 }
+
+/* ======================================================================
+   Etiquetas RGPD del bloque de consentimientos (registro.html)
+   .req  → distintivo "(obligatorio)" — rojo discreto
+   .opt  → distintivo "(opcional)" — gris neutro
+   .consent-note → aviso de tratamiento bajo los checkboxes
+   ====================================================================== */
+.req {
+  color: #b23b3b;
+  font-weight: 600;
+  font-size: 0.85em;
+}
+.opt {
+  color: #5a6b72;
+  font-weight: 500;
+  font-size: 0.85em;
+}
+.consent-note {
+  font-size: 0.85em;
+  color: #5a6b72;
+  margin-top: 0.75rem;
+  line-height: 1.4;
+}
+.consent-note a {
+  color: #3e8e5a;
+  text-decoration: underline;
+}

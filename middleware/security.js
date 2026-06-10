@@ -34,10 +34,15 @@ const generalLimiter = rateLimit({
   }
 });
 
-// Rate limiting estricto para login
+// Rate limiting estricto para login.
+// Antes el cap era 20 por IP+email y un atacante podía rotar el `email`
+// para evadirlo completamente (credential stuffing). Ahora hay DOS caps
+// encadenados (ver routes/auth.js): este primero por IP+email, máximo
+// 5 intentos en 15 min, para frenar fuerza bruta contra una cuenta.
+// `skipSuccessfulRequests: true` para no contar logins correctos.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: authLimitMax,
+  max: 5,
   skipSuccessfulRequests: true,
   keyGenerator: (req) => {
     const email = (req.body && typeof req.body.email === 'string')
@@ -47,6 +52,22 @@ const authLimiter = rateLimit({
   },
   message: {
     error: 'Demasiados intentos de inicio de sesión. Inténtalo de nuevo en unos minutos.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Limiter secundario por IP solo: cap el credential stuffing donde el
+// atacante prueba muchos emails distintos desde la misma IP. Tope: 20
+// intentos fallidos por IP en 15 min, suficientemente alto para no
+// molestar a usuarios legítimos en oficinas con NAT.
+const loginIpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_LOGIN_IP_MAX || '20', 10),
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => ipKeyGenerator(req.ip),
+  message: {
+    error: 'Demasiados intentos de inicio de sesión desde esta conexión. Inténtalo de nuevo en unos minutos.'
   },
   standardHeaders: true,
   legacyHeaders: false
@@ -314,6 +335,7 @@ const securityHeaders = (req, res, next) => {
 module.exports = {
   generalLimiter,
   authLimiter,
+  loginIpLimiter,
   forgotPasswordLimiter,
   registerLimiter,
   messagingLimiter,

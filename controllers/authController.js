@@ -1,16 +1,32 @@
 // controllers/authController.js
-const { 
-  generateToken, 
-  generateRefreshToken, 
-  hashPassword, 
+const crypto = require('crypto');
+const {
+  generateToken,
+  generateRefreshToken,
+  hashPassword,
   comparePassword,
   encryptData,
   auditAction
 } = require('../middleware/auth');
 const db = require('../config/database');
+const config = require('../config/config');
 const geocodingService = require('../services/geocodingService');
 const emailService = require('../services/emailService');
 const catalogos = require('../config/catalogos');
+
+// Genera un token de reset (32 bytes hex en claro + su SHA-256 para BD).
+// El token en claro sólo viaja al usuario; en BD nunca se guarda en claro.
+function generateResetToken() {
+  const raw = crypto.randomBytes(32).toString('hex');
+  const hash = crypto.createHash('sha256').update(raw).digest('hex');
+  return { raw, hash };
+}
+
+// Base URL siempre desde config (NO desde req.get('host') — controlable
+// por cliente vía Host header → reset link a dominio del atacante).
+function resolveBaseUrl() {
+  return config.app.publicBaseUrl;
+}
 
 class AuthController {
 
@@ -503,9 +519,200 @@ class AuthController {
       res.json({ message: 'Contraseña cambiada correctamente' });
     } catch (error) {
       console.error('Error cambiando contraseña:', error);
-      res.status(500).json({ 
-        error: 'Error cambiando contraseña' 
+      res.status(500).json({
+        error: 'Error cambiando contraseña'
       });
+    }
+  }
+
+  // ==================== RECUPERACIÓN DE CONTRASEÑA (SOCIO) ====================
+  //
+  // GET /api/auth/forgot-password
+  //
+  // Devuelve SIEMPRE 200 con el mismo mensaje, exista o no el email,
+  // para no permitir enumeración de cuentas. El trabajo real (lookup
+  // + INSERT token + envío de email) se hace en setImmediate para que
+  // el tiempo de respuesta sea constante (sin timing channel).
+  async forgotPassword(req, res) {
+    const successMessage = {
+      message:
+        'Si la cuenta existe, te enviaremos un email con instrucciones para restablecer la contraseña.',
+    };
+    const { email } = req.body || {};
+    const emailValid = typeof email === 'string' && email.trim().length > 0;
+    const emailTrim = emailValid ? email.trim().toLowerCase() : null;
+    const base = resolveBaseUrl();
+    const reqMeta = { ip: req.ip, ua: req.get('User-Agent') };
+
+    res.json(successMessage);
+    if (!emailValid) return;
+
+    setImmediate(async () => {
+      try {
+        const socio = await db.findOne('socios', { email: emailTrim, activo: true });
+        if (!socio) return;
+
+        const { raw, hash } = generateResetToken();
+        await db.query(
+          `INSERT INTO password_reset_tokens (socio_id, token_hash, expires_at)
+           VALUES ($1, $2, NOW() + INTERVAL '1 hour')`,
+          [socio.id, hash]
+        );
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+        const resetUrl = `${base}/restablecer.html?token=${raw}`;
+
+        try {
+          await emailService.sendPasswordReset(
+            { email: socio.email, nombre: socio.nombre },
+            { resetUrl, expiresAt }
+          );
+        } catch (e) {
+          console.warn('[email] sendPasswordReset failed:', e.message);
+        }
+        try {
+          await auditAction(
+            socio.id, null, 'REQUEST_PASSWORD_RESET', 'socios',
+            null, null, { ip: reqMeta.ip, get: () => reqMeta.ua }
+          );
+        } catch (e) {
+          console.warn('[audit] forgot-password background:', e.message);
+        }
+      } catch (e) {
+        console.warn('[forgot-password] background failed:', e.message);
+      }
+    });
+  }
+
+  // POST /api/auth/reset-password  { token, newPassword }
+  async resetPassword(req, res) {
+    try {
+      const { token, newPassword } = req.body || {};
+      if (!token || typeof token !== 'string' || token.length < 32) {
+        return res.status(400).json({ error: 'Token inválido' });
+      }
+      if (!newPassword || newPassword.length < 8) {
+        return res.status(400).json({
+          error: 'La nueva contraseña debe tener al menos 8 caracteres',
+        });
+      }
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      // Single-use + TTL chequeado en SQL.
+      const result = await db.query(
+        `SELECT id, socio_id FROM password_reset_tokens
+         WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()`,
+        [tokenHash]
+      );
+      const row = result.rows[0];
+      if (!row) return res.status(400).json({ error: 'Token inválido o caducado' });
+
+      const newHash = await hashPassword(newPassword);
+      await db.transaction(async (client) => {
+        await client.query('UPDATE socios SET password_hash = $1 WHERE id = $2',
+          [newHash, row.socio_id]);
+        await client.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1',
+          [row.id]);
+      });
+
+      try {
+        await auditAction(row.socio_id, null, 'RESET_PASSWORD_SUCCESS',
+          'socios', null, null, req);
+      } catch (_) { /* nada */ }
+
+      res.json({ message: 'Contraseña restablecida correctamente.' });
+    } catch (error) {
+      console.error('Error en reset-password:', error);
+      res.status(500).json({ error: 'Error restableciendo contraseña' });
+    }
+  }
+
+  // ==================== RECUPERACIÓN (ADMIN) ====================
+  // Misma mecánica que socio pero contra `administradores`.
+  async forgotPasswordAdmin(req, res) {
+    const successMessage = {
+      message:
+        'Si la cuenta administrativa existe, te enviaremos un email con instrucciones para restablecer la contraseña.',
+    };
+    const { email } = req.body || {};
+    const emailValid = typeof email === 'string' && email.trim().length > 0;
+    const emailTrim = emailValid ? email.trim().toLowerCase() : null;
+    const base = resolveBaseUrl();
+    const reqMeta = { ip: req.ip, ua: req.get('User-Agent') };
+
+    res.json(successMessage);
+    if (!emailValid) return;
+
+    setImmediate(async () => {
+      try {
+        const admin = await db.findOne('administradores', { email: emailTrim, activo: true });
+        if (!admin) return;
+
+        const { raw, hash } = generateResetToken();
+        await db.query(
+          `INSERT INTO admin_password_reset_tokens (admin_id, token_hash, expires_at)
+           VALUES ($1, $2, NOW() + INTERVAL '1 hour')`,
+          [admin.id, hash]
+        );
+        const resetUrl = `${base}/restablecer.html?type=admin&token=${raw}`;
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+        try {
+          await emailService.sendPasswordReset(
+            { email: admin.email, nombre: admin.nombre },
+            { resetUrl, expiresAt }
+          );
+        } catch (e) {
+          console.warn('[email] sendPasswordReset admin failed:', e.message);
+        }
+        try {
+          await auditAction(
+            null, admin.id, 'REQUEST_PASSWORD_RESET', 'administradores',
+            null, null, { ip: reqMeta.ip, get: () => reqMeta.ua }
+          );
+        } catch (e) {
+          console.warn('[audit] forgot-password admin background:', e.message);
+        }
+      } catch (e) {
+        console.warn('[forgot-password admin] background failed:', e.message);
+      }
+    });
+  }
+
+  async resetPasswordAdmin(req, res) {
+    try {
+      const { token, newPassword } = req.body || {};
+      if (!token || typeof token !== 'string' || token.length < 32) {
+        return res.status(400).json({ error: 'Token inválido' });
+      }
+      if (!newPassword || newPassword.length < 8) {
+        return res.status(400).json({
+          error: 'La nueva contraseña debe tener al menos 8 caracteres',
+        });
+      }
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      const result = await db.query(
+        `SELECT id, admin_id FROM admin_password_reset_tokens
+         WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()`,
+        [tokenHash]
+      );
+      const row = result.rows[0];
+      if (!row) return res.status(400).json({ error: 'Token inválido o caducado' });
+
+      const newHash = await hashPassword(newPassword);
+      await db.transaction(async (client) => {
+        await client.query('UPDATE administradores SET password_hash = $1 WHERE id = $2',
+          [newHash, row.admin_id]);
+        await client.query('UPDATE admin_password_reset_tokens SET used_at = NOW() WHERE id = $1',
+          [row.id]);
+      });
+
+      try {
+        await auditAction(null, row.admin_id, 'RESET_PASSWORD_SUCCESS',
+          'administradores', null, null, req);
+      } catch (_) { /* nada */ }
+
+      res.json({ message: 'Contraseña restablecida correctamente.' });
+    } catch (error) {
+      console.error('Error en reset-password admin:', error);
+      res.status(500).json({ error: 'Error restableciendo contraseña' });
     }
   }
 }

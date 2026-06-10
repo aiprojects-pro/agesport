@@ -42,15 +42,38 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
+        // styleSrc todavía con 'unsafe-inline' por las plantillas
+        // existentes con style="..." inline. Endurecimiento futuro:
+        // migrar a hashes/nonces (hallazgo BAJA auditoría 10 jun).
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://unpkg.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
         scriptSrc: ["'self'", 'https://unpkg.com'],
         connectSrc: ["'self'", publicBaseUrl],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'self'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
       },
+    },
+    // HSTS más estricto + preload (precondición para preload list de Chrome)
+    strictTransportSecurity: {
+      maxAge: 63072000, // 2 años
+      includeSubDomains: true,
+      preload: true,
     },
   })
 );
+
+// Permissions-Policy: deshabilita APIs del navegador que no usamos.
+// Aplicar via middleware porque Helmet aún no la expone en su versión 8.
+app.use((req, res, next) => {
+  res.setHeader(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), accelerometer=(), gyroscope=()'
+  );
+  next();
+});
 
 app.use(securityHeaders);
 app.use(securityLogger);
@@ -84,6 +107,23 @@ app.use('/api/public', publicRoutes);
 const uploadsPath = path.resolve(config.uploads.path || './uploads');
 app.use('/uploads', express.static(uploadsPath, { maxAge: '7d', fallthrough: true }));
 
+// Páginas privadas: NO deben cachearse en proxies intermedios ni en el
+// historial del navegador (hallazgo MEDIA auditoría 10 jun: admin.html
+// se servía con Cache-Control: public, max-age=0). Aplicamos no-store
+// a todas las páginas del área autenticada antes del static handler.
+const PRIVATE_HTML = new Set([
+  '/admin.html', '/panel.html', '/perfil.html',
+  '/directorio.html', '/mensajes.html', '/restablecer.html'
+]);
+app.use((req, res, next) => {
+  if (PRIVATE_HTML.has(req.path)) {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  }
+  next();
+});
+
 if (process.env.NODE_ENV !== 'production') {
   app.use(express.static(path.join(__dirname, 'public')));
 }
@@ -91,12 +131,21 @@ if (process.env.NODE_ENV !== 'production') {
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'public')));
 
-  // SPA fallback — toda ruta no API/uploads cae a index.html
+  // Catch-all: las rutas inexistentes devuelven 404 (NO la SPA).
+  // Antes /dashboard.html, /portal.html, /cualquier-cosa devolvían 200
+  // con index.html como fallback — error de servidor que facilita el
+  // fingerprinting y confunde a bots/buscadores. Sólo "/" y rutas API
+  // explícitas sirven HTML.
   app.get('/{*path}', (req, res) => {
-    if (!req.path.startsWith('/api/') && !req.path.startsWith('/uploads/')) {
+    if (req.path === '/' || req.path === '/index.html') {
       res.sendFile(path.join(__dirname, 'public', 'index.html'));
-    } else {
+    } else if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) {
       res.status(404).json({ error: 'Endpoint no encontrado' });
+    } else {
+      // HTML normal con 404 para rutas estáticas desconocidas.
+      // Si más adelante quieres una página 404 bonita, sirve aquí
+      // public/404.html en lugar de json.
+      res.status(404).json({ error: 'Página no encontrada' });
     }
   });
 } else {

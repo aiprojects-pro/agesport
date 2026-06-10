@@ -339,10 +339,60 @@ Equipo AGESPORT`;
     return this.sendEmail(socio.email, subject, html, text);
   }
 
+  // Email de recuperación de contraseña (sirve para socio y admin).
+  // `recipient` = { email, nombre }
+  // `opts` = { resetUrl, expiresAt }  → expiresAt es un Date.
+  async sendPasswordReset(recipient, opts) {
+    const nombreSafe = escapeHtml(recipient.nombre || '');
+    const url = opts.resetUrl;
+    const hours = Math.max(
+      1,
+      Math.round((opts.expiresAt.getTime() - Date.now()) / 3600000)
+    );
+    const subject = 'Restablece tu contraseña — AGESPORT';
+    const html = `
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="referrer" content="no-referrer"></head>
+<body style="font-family: Arial, sans-serif; color: #18222e; max-width: 580px; margin: 0 auto;">
+  <h2 style="color:#0d355f">Restablecer contraseña</h2>
+  <p>Hola ${nombreSafe},</p>
+  <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en
+     el <strong>Mapa del Talento AGESPORT</strong>.</p>
+  <p>Pulsa el siguiente botón para crear una contraseña nueva:</p>
+  <p>
+    <a href="${url}" style="display:inline-block;padding:12px 22px;
+       background:#0d355f;color:#fff;border-radius:8px;
+       text-decoration:none;font-weight:600">Restablecer contraseña</a>
+  </p>
+  <p style="font-size:.9em;color:#6b6b6b">
+     Este enlace caduca en aproximadamente ${hours} hora${hours === 1 ? '' : 's'}
+     y sólo puede usarse una vez.</p>
+  <p style="font-size:.9em;color:#6b6b6b">
+     Si no fuiste tú quien lo pidió, puedes ignorar este mensaje:
+     tu contraseña actual sigue siendo válida.</p>
+  <hr style="border:none;border-top:1px solid #e5e5e5;margin:24px 0">
+  <p style="font-size:.8em;color:#6b6b6b">
+     Equipo AGESPORT — Mapa del Talento
+  </p>
+</body></html>`;
+    const text = `Hola ${recipient.nombre || ''},
+
+Hemos recibido una solicitud para restablecer tu contraseña.
+Pega este enlace en el navegador (caduca en ~${hours}h y es de un solo uso):
+${url}
+
+Si no fuiste tú, ignora este email — tu contraseña actual sigue siendo válida.
+
+Equipo AGESPORT`;
+
+    return this.sendEmail(recipient.email, subject, html, text);
+  }
+
   async testEmail(toEmail = null) {
     const testEmail = toEmail || 'test@agesport.org';
     const subject = 'Test - Configuración de Email AGESPORT';
-    
+
     const html = `
       <h2>Test de configuración de email</h2>
       <p>Si recibes este email, la configuración es correcta.</p>

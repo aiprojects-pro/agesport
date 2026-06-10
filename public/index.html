@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mapa del Talento AGESPORT</title>
   <meta name="description" content="Plataforma estratégica para identificar, conectar y activar el talento profesional del deporte en Andalucía.">
+
+  <!-- Open Graph / Twitter Card (B4 auditoría 10 jun): metadata para
+       que al compartir el enlace en redes / mensajería se genere una
+       vista previa con título, descripción e imagen. -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AGESPORT — Mapa del Talento">
+  <meta property="og:title" content="Mapa del Talento AGESPORT">
+  <meta property="og:description" content="Plataforma estratégica para identificar, conectar y activar el talento profesional del deporte en Andalucía.">
+  <meta property="og:image" content="/assets/agesport-logo.svg">
+  <meta property="og:locale" content="es_ES">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Mapa del Talento AGESPORT">
+  <meta name="twitter:description" content="Plataforma estratégica para identificar, conectar y activar el talento profesional del deporte en Andalucía.">
+  <meta name="twitter:image" content="/assets/agesport-logo.svg">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
@@ -548,22 +563,25 @@
               </div>
             </div>
 
+            <!-- Cuadricula de estado: descripciones funcionales (sin
+                 divulgar componentes concretos de infraestructura).
+                 Hallazgo MEDIA auditoría 10 jun. -->
             <div class="status-grid">
               <div class="status-box">
-                <strong data-cms="estado.box1.label">Dominio</strong>
-                <span data-cms="estado.box1.value">agesport.aiprojects.pro</span>
+                <strong data-cms="estado.box1.label">Acceso</strong>
+                <span data-cms="estado.box1.value">Entorno privado con cuenta de socio</span>
               </div>
               <div class="status-box">
-                <strong data-cms="estado.box2.label">HTTPS</strong>
-                <span data-cms="estado.box2.value">Let's Encrypt activo</span>
+                <strong data-cms="estado.box2.label">Conexión</strong>
+                <span data-cms="estado.box2.value">Cifrada extremo a extremo</span>
               </div>
               <div class="status-box">
-                <strong data-cms="estado.box3.label">Backend</strong>
-                <span data-cms="estado.box3.value">Node.js + PostgreSQL/PostGIS</span>
+                <strong data-cms="estado.box3.label">Datos</strong>
+                <span data-cms="estado.box3.value">Cifrado en reposo (AES-256) y en tránsito</span>
               </div>
               <div class="status-box">
-                <strong data-cms="estado.box4.label">Proxy</strong>
-                <span data-cms="estado.box4.value">Nginx con redirección a HTTPS</span>
+                <strong data-cms="estado.box4.label">Disponibilidad</strong>
+                <span data-cms="estado.box4.value">24/7 con monitorización continua</span>
               </div>
             </div>
 
