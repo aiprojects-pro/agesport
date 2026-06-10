@@ -12,19 +12,27 @@ spec:
     spec:
       backoffLimit: 1
       template:
+        metadata:
+          labels:
+            app: agesport-backup
         spec:
           restartPolicy: Never
           containers:
             - name: backup
               image: docker.io/postgis/postgis:15-3.4
-              command: ["/bin/sh", "-c"]
+              command: ["/bin/bash", "-lc"]
               args:
                 - |
-                  set -eu
+                  set -euo pipefail
                   TS=$(date -u +%Y%m%dT%H%M%SZ)
                   mkdir -p /backups
-                  pg_dump -h agesport-postgres -U "$DB_USER" "$DB_NAME" | gzip > "/backups/agesport-db-$TS.sql.gz"
-                  tar -czf "/backups/agesport-uploads-$TS.tar.gz" -C /uploads . || true
+                  DB_OUT="/backups/agesport-db-$TS.sql.gz"
+                  UPLOADS_OUT="/backups/agesport-uploads-$TS.tar.gz"
+                  echo "Creando backup BD: $DB_OUT"
+                  pg_dump -h agesport-postgres -U "$DB_USER" "$DB_NAME" | gzip > "$DB_OUT"
+                  test -s "$DB_OUT"
+                  echo "Creando backup uploads: $UPLOADS_OUT"
+                  tar -czf "$UPLOADS_OUT" -C /uploads . || true
                   ls -1t /backups/agesport-db-*.sql.gz | tail -n +31 | xargs -r rm -f
                   ls -1t /backups/agesport-uploads-*.tar.gz | tail -n +31 | xargs -r rm -f
                   ls -lh /backups | tail -20

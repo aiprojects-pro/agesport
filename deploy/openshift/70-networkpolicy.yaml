@@ -44,6 +44,9 @@ spec:
         - podSelector:
             matchLabels:
               app: agesport-db-init
+        - podSelector:
+            matchLabels:
+              app: agesport-backup
       ports:
         - port: 5432
           protocol: TCP
