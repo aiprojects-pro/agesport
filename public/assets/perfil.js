@@ -311,9 +311,17 @@
           visible_linkedin: $('visible_linkedin').checked
         })
       });
-      setMessage(profileMessage, true, 'Perfil actualizado correctamente.');
+      setMessage(profileMessage, true, '✓ Perfil actualizado correctamente.');
+      // Auditoría 19 jun #5: la usuaria reportaba que no aparecía
+      // mensaje de confirmación. El mensaje SÍ se pintaba pero
+      // quedaba fuera del viewport (debajo del botón). Forzamos
+      // scroll para que sea inmediatamente visible.
+      try { profileMessage.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      catch (_) { profileMessage.scrollIntoView(); }
     } catch (error) {
       setMessage(profileMessage, false, error.message);
+      try { profileMessage.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      catch (_) { profileMessage.scrollIntoView(); }
     } finally {
       saveBtn.disabled = false;
       saveBtn.textContent = 'Guardar cambios';
@@ -334,9 +342,11 @@
         })
       });
       passwordForm.reset();
-      setMessage(passwordMessage, true, 'Contraseña actualizada correctamente.');
+      setMessage(passwordMessage, true, '✓ Contraseña actualizada correctamente.');
+      try { passwordMessage.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
     } catch (error) {
       setMessage(passwordMessage, false, error.message);
+      try { passwordMessage.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
     } finally {
       passwordBtn.disabled = false;
       passwordBtn.textContent = 'Actualizar contraseña';

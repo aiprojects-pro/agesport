@@ -1,6 +1,6 @@
 // controllers/adminController.js
 const db = require('../config/database');
-const { auditAction, hashPassword } = require('../middleware/auth');
+const { auditAction, hashPassword, encryptData } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 const uploadService = require('../services/uploadService');
 const csv = require('../services/csv');
@@ -737,14 +737,17 @@ class AdminController {
   // =============================================================
 
   async descargarPlantillaCSV(req, res) {
+    // Cabecera con TODAS las columnas que el parser de import entiende.
+    // Antes faltaba `localidad`, que `aprobarAccesoInvitado` exige al
+    // crear el socio → el admin no podía aprobar nada importado.
     const header = [
       'nombre','apellidos','email','telefono','entidad','cargo_actual',
-      'provincia','comunidad_autonoma','rol_cluster','tipo_socio'
+      'provincia','comunidad_autonoma','localidad','rol_cluster','tipo_socio'
     ];
     const ejemplo = [
       'María','García López','maria.garcia@ejemplo.com','+34 600 000 000',
       'Club Deportivo Demo','Directora deportiva',
-      'Sevilla','andalucia','operador_deportivo','numero'
+      'Sevilla','andalucia','Sevilla','operador_deportivo','numero'
     ];
     const body = header.join(',') + '\n' + ejemplo.map(csv.escape).join(',') + '\n';
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -757,7 +760,14 @@ class AdminController {
       const adminId = req.adminId;
       if (!req.file) return res.status(400).json({ error: 'No se ha recibido ningún fichero' });
 
-      const buffer = req.file.buffer.toString('utf8');
+      // Strip BOM (﻿) si Excel lo añadió al guardar el CSV. Sin
+      // esto, la primera celda del header sería "﻿nombre" y todos
+      // los lookups por `r.nombre` fallarían silenciosamente — la
+      // usuaria reportaba "la plantilla descargada no se puede volver
+      // a subir, tiene roaming" (BOM).
+      let buffer = req.file.buffer.toString('utf8');
+      if (buffer.charCodeAt(0) === 0xFEFF) buffer = buffer.slice(1);
+
       const lines = buffer.split(/\r?\n/).filter(function (l) { return l.trim().length > 0; });
       if (lines.length < 2) return res.status(400).json({ error: 'El CSV está vacío' });
 
@@ -776,7 +786,11 @@ class AdminController {
         if (r.tipo_socio && !catalogos.isValidTipoSocio(r.tipo_socio)) errores.push('Tipo de socio no válido');
         const ccaa = r.comunidad_autonoma || (r.provincia ? (catalogos.findCcaaByProvincia(r.provincia) || {}).slug : null);
 
-        let estado = errores.length ? 'pendiente' : 'pendiente';
+        // Si la fila tiene errores de validación, queda en estado
+        // 'con_errores' (CHECK constraint extendido por migración 014).
+        // Antes "errores.length ? 'pendiente' : 'pendiente'" era una
+        // tautología y filas inválidas pasaban a aprobables.
+        let estado = errores.length ? 'con_errores' : 'pendiente';
         if (r.email) {
           const exists = await db.findOne('socios', { email: r.email });
           if (exists) { estado = 'duplicado'; errores.push('Email ya existente en socios'); }
@@ -787,11 +801,15 @@ class AdminController {
           nombre: r.nombre,
           apellidos: r.apellidos,
           email: r.email,
-          telefono: r.telefono,
+          // La columna `telefono` plano fue eliminada por la migración
+          // 004 — el INSERT antiguo fallaba con "column does not exist".
+          // Ahora ciframos al insertar (AES-256 via encryptData).
+          telefono_encrypted: r.telefono ? encryptData(r.telefono) : null,
           entidad: r.entidad,
           cargo_actual: r.cargo_actual,
           provincia: r.provincia,
           comunidad_autonoma: ccaa,
+          localidad: r.localidad,
           rol_cluster: r.rol_cluster,
           tipo_socio: r.tipo_socio || 'numero',
           estado: estado,
@@ -805,7 +823,7 @@ class AdminController {
       res.status(201).json({ message: 'CSV importado', lote_id: loteId, total: filas.length, filas: filas });
     } catch (error) {
       console.error('Error importando CSV:', error);
-      res.status(500).json({ error: 'Error importando CSV' });
+      res.status(500).json({ error: 'Error importando CSV: ' + error.message });
     }
   }
 

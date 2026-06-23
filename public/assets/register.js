@@ -114,6 +114,20 @@
   });
   applyTipo('numero');
 
+  // Muestra el mensaje y hace scroll para que sea visible.
+  // Antes la usuaria reportaba "el botón parpadea y no envía"
+  // porque el mensaje de error/éxito está DEBAJO del botón y queda
+  // fuera del viewport — el usuario no lo veía y creía que el form
+  // no respondía. Ahora siempre scroll al mensaje en submit.
+  function showAndScroll(ok, text) {
+    setMessage(message, ok, text);
+    try {
+      message.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (_) {
+      message.scrollIntoView();
+    }
+  }
+
   // ===== Envío del formulario =====
   form.addEventListener('submit', async function (event) {
     event.preventDefault();
@@ -121,6 +135,24 @@
     button.textContent = 'Enviando...';
 
     try {
+      // Validación pre-envío de los campos que CAMBIAN con el tipo de
+      // socio. HTML5 `required` no sirve aquí porque los campos están
+      // ocultos con display:none y el navegador o los exige aunque
+      // estén ocultos (silenciosamente) o los ignora — depende del
+      // engine. Lo gestionamos en JS para ser predecibles.
+      if (tipoSocio === 'asociado_corporativo') {
+        if (!$('persona_contacto').value.trim() || !$('persona_contacto_apellidos').value.trim()) {
+          throw new Error('Persona de contacto: nombre y apellidos son obligatorios');
+        }
+        if (!$('nombre_organizacion').value.trim()) {
+          throw new Error('Nombre de la organización es obligatorio');
+        }
+      } else {
+        if (!$('nombre').value.trim() || !$('apellidos').value.trim()) {
+          throw new Error('Nombre y apellidos son obligatorios');
+        }
+      }
+
       const especialidades = Array.from(espList.querySelectorAll('input[name=especialidad]:checked'))
         .map(function (cb) { return cb.value; });
       const rolElegido = (rolList.querySelector('input[name=rol_cluster]:checked') || {}).value || null;
@@ -172,9 +204,9 @@
       cat.fillProvincesSelect($('provincia'), { placeholder: 'Selecciona provincia' });
       Array.from(rolList.querySelectorAll('.rol-card')).forEach(function (c) { c.classList.remove('selected'); });
       Array.from(espList.querySelectorAll('.esp-row')).forEach(function (c) { c.classList.remove('selected'); });
-      setMessage(message, true, 'Solicitud enviada correctamente. El acceso quedará habilitado tras la revisión administrativa.');
+      showAndScroll(true, 'Solicitud enviada correctamente. El acceso quedará habilitado tras la revisión administrativa.');
     } catch (error) {
-      setMessage(message, false, error.message);
+      showAndScroll(false, error.message);
     } finally {
       button.disabled = false;
       button.textContent = 'Enviar solicitud';

@@ -92,42 +92,12 @@ const ROLES_CLUSTER = [
   }
 ];
 
+// Especialidades ORDENADAS ALFABÉTICAMENTE por `label` (auditoría 19 jun
+// mejora #10 — antes estaban en orden semi-arbitrario y costaba localizar
+// una concreta). Se ha añadido "Empleado público" (planificación,
+// programación, ejecución, control y evaluación en administración o
+// empresa pública).
 const ESPECIALIDADES = [
-  {
-    slug: 'gestion_instalaciones',
-    label: 'Gestión de instalaciones',
-    descripcion: 'Gestión, explotación, mantenimiento, reservas, eficiencia, accesibilidad u operación diaria de espacios deportivos.'
-  },
-  {
-    slug: 'organizacion_eventos',
-    label: 'Organización de eventos',
-    descripcion: 'Diseño, producción, coordinación o gestión de competiciones, torneos, carreras, congresos, campus o eventos deportivos.'
-  },
-  {
-    slug: 'derecho_deportivo',
-    label: 'Derecho deportivo',
-    descripcion: 'Asesoramiento jurídico especializado en deporte, contratos, normativa, federaciones, compliance, disciplina o responsabilidad.'
-  },
-  {
-    slug: 'contratacion_compras_patrimonio',
-    label: 'Contratación, compras y patrimonio',
-    descripcion: 'Licitaciones, compras públicas, concesiones, gestión patrimonial, contratación de servicios o adquisición de equipamiento.'
-  },
-  {
-    slug: 'marketing_comunicacion_patrocinio',
-    label: 'Marketing, comunicación y patrocinio',
-    descripcion: 'Branding, comunicación, contenidos, redes sociales, captación y activación de patrocinadores, medios o posicionamiento de marca.'
-  },
-  {
-    slug: 'digitalizacion_datos_ia',
-    label: 'Digitalización, datos e IA',
-    descripcion: 'Software, plataformas, automatización, inteligencia artificial, análisis de datos, sensores, CRM, ticketing o soluciones digitales.'
-  },
-  {
-    slug: 'recursos_humanos_talento',
-    label: 'Recursos humanos y talento',
-    descripcion: 'Selección, gestión de equipos, formación interna, liderazgo, cultura organizativa, desarrollo profesional o gestión del talento.'
-  },
   {
     slug: 'accesibilidad_inclusion_igualdad',
     label: 'Accesibilidad, inclusión e igualdad',
@@ -139,19 +109,29 @@ const ESPECIALIDADES = [
     descripcion: 'Promoción de la actividad física, salud comunitaria, ejercicio terapéutico, bienestar corporativo, prevención o hábitos saludables.'
   },
   {
-    slug: 'seguridad_riesgos_autoproteccion',
-    label: 'Seguridad, riesgos y autoprotección',
-    descripcion: 'Planes de seguridad, autoprotección, emergencias, prevención de riesgos, seguros, protección de menores o gestión de crisis.'
+    slug: 'contratacion_compras_patrimonio',
+    label: 'Contratación, compras y patrimonio',
+    descripcion: 'Licitaciones, compras públicas, concesiones, gestión patrimonial, contratación de servicios o adquisición de equipamiento.'
   },
   {
-    slug: 'formacion_investigacion',
-    label: 'Formación e investigación',
-    descripcion: 'Programas formativos, certificaciones, docencia, investigación aplicada, estudios, transferencia de conocimiento o divulgación.'
+    slug: 'derecho_deportivo',
+    label: 'Derecho deportivo',
+    descripcion: 'Asesoramiento jurídico especializado en deporte, contratos, normativa, federaciones, compliance, disciplina o responsabilidad.'
   },
   {
-    slug: 'turismo_activo_deportivo',
-    label: 'Turismo activo y deportivo',
-    descripcion: 'Turismo deportivo, experiencias outdoor, actividades en la naturaleza, destinos deportivos o propuestas turísticas vinculadas al deporte.'
+    slug: 'digitalizacion_datos_ia',
+    label: 'Digitalización, datos e IA',
+    descripcion: 'Software, plataformas, automatización, inteligencia artificial, análisis de datos, sensores, CRM, ticketing o soluciones digitales.'
+  },
+  {
+    slug: 'empleado_publico',
+    label: 'Empleado público',
+    descripcion: 'Planificación, programación, ejecución, control y evaluación de actividades en la administración pública o empresa pública del ámbito deportivo.'
+  },
+  {
+    slug: 'equipamiento_producto_retail',
+    label: 'Equipamiento, producto y retail deportivo',
+    descripcion: 'Material deportivo, textil, maquinaria, equipamiento técnico, distribución, venta, merchandising o soluciones físicas para la práctica deportiva.'
   },
   {
     slug: 'financiacion_subvenciones_inversion',
@@ -159,14 +139,44 @@ const ESPECIALIDADES = [
     descripcion: 'Ayudas públicas, fondos europeos, subvenciones, inversión, modelos de negocio, financiación de proyectos o captación de recursos.'
   },
   {
+    slug: 'formacion_investigacion',
+    label: 'Formación e investigación',
+    descripcion: 'Programas formativos, certificaciones, docencia, investigación aplicada, estudios, transferencia de conocimiento o divulgación.'
+  },
+  {
+    slug: 'gestion_instalaciones',
+    label: 'Gestión de instalaciones',
+    descripcion: 'Gestión, explotación, mantenimiento, reservas, eficiencia, accesibilidad u operación diaria de espacios deportivos.'
+  },
+  {
+    slug: 'marketing_comunicacion_patrocinio',
+    label: 'Marketing, comunicación y patrocinio',
+    descripcion: 'Branding, comunicación, contenidos, redes sociales, captación y activación de patrocinadores, medios o posicionamiento de marca.'
+  },
+  {
+    slug: 'organizacion_eventos',
+    label: 'Organización de eventos',
+    descripcion: 'Diseño, producción, coordinación o gestión de competiciones, torneos, carreras, congresos, campus o eventos deportivos.'
+  },
+  {
+    slug: 'recursos_humanos_talento',
+    label: 'Recursos humanos y talento',
+    descripcion: 'Selección, gestión de equipos, formación interna, liderazgo, cultura organizativa, desarrollo profesional o gestión del talento.'
+  },
+  {
+    slug: 'seguridad_riesgos_autoproteccion',
+    label: 'Seguridad, riesgos y autoprotección',
+    descripcion: 'Planes de seguridad, autoprotección, emergencias, prevención de riesgos, seguros, protección de menores o gestión de crisis.'
+  },
+  {
     slug: 'sostenibilidad_medio_ambiente',
     label: 'Sostenibilidad y medio ambiente',
     descripcion: 'Eficiencia energética, reducción de impacto ambiental, economía circular, eventos sostenibles, movilidad o gestión responsable de recursos.'
   },
   {
-    slug: 'equipamiento_producto_retail',
-    label: 'Equipamiento, producto y retail deportivo',
-    descripcion: 'Material deportivo, textil, maquinaria, equipamiento técnico, distribución, venta, merchandising o soluciones físicas para la práctica deportiva.'
+    slug: 'turismo_activo_deportivo',
+    label: 'Turismo activo y deportivo',
+    descripcion: 'Turismo deportivo, experiencias outdoor, actividades en la naturaleza, destinos deportivos o propuestas turísticas vinculadas al deporte.'
   }
 ];
 

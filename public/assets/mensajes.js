@@ -197,12 +197,39 @@
   receptorSearch.addEventListener('input', function () {
     const q = receptorSearch.value.trim().toLowerCase();
     if (!q) { receptorSuggestions.classList.remove('visible'); return; }
+
+    // Auditoría 19 jun #6: la usuaria reportaba que "no deja seleccionar
+    // destinatario aunque se introduzca una dirección". El input
+    // buscaba sólo por nombre/apellidos/entidad — escribir un email
+    // jamás coincidía y la sugerencia desaparecía sin explicación.
+    // Ahora buscamos también por email (cuando visible) y, si no hay
+    // resultados, mostramos un mensaje explicativo en vez de ocultar
+    // las sugerencias en silencio.
     const matches = allSocios.filter(function (s) {
       if (composeReceptors.some(function (r) { return String(r.id) === String(s.id); })) return false;
-      const txt = ((s.nombre || '') + ' ' + (s.apellidos || '') + ' ' + (s.entidad || '')).toLowerCase();
+      const txt = ((s.nombre || '') + ' ' + (s.apellidos || '') +
+                   ' ' + (s.entidad || '') + ' ' + (s.email || '') +
+                   ' ' + (s.provincia || '') + ' ' + (s.localidad || '')).toLowerCase();
       return txt.indexOf(q) !== -1;
     }).slice(0, 12);
-    if (!matches.length) { receptorSuggestions.classList.remove('visible'); return; }
+
+    if (!matches.length) {
+      if (allSocios.length === 0) {
+        receptorSuggestions.innerHTML =
+          '<div class="suggestion-item"><div class="muted">' +
+            'No hay otros socios disponibles para mensajería todavía.' +
+          '</div></div>';
+      } else {
+        receptorSuggestions.innerHTML =
+          '<div class="suggestion-item"><div class="muted">' +
+            'Ningún socio coincide con &laquo;' + escapeHtml(q) + '&raquo;.' +
+            ' Prueba con el nombre o la entidad. Recuerda que sólo aparecen' +
+            ' socios aprobados y con visibilidad activada.' +
+          '</div></div>';
+      }
+      receptorSuggestions.classList.add('visible');
+      return;
+    }
     receptorSuggestions.innerHTML = matches.map(function (s) {
       return '<div class="suggestion-item" data-id="' + s.id + '">' +
         '<div><strong>' + escapeHtml(s.nombre + ' ' + s.apellidos) + '</strong><div class="muted">' + escapeHtml(s.entidad || s.provincia || '') + '</div></div>' +

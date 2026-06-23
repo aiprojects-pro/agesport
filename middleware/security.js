@@ -34,15 +34,19 @@ const generalLimiter = rateLimit({
   }
 });
 
-// Rate limiting estricto para login.
-// Antes el cap era 20 por IP+email y un atacante podía rotar el `email`
-// para evadirlo completamente (credential stuffing). Ahora hay DOS caps
-// encadenados (ver routes/auth.js): este primero por IP+email, máximo
-// 5 intentos en 15 min, para frenar fuerza bruta contra una cuenta.
-// `skipSuccessfulRequests: true` para no contar logins correctos.
+// Rate limiting de login.
+// Equilibrio entre seguridad y usabilidad: subido el cap respecto al
+// fix anterior (5/15min era demasiado restrictivo para pruebas
+// legítimas — bloqueo nº 3 reportado el 19 jun).
+//   - Cap por IP+email: 10 intentos / 15 min — frena fuerza bruta
+//     contra una cuenta concreta sin molestar a usuarios despistados.
+//   - Cap por IP sola: 30 intentos / 15 min — sigue frenando credential
+//     stuffing (rotación de emails) sin molestar a NAT corporativos.
+// Ambos overridables vía env para tunear sin redeploy.
+// `skipSuccessfulRequests: true` → no cuenta logins exitosos.
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 5,
+  windowMs: 15 * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_AUTH_MAX || '10', 10),
   skipSuccessfulRequests: true,
   keyGenerator: (req) => {
     const email = (req.body && typeof req.body.email === 'string')
@@ -57,13 +61,9 @@ const authLimiter = rateLimit({
   legacyHeaders: false
 });
 
-// Limiter secundario por IP solo: cap el credential stuffing donde el
-// atacante prueba muchos emails distintos desde la misma IP. Tope: 20
-// intentos fallidos por IP en 15 min, suficientemente alto para no
-// molestar a usuarios legítimos en oficinas con NAT.
 const loginIpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_LOGIN_IP_MAX || '20', 10),
+  max: parseInt(process.env.RATE_LIMIT_LOGIN_IP_MAX || '30', 10),
   skipSuccessfulRequests: true,
   keyGenerator: (req) => ipKeyGenerator(req.ip),
   message: {

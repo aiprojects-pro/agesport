@@ -172,13 +172,18 @@
         <div class="field-full form-section" id="seccionFisica">
           <h3>Datos personales</h3>
         </div>
+        <!-- `required` quitado adrede: estos campos se ocultan con
+             display:none cuando el tipo de socio es corporativo, y
+             entonces el navegador refusa silenciosamente el submit
+             (depende del engine). La validación se hace en JS según
+             `tipoSocio` en register.js. -->
         <div class="field campo-fisica">
           <label for="nombre">Nombre</label>
-          <input id="nombre" required>
+          <input id="nombre">
         </div>
         <div class="field campo-fisica">
           <label for="apellidos">Apellidos</label>
-          <input id="apellidos" required>
+          <input id="apellidos">
         </div>
 
         <!-- ====== Bloque organización ====== -->
@@ -240,9 +245,15 @@
           <input id="web_profesional" placeholder="https://...">
         </div>
 
-        <!-- ====== Ubicación ====== -->
+        <!-- ====== Ubicación profesional ====== -->
         <div class="field-full form-section">
-          <h3>Ubicación</h3>
+          <h3>Ubicación profesional</h3>
+          <p class="muted" style="margin:0 0 12px;font-size:.92rem">
+            Indica la ubicación que se mostrará en el mapa interno de socios
+            como tu zona principal de actividad profesional. Se usa
+            únicamente para situarte en el mapa por <strong>municipio</strong>
+            — la dirección concreta no aparece, sólo la localidad.
+          </p>
         </div>
         <div class="field">
           <label for="comunidad_autonoma">Comunidad autónoma</label>
@@ -253,8 +264,8 @@
           <select id="provincia" required></select>
         </div>
         <div class="field-full">
-          <label for="localidad">Localidad</label>
-          <input id="localidad" required>
+          <label for="localidad">Localidad / municipio</label>
+          <input id="localidad" required placeholder="P. ej. Sevilla, Málaga centro, Sanlúcar la Mayor...">
         </div>
 
         <!-- ====== Rol en el clúster ====== -->
