@@ -3,9 +3,33 @@ const db = require('../config/database');
 const { auditAction, hashPassword, encryptData } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 const uploadService = require('../services/uploadService');
+const geocodingService = require('../services/geocodingService');
 const csv = require('../services/csv');
 const catalogos = require('../config/catalogos');
 const crypto = require('crypto');
+
+// Geocodifica en background el municipio de un socio recién creado o
+// aprobado si aún no tiene coordenadas. `setImmediate` para no
+// bloquear la respuesta HTTP: si Nominatim tarda, el admin ya recibió
+// su 200 y la fila se completa después.
+function geocodeSocioInBackground(socioId) {
+  setImmediate(async () => {
+    try {
+      const socio = await db.findOne('socios', { id: socioId });
+      if (!socio || socio.latitud != null || !socio.localidad || !socio.provincia) return;
+      const coords = await geocodingService.geocode(
+        `${socio.localidad}, ${socio.provincia}, España`
+      );
+      if (!coords) return;
+      await db.query(
+        'UPDATE socios SET latitud = $1, longitud = $2 WHERE id = $3',
+        [coords.lat, coords.lng, socioId]
+      );
+    } catch (e) {
+      console.warn('[geocode] background:', e.message);
+    }
+  });
+}
 
 class AdminController {
 
@@ -82,7 +106,11 @@ class AdminController {
       // Auditar aprobación
       await auditAction(socioId, req.adminId, 'APPROVE_SOCIO', 'socios', socio, { estado: 'aprobado', notas }, req);
 
-      res.json({ 
+      // Geocodificar el municipio en background para que aparezca en
+      // el mapa. No bloquea la respuesta al admin.
+      geocodeSocioInBackground(socioId);
+
+      res.json({
         message: `Socio ${socio.nombre} ${socio.apellidos} aprobado correctamente`,
         socio: {
           id: socioId,
@@ -760,8 +788,8 @@ class AdminController {
       const adminId = req.adminId;
       if (!req.file) return res.status(400).json({ error: 'No se ha recibido ningún fichero' });
 
-      // Strip BOM (﻿) si Excel lo añadió al guardar el CSV. Sin
-      // esto, la primera celda del header sería "﻿nombre" y todos
+      // Strip BOM si Excel lo añadió al guardar el CSV. Sin
+      // esto, la primera celda del header sería "nombre" y todos
       // los lookups por `r.nombre` fallarían silenciosamente — la
       // usuaria reportaba "la plantilla descargada no se puede volver
       // a subir, tiene roaming" (BOM).
@@ -898,6 +926,7 @@ class AdminController {
       } catch (e) { console.warn('Email invitación falló:', e.message); }
 
       await auditAction(null, adminId, 'APPROVE_INVITED', 'accesos_invitados', invitado, { socio_id: nuevoSocio.id }, req);
+      geocodeSocioInBackground(nuevoSocio.id);
       res.json({ message: 'Acceso aprobado y notificado', socio_id: nuevoSocio.id });
     } catch (error) {
       console.error('Error aprobando invitado:', error);

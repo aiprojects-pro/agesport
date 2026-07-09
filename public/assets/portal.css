@@ -14,16 +14,18 @@
   --lime: #a8cf2f;
   --lime-soft: #ecf7c7;
 
-  /* Roles del clúster — colores semánticos */
-  --rol-operador: #2f7d32;
-  --rol-infra: #0f895b;
-  --rol-servicios: #1c578d;
-  --rol-tech: #37964f;
-  --rol-industria: #c08a00;
-  --rol-salud: #b8326a;
-  --rol-formacion: #6a3aa0;
-  --rol-eventos: #d76a17;
-  --rol-admin: #0d355f;
+  /* Roles del clúster — paleta cualitativa con 9 hues distintos.
+     Debe mantenerse en sincronía con config/catalogos.js y
+     public/assets/catalogos.js. */
+  --rol-operador: #2E7D32;   /* verde bosque */
+  --rol-infra:    #546E7A;   /* slate azul-gris */
+  --rol-servicios:#1A4E7A;   /* navy profundo */
+  --rol-tech:     #00838F;   /* teal / cyan */
+  --rol-industria:#8D6E4A;   /* marrón bronce */
+  --rol-salud:    #C62828;   /* rojo intenso */
+  --rol-formacion:#6A1B9A;   /* púrpura */
+  --rol-eventos:  #E65100;   /* naranja fuerte */
+  --rol-admin:    #37474F;   /* grafito */
 
   /* Neutros */
   --bg: #eef3f7;
@@ -666,6 +668,60 @@ textarea:focus {
   cursor: pointer;
 }
 .btn-upload:hover { background: rgba(15,137,91,.18); }
+
+/* Icono cuadrado para el bloque de Currículum (misma paleta que el proyecto,
+   rima con .btn-upload y el resto de acentos verdes). */
+.cv-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: rgba(15,137,91,.1);
+  color: var(--green-deep);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(15,137,91,.18);
+}
+
+/* Panel agrupado de visibilidad en directorio (email + teléfono juntos).
+   Sin fondo/padding: los checkboxes van pegados al margen izquierdo, en línea
+   con el resto de labels del formulario. Cada opción en una única línea, una
+   sobre otra. */
+.visibility-panel {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  margin-top: 4px;
+}
+.visibility-panel > strong {
+  display: block;
+  font-size: .92rem;
+  color: var(--navy);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.visibility-panel label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .9rem;
+  font-weight: 500;
+  color: var(--navy-deep);
+  margin: 6px 0 0;
+  padding: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.visibility-panel input[type="checkbox"] {
+  width: auto;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  border-radius: 4px;
+  accent-color: var(--green-deep);
+  flex-shrink: 0;
+}
 
 /* ====================== Mapa region container */
 .map-card {

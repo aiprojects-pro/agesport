@@ -13,12 +13,10 @@
   const messageForm = $('messageForm');
   const messageText = $('messageText');
   const sendBtn = $('sendBtn');
-  const notifyEmail = $('notifyEmail');
   const messageStatus = $('messageStatus');
   const newMessageBtn = $('newMessageBtn');
   const composeCard = $('composeCard');
   const composeText = $('composeText');
-  const composeEmail = $('composeEmail');
   const composeSend = $('composeSend');
   const composeCancel = $('composeCancel');
   const composeMessage = $('composeMessage');
@@ -140,8 +138,7 @@
         method: 'POST',
         body: JSON.stringify({
           receptorId: current.otro_socio_id,
-          contenido: messageText.value.trim(),
-          notificarPorEmail: notifyEmail.checked
+          contenido: messageText.value.trim()
         })
       });
       messageText.value = '';
@@ -263,8 +260,7 @@
         method: 'POST',
         body: JSON.stringify({
           receptorIds: ids,
-          contenido: composeText.value.trim(),
-          notificarPorEmail: composeEmail.checked
+          contenido: composeText.value.trim()
         })
       });
       setMessage(composeMessage, true, 'Enviado a ' + res.enviados + ' de ' + res.total + ' destinatarios.');

@@ -138,22 +138,23 @@ class MensajeriaController {
       const { conversacionId } = req.params;
       const socioId = req.socioId;
 
-      // Verificar que el socio pertenece a esta conversación
+      // Verificar acceso: respondemos siempre 403 sin distinguir
+      // "no existe" vs "existe pero no participas" — así no filtramos
+      // un oráculo de existencia de conversationIds.
       const conversacion = await db.findOne('conversaciones', {
         id: conversacionId
       });
-
-      if (!conversacion) {
-        return res.status(404).json({ error: 'Conversación no encontrada' });
-      }
-
-      if (conversacion.socio_1_id !== socioId && conversacion.socio_2_id !== socioId) {
+      if (
+        !conversacion ||
+        (conversacion.socio_1_id !== socioId && conversacion.socio_2_id !== socioId)
+      ) {
         return res.status(403).json({ error: 'No tienes acceso a esta conversación' });
       }
 
-      // Obtener mensajes
+      // Obtener mensajes (filtrando los moderados; los "usuario dado de
+      // baja" sí se muestran, sólo se anonimiza el contenido).
       const mensajes = await db.query(`
-        SELECT m.id, m.contenido, m.emisor_id, m.receptor_id, m.leido, 
+        SELECT m.id, m.contenido, m.emisor_id, m.receptor_id, m.leido,
                m.created_at, m.reportado,
                e.nombre as emisor_nombre, e.apellidos as emisor_apellidos
         FROM mensajes m
@@ -161,7 +162,7 @@ class MensajeriaController {
         WHERE m.conversacion_id = $1
           AND m.contenido != $2
         ORDER BY m.created_at ASC
-      `, [conversacionId]);
+      `, [conversacionId, sentinels.MODERACION]);
 
       // Marcar mensajes como leídos
       await db.query(`
@@ -193,7 +194,7 @@ class MensajeriaController {
 
   async enviarMensajeMulti(req, res) {
     try {
-      const { receptorIds, contenido, notificarPorEmail } = req.body;
+      const { receptorIds, contenido } = req.body;
       const emisorId = req.socioId;
 
       if (!Array.isArray(receptorIds) || receptorIds.length === 0) {
@@ -212,7 +213,8 @@ class MensajeriaController {
       const resultados = [];
       for (const rid of uniqIds) {
         try {
-          const r = await this._sendOne(emisorId, emisor, rid, trimmed, !!notificarPorEmail);
+          // Notificación por email obligatoria (respeta el consent del receptor).
+          const r = await this._sendOne(emisorId, emisor, rid, trimmed, true);
           resultados.push({ id: rid, ok: r.ok, error: r.error });
         } catch (err) {
           console.error('Error multi-mensaje a ' + rid, err);
@@ -246,7 +248,7 @@ class MensajeriaController {
 
   async enviarMensaje(req, res) {
     try {
-      const { receptorId, contenido, notificarPorEmail } = req.body;
+      const { receptorId, contenido } = req.body;
       const emisorId = req.socioId;
 
       if (!receptorId || !contenido) {
@@ -257,8 +259,10 @@ class MensajeriaController {
       }
 
       const emisor = await db.findOne('socios', { id: emisorId });
-      const notify = notificarPorEmail === undefined ? true : !!notificarPorEmail;
-      const r = await this._sendOne(emisorId, emisor, receptorId, contenido.trim(), notify);
+      // La notificación por email es obligatoria — el destinatario puede
+      // no estar conectado a la plataforma. Sigue respetando el consentimiento
+      // acepta_notificaciones_email del receptor (RGPD).
+      const r = await this._sendOne(emisorId, emisor, receptorId, contenido.trim(), true);
       if (!r.ok) return res.status(r.code).json({ error: r.error });
 
       await auditAction(
@@ -379,7 +383,9 @@ class MensajeriaController {
         return res.status(400).json({ error: 'Motivo del reporte es requerido (mínimo 5 caracteres)' });
       }
 
-      // Verificar que el mensaje existe y el usuario puede reportarlo
+      // Respondemos 403 en cualquier caso de "no autorizado" — sin
+      // distinguir mensaje-no-existe vs mensaje-ajeno — para no filtrar
+      // un oráculo de IDs.
       const mensaje = await db.query(`
         SELECT m.*, c.socio_1_id, c.socio_2_id
         FROM mensajes m
@@ -387,14 +393,12 @@ class MensajeriaController {
         WHERE m.id = $1
       `, [mensajeId]);
 
-      if (mensaje.rows.length === 0) {
-        return res.status(404).json({ error: 'Mensaje no encontrado' });
-      }
-
       const msg = mensaje.rows[0];
-
-      // Solo puede reportar si participa en la conversación y no es el emisor
-      if ((msg.socio_1_id !== reporterId && msg.socio_2_id !== reporterId) || msg.emisor_id === reporterId) {
+      if (
+        !msg ||
+        (msg.socio_1_id !== reporterId && msg.socio_2_id !== reporterId) ||
+        msg.emisor_id === reporterId
+      ) {
         return res.status(403).json({ error: 'No puedes reportar este mensaje' });
       }
 

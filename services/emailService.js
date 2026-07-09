@@ -71,6 +71,14 @@ class EmailService {
       console.log('📧 Email enviado:', to, subject);
       return { success: true, messageId: result.messageId };
     } catch (error) {
+      // En dev sin SMTP real, el catch cae aquí (ECONNREFUSED / ESOCKET).
+      // Lo tratamos como "envío simulado" para que el flujo no se corte
+      // y quede trazable en logs.
+      const isUnreachable = ['ESOCKET', 'ECONNECTION', 'ECONNREFUSED', 'ETIMEDOUT'].includes(error.code);
+      if (isUnreachable) {
+        console.log('📧 SMTP no accesible — envío simulado:', { to, subject });
+        return { success: false, reason: 'smtp_unreachable', simulated: true };
+      }
       console.error('❌ Error enviando email:', error);
       return { success: false, error: error.message };
     }

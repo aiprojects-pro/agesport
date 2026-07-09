@@ -8,6 +8,59 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/portal.css">
+  <!-- Leaflet para el mapa de socios (intranet) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <style>
+    #mapContainer { height: 520px; width: 100%; }
+    .leaflet-attribution-flag { display: none !important; }
+    /* Etiqueta permanente junto a cada marker con el nombre del socio */
+    .leaflet-tooltip.socio-tooltip {
+      background: rgba(255,255,255,.95);
+      color: var(--navy-deep);
+      border: 1px solid rgba(13,53,95,.12);
+      border-radius: 8px;
+      padding: 3px 8px;
+      font-size: .78rem;
+      font-weight: 600;
+      box-shadow: 0 2px 6px rgba(13,53,95,.12);
+      white-space: nowrap;
+    }
+    .leaflet-tooltip.socio-tooltip::before { display: none; }
+    .socio-popup { font-size: .9rem; line-height: 1.4; }
+    .socio-popup strong { display:block; color: var(--navy); margin-bottom:2px; }
+    .socio-popup .muted { color: var(--muted); font-size: .85rem; }
+    .socio-popup .socio-popup-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .socio-popup .btn-sm {
+      padding: 6px 12px;
+      font-size: .82rem;
+      border-radius: 999px;
+      line-height: 1.1;
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    /* KPIs clicables */
+    #kpis .metric { cursor: pointer; transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease; }
+    #kpis .metric:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(13,53,95,.08); border-color: rgba(15,137,91,.35); }
+    #kpis .metric.selected { border-color: var(--green-deep); box-shadow: 0 8px 24px rgba(15,137,91,.18); }
+    /* Panel de detalle */
+    .kpi-detail { margin-top: 4px; }
+    .kpi-detail .kpi-detail-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .kpi-detail h3 { margin: 0; color: var(--navy-deep); }
+    .kpi-detail .close { background: transparent; border: 0; color: var(--muted); font-size: 1.4rem; line-height: 1; cursor: pointer; padding: 4px 8px; }
+    .kpi-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+    .kpi-item { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-soft); }
+    .kpi-item .name { display: block; font-weight: 700; color: var(--navy-deep); font-size: .95rem; }
+    .kpi-item .meta { display: block; color: var(--muted); font-size: .85rem; margin-top: 2px; }
+    .kpi-item a { display: inline-block; margin-top: 6px; font-size: .85rem; color: var(--green-deep); }
+    .kpi-empty { color: var(--muted); font-size: .92rem; }
+  </style>
 </head>
 <body>
   <header class="site-topbar">
@@ -54,22 +107,32 @@
 
       <!-- KPIs -->
       <section class="grid-4" id="kpis"></section>
+      <!-- Detalle del KPI seleccionado (lista de socios / provincias) -->
+      <section class="card kpi-detail" id="kpiDetail" hidden></section>
 
-      <!-- Mapa + observatorio -->
-      <section class="grid-2">
-        <article class="map-card" id="mapWrap">
-          <div style="padding:18px 20px;border-bottom:1px solid var(--line)">
+      <!-- Mapa (ancho completo, protagonista de la vista) -->
+      <article class="map-card" id="mapWrap">
+        <div style="padding:18px 20px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between">
+          <div>
             <h3 style="margin:0;color:var(--navy-deep)">Visor del talento</h3>
-            <p class="muted" style="margin:6px 0 0;font-size:.92rem">Clica sobre una provincia para filtrar el directorio.</p>
+            <p class="muted" style="margin:6px 0 0;font-size:.92rem">Cada punto representa un socio. Clica para ver su ficha.</p>
           </div>
-          <div id="mapContainer"></div>
-          <div class="map-legend" id="rolLegend"></div>
-        </article>
+          <div class="segmented" id="labelMode" role="tablist" aria-label="Etiqueta del marcador">
+            <button type="button" data-label="nombre" class="active">Ver por nombre</button>
+            <button type="button" data-label="rol">Ver por rol</button>
+          </div>
+        </div>
+        <div id="mapContainer"></div>
+        <div class="map-legend" id="rolLegend"></div>
+      </article>
 
+      <!-- Observatorio + mensajería debajo del mapa -->
+      <section class="grid-2">
         <article class="card">
           <h3>Observatorio</h3>
           <div id="observatorioSummary" class="muted">Cargando indicadores del observatorio.</div>
-          <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+        </article>
+        <article class="card">
           <h3>Mensajería</h3>
           <div id="mensajeriaSummary" class="muted">Cargando actividad de mensajería.</div>
         </article>
@@ -95,6 +158,7 @@
     </section>
   </main>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="/assets/catalogos.js"></script>
   <script src="/assets/portal.js"></script>
   <script src="/assets/panel.js"></script>

@@ -139,7 +139,7 @@
       <article class="hero-block">
         <div class="eyebrow">Mensajería interna</div>
         <h1>Conversaciones privadas</h1>
-        <p>Espacio de contacto entre socios. Puedes enviar mensajes individuales o a varios destinatarios a la vez, y opcionalmente notificarles también por email.</p>
+        <p>Espacio de contacto entre socios. Cada mensaje se entrega en la plataforma y también se envía una copia por email al destinatario para que no dependa de estar conectado.</p>
         <div class="toolbar" style="margin-top:16px">
           <div></div>
           <div class="actions">
@@ -165,10 +165,9 @@
           <textarea id="composeText" rows="4" placeholder="Escribe tu mensaje..."></textarea>
         </div>
 
-        <div class="checkbox-row" style="margin-top:10px">
-          <input id="composeEmail" type="checkbox" checked>
-          <label for="composeEmail">Enviar también por email a quienes lo tengan habilitado.</label>
-        </div>
+        <p class="muted" style="margin:10px 0 0;font-size:.82rem">
+          Cada destinatario recibirá el mensaje en la plataforma y una copia por email si tiene notificaciones activadas en su perfil.
+        </p>
 
         <div class="actions" style="margin-top:14px">
           <button class="btn btn-secondary" id="composeCancel" type="button">Cancelar</button>
@@ -205,10 +204,9 @@
                 <label for="messageText">Nuevo mensaje</label>
                 <textarea id="messageText" placeholder="Escribe tu mensaje"></textarea>
               </div>
-              <div class="checkbox-row" style="margin-top:8px">
-                <input id="notifyEmail" type="checkbox" checked>
-                <label for="notifyEmail">Notificar también por email.</label>
-              </div>
+              <p class="muted" style="margin:6px 0 0;font-size:.82rem">
+                El destinatario recibirá también una notificación por email si tiene las notificaciones activadas en su perfil.
+              </p>
               <div style="margin-top:12px">
                 <button class="btn btn-primary" id="sendBtn" type="submit">Enviar mensaje</button>
               </div>

@@ -50,7 +50,12 @@
         <p class="muted" style="margin-top:8px">Tu foto aparece en el directorio privado. El CV es opcional y solo visible para administración y para socios con quienes mantengas conversación.</p>
 
         <div class="photo-uploader" style="margin-top:18px">
-          <div class="avatar placeholder" id="avatarPreview"></div>
+          <div class="cv-icon" id="avatarPreview" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="8" r="4"/>
+              <path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>
+            </svg>
+          </div>
           <div class="meta">
             <strong>Foto de perfil</strong>
             <span>JPG, PNG o WEBP — máximo 3MB.</span>
@@ -60,8 +65,13 @@
         </div>
 
         <div class="photo-uploader" style="margin-top:12px">
-          <div class="avatar placeholder" style="background:linear-gradient(135deg,#1c578d,#0d355f) !important" id="cvIcon">
-            <span style="position:relative;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;width:100%;height:100%">CV</span>
+          <div class="cv-icon" id="cvIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5z"/>
+              <path d="M14 3v5h5"/>
+              <path d="M9 13h6"/>
+              <path d="M9 17h4"/>
+            </svg>
           </div>
           <div class="meta">
             <strong>Currículum (opcional)</strong>
@@ -116,10 +126,6 @@
           <div class="field">
             <label for="email">Email profesional</label>
             <input id="email" disabled>
-            <label style="display:flex;align-items:center;gap:6px;font-size:.85rem;font-weight:normal;margin-top:6px">
-              <input id="visible_email_directo" type="checkbox">
-              Mostrar este email en mi ficha del directorio
-            </label>
           </div>
           <div class="field">
             <label for="email_personal">Email personal (opcional)</label>
@@ -140,10 +146,15 @@
           <div class="field-full">
             <label for="telefono">Teléfono de contacto</label>
             <input id="telefono" placeholder="+34 600 00 00 00">
-            <label style="display:flex;align-items:center;gap:6px;font-size:.85rem;font-weight:normal;margin-top:6px">
-              <input id="visible_telefono" type="checkbox">
-              Mostrar este teléfono en mi ficha del directorio
-            </label>
+          </div>
+
+          <!-- Panel de visibilidad agrupado: ambas casillas juntas y alineadas. -->
+          <div class="field-full">
+            <div class="visibility-panel">
+              <strong>Visibilidad en el directorio</strong>
+              <label><input id="visible_email_directo" type="checkbox"> Mostrar este email en mi ficha del directorio</label>
+              <label><input id="visible_telefono" type="checkbox"> Mostrar este teléfono en mi ficha del directorio</label>
+            </div>
           </div>
 
           <div class="field">

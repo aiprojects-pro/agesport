@@ -35,59 +35,63 @@ const TIPOS_SOCIO = [
   }
 ];
 
+// Paleta cualitativa con 9 hues distintos (accesibles WCAG contra
+// fondo blanco, contraste ≥4.5:1). Antes había 3 verdes casi
+// idénticos (operador/infra/tecnológico) y 2 azules muy parecidos
+// (servicios/administración) — la usuaria pidió más diferenciación.
 const ROLES_CLUSTER = [
   {
     slug: 'operador_deportivo',
     label: 'Operador deportivo',
-    color: '#2f7d32',
+    color: '#2E7D32', // verde bosque — actividad "en pista"
     descripcion: 'Gestionas directamente actividad deportiva, programas, clubes, centros, academias, escuelas o servicios vinculados a la práctica deportiva.'
   },
   {
     slug: 'gestor_infraestructuras_instalaciones',
     label: 'Gestor de infraestructuras e instalaciones',
-    color: '#0f895b',
+    color: '#546E7A', // slate azul-grisáceo — edificios, obra
     descripcion: 'Participas en el diseño, construcción, mantenimiento, explotación o gestión de instalaciones y espacios deportivos.'
   },
   {
     slug: 'proveedor_servicios_profesionales',
     label: 'Proveedor de servicios profesionales',
-    color: '#1c578d',
+    color: '#1A4E7A', // navy profundo — consultoría sobria
     descripcion: 'Ofreces servicios especializados al sector deportivo: consultoría, asesoría legal, fiscal, laboral, seguros, comunicación, gestión o apoyo empresarial.'
   },
   {
     slug: 'proveedor_tecnologico_innovacion',
     label: 'Proveedor tecnológico e innovación',
-    color: '#37964f',
+    color: '#00838F', // teal/cyan — tech, innovación
     descripcion: 'Desarrollas o aplicas soluciones tecnológicas, digitales o innovadoras para mejorar la gestión, el rendimiento, la experiencia o los procesos del sector deportivo.'
   },
   {
     slug: 'industria_producto_equipamiento',
     label: 'Industria, producto y equipamiento',
-    color: '#c08a00',
+    color: '#8D6E4A', // marrón/bronce — industrial, material físico
     descripcion: 'Fabricas, distribuyes, comercializas o suministras productos, materiales, equipamiento, textil, maquinaria o soluciones físicas para el deporte.'
   },
   {
     slug: 'salud_rendimiento_bienestar',
     label: 'Salud, rendimiento y bienestar',
-    color: '#b8326a',
+    color: '#C62828', // rojo intenso — vitalidad, salud
     descripcion: 'Trabajas en áreas relacionadas con la salud, condición física, rendimiento, prevención, recuperación, entrenamiento o bienestar.'
   },
   {
     slug: 'formacion_talento_investigacion',
     label: 'Formación, talento e investigación',
-    color: '#6a3aa0',
+    color: '#6A1B9A', // púrpura — académico
     descripcion: 'Desarrollas actividades de formación, capacitación, investigación, transferencia de conocimiento, gestión del talento o desarrollo profesional.'
   },
   {
     slug: 'eventos_turismo_experiencias',
     label: 'Eventos, turismo y experiencias deportivas',
-    color: '#d76a17',
+    color: '#E65100', // naranja fuerte — energía, festivo
     descripcion: 'Organizas, promueves o gestionas eventos, competiciones, experiencias, actividades turísticas o propuestas vinculadas al deporte y al territorio.'
   },
   {
     slug: 'administracion_gobernanza_impacto',
     label: 'Administración, gobernanza e impacto',
-    color: '#0d355f',
+    color: '#37474F', // grafito — institucional
     descripcion: 'Representas a una administración, institución o entidad vinculada a políticas deportivas, planificación, financiación, inclusión, sostenibilidad o impacto territorial.'
   }
 ];

@@ -141,8 +141,58 @@ class SociosController {
     }
   }
 
+  // ==================== MAPA INTRANET ====================
+  // Devuelve un array de socios con coordenadas + identidad, filtrado
+  // por consentimientos. Solo socios autenticados; se sirve desde
+  // /api/socios/mapa. El viewer siempre puede verse a sí mismo aunque
+  // haya opt-out (coherente con getDirectorio).
+  async getMapaSocios(req, res) {
+    try {
+      const viewerId = req.socioId;
+      const result = await db.query(`
+        SELECT s.id, s.nombre, s.apellidos, s.entidad, s.provincia, s.localidad,
+               s.latitud, s.longitud,
+               rc.rol AS rol_cluster,
+               rc.b2b_ofrece, rc.b2b_busca, rc.b2b_licita,
+               d.nivel AS disponibilidad,
+               d.tutor_mentor
+        FROM socios s
+        LEFT JOIN rol_cluster rc ON rc.socio_id = s.id
+        LEFT JOIN disponibilidad d ON d.socio_id = s.id
+        JOIN consentimientos c ON c.socio_id = s.id
+        WHERE s.estado = 'aprobado'
+          AND s.activo = true
+          AND s.latitud IS NOT NULL
+          AND s.longitud IS NOT NULL
+          AND c.acepta_mapa_interactivo = true
+          AND (c.acepta_visibilidad_datos = true OR s.id = $1)
+      `, [viewerId]);
+      res.json({
+        socios: result.rows.map((r) => ({
+          id: r.id,
+          nombre: r.nombre,
+          apellidos: r.apellidos,
+          entidad: r.entidad,
+          provincia: r.provincia,
+          localidad: r.localidad,
+          rol_cluster: r.rol_cluster,
+          lat: Number(r.latitud),
+          lng: Number(r.longitud),
+          disponibilidad: r.disponibilidad || null,
+          tutor_mentor: !!r.tutor_mentor,
+          b2b_ofrece: !!r.b2b_ofrece,
+          b2b_busca: !!r.b2b_busca,
+          b2b_licita: !!r.b2b_licita,
+        })),
+      });
+    } catch (error) {
+      console.error('Error en mapa intranet:', error);
+      res.status(500).json({ error: 'Error obteniendo el mapa' });
+    }
+  }
+
   // ==================== PERFIL INDIVIDUAL ====================
-  
+
   async getPerfil(req, res) {
     try {
       const { socioId } = req.params;
@@ -267,18 +317,29 @@ class SociosController {
         if (email_preferido !== undefined) socioUpdate.email_preferido = email_preferido;
         if (nombre_organizacion !== undefined) socioUpdate.nombre_organizacion = nombre_organizacion;
 
-        // Regeocoding si cambió la dirección
-        if (direccion_completa && (direccion_completa !== datosAnteriores.direccion_completa)) {
+        // Geocoding por municipio.
+        // Cambiamos la precisión: en lugar de geocodificar la dirección
+        // exacta del socio (que sería PII innecesaria en el mapa),
+        // usamos `localidad + provincia, España` — precisión municipio.
+        // Esto encaja con lo prometido en el formulario de alta
+        // ("ubicación profesional a nivel de municipio").
+        // Se dispara si cambia localidad o provincia.
+        const nuevaLocalidad = localidad !== undefined ? localidad : datosAnteriores.localidad;
+        const nuevaProvincia = provincia !== undefined ? provincia : datosAnteriores.provincia;
+        const cambioUbicacion =
+          (localidad !== undefined && localidad !== datosAnteriores.localidad) ||
+          (provincia !== undefined && provincia !== datosAnteriores.provincia);
+        if (cambioUbicacion && nuevaLocalidad && nuevaProvincia) {
           try {
             const coords = await geocodingService.geocode(
-              `${direccion_completa}, ${localidad || datosAnteriores.localidad}, ${provincia || datosAnteriores.provincia}, España`
+              `${nuevaLocalidad}, ${nuevaProvincia}, España`
             );
             if (coords) {
               socioUpdate.latitud = coords.lat;
               socioUpdate.longitud = coords.lng;
             }
           } catch (geoError) {
-            console.warn('[geocode] updatePerfil: could not geocode address:', geoError.message);
+            console.warn('[geocode] updatePerfil: municipio no localizable:', geoError.message);
           }
         }
 

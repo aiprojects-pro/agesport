@@ -67,40 +67,47 @@
       color: var(--navy);
       font-size: 1.02rem;
     }
+    /* Rol clúster: mismo lenguaje visual que las especialidades — fila
+       compacta clicable con radio visible y swatch de color pequeño. */
     .rol-card {
-      display: flex;
+      display: grid;
+      grid-template-columns: 24px 12px 1fr;
       gap: 10px;
-      padding: 12px 14px;
+      padding: 10px 14px;
       border: 1px solid var(--line);
-      border-radius: 14px;
+      border-radius: 12px;
       background: #fff;
+      align-items: start;
       cursor: pointer;
       transition: all .15s;
     }
     .rol-card:hover { background: var(--bg-soft); }
-    .rol-card input[type=radio] { margin-top: 4px; }
+    .rol-card input[type=radio] {
+      margin: 3px 0 0;
+      accent-color: var(--rol-color, var(--navy));
+    }
     .rol-card.selected {
       border-color: var(--rol-color, var(--green));
       background: color-mix(in srgb, var(--rol-color, var(--green)) 6%, white);
     }
     .rol-card .swatch {
-      width: 14px;
-      height: 14px;
-      border-radius: 4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
       background: var(--rol-color, var(--navy));
-      flex-shrink: 0;
       margin-top: 4px;
     }
     .rol-card-body strong {
       display: block;
       color: var(--navy);
-      margin-bottom: 4px;
+      margin-bottom: 2px;
+      font-size: .95rem;
     }
     .rol-card-body span {
       display: block;
       color: var(--muted);
-      font-size: .88rem;
-      line-height: 1.5;
+      font-size: .86rem;
+      line-height: 1.45;
     }
     .rol-list, .esp-list {
       display: grid;

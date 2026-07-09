@@ -88,19 +88,22 @@ class AuthController {
       const dniEncrypted = dni_nie ? encryptData(dni_nie) : null;
       const telefonoEncrypted = telefono ? encryptData(telefono) : null;
 
-      // Geocodificar dirección
+      // Geocodificar por municipio (localidad + provincia). Antes se
+      // usaba `direccion_completa` — más preciso pero PII innecesaria
+      // en el mapa. Precisión municipio es coherente con lo prometido
+      // al usuario en el formulario de alta.
       let latitud = null, longitud = null;
-      if (direccion_completa && provincia && localidad) {
+      if (provincia && localidad) {
         try {
           const coords = await geocodingService.geocode(
-            `${direccion_completa}, ${localidad}, ${provincia}, España`
+            `${localidad}, ${provincia}, España`
           );
           if (coords) {
             latitud = coords.lat;
             longitud = coords.lng;
           }
         } catch (geoError) {
-          console.warn('[geocode] register: could not geocode address:', geoError.message);
+          console.warn('[geocode] register: municipio no localizable:', geoError.message);
         }
       }
 

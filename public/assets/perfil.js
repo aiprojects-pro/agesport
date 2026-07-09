@@ -164,8 +164,10 @@
 
     // Foto y CV
     if (socio.foto_url) {
-      avatarPreview.classList.remove('placeholder');
+      avatarPreview.innerHTML = '';
       avatarPreview.style.backgroundImage = 'url("' + socio.foto_url + '")';
+      avatarPreview.style.backgroundSize = 'cover';
+      avatarPreview.style.backgroundPosition = 'center';
     }
     if (socio.cv_url) {
       cvStatus.textContent = 'CV subido correctamente.';

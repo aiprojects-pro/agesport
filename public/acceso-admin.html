@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AGESPORT · Acceso administración</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/portal.css">
+</head>
+<body>
+  <header class="site-topbar">
+    <div class="shell inner">
+      <a class="site-brand" href="/">
+        <span class="site-brand-mark" aria-label="AGESPORT"></span>
+      </a>
+      <div class="topbar-actions">
+        <a class="btn btn-primary" href="/">Volver</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="page shell">
+    <section class="hero-grid">
+      <article class="hero-block">
+        <div class="eyebrow">Panel de gestión — Administración</div>
+        <h1>Acceso de administración</h1>
+        <p>Gestión de altas, seguimiento general y supervisión de la plataforma. Sólo personal autorizado.</p>
+        <div class="status-chip"><span class="status-dot"></span> Acceso restringido</div>
+      </article>
+      <article class="hero-block">
+        <h2>¿Eres socio?</h2>
+        <p>
+          Este acceso es exclusivo para el equipo administrativo. Si eres socio del clúster,
+          entra por la puerta de socio.
+        </p>
+        <p style="margin-top:8px">
+          <a class="btn btn-secondary" href="/acceso.html">Ir al acceso de socios</a>
+        </p>
+      </article>
+    </section>
+
+    <section style="margin-top:18px;max-width:560px">
+      <article class="form-card">
+        <h2>Acceso de administración</h2>
+        <p class="muted">Gestión de altas, seguimiento general y supervisión de la plataforma.</p>
+        <form id="adminForm" class="form-grid" style="margin-top:16px">
+          <div class="field-full">
+            <label for="adminEmail">Email</label>
+            <input id="adminEmail" type="email" required autocomplete="username">
+          </div>
+          <div class="field-full">
+            <label for="adminPassword">Contraseña</label>
+            <input id="adminPassword" type="password" required autocomplete="current-password">
+          </div>
+          <div class="field-full">
+            <button class="btn btn-primary" type="submit" id="adminBtn">Entrar a administración</button>
+          </div>
+          <div class="field-full" style="text-align:center">
+            <a href="#" id="forgotAdminLink" style="font-size:.9rem;color:var(--muted)">¿Has olvidado tu contraseña de administrador?</a>
+          </div>
+        </form>
+        <div id="adminMessage" class="message-box"></div>
+
+        <form id="forgotAdminForm" class="form-grid" style="margin-top:16px;display:none">
+          <h3 style="margin:0">Recuperar contraseña de administrador</h3>
+          <p class="muted" style="margin:4px 0 0">
+            Introduce tu email administrativo y te enviaremos un enlace para restablecerla.
+          </p>
+          <div class="field-full">
+            <label for="forgotAdminEmail">Email</label>
+            <input id="forgotAdminEmail" type="email" required autocomplete="username">
+          </div>
+          <div class="field-full" style="display:flex;gap:8px">
+            <button class="btn btn-primary" type="submit" id="forgotAdminBtn">Enviar enlace</button>
+            <button class="btn btn-secondary" type="button" id="forgotAdminCancel">Cancelar</button>
+          </div>
+        </form>
+        <div id="forgotAdminMessage" class="message-box"></div>
+      </article>
+    </section>
+  </main>
+
+  <script src="/assets/portal.js"></script>
+  <script src="/assets/access-admin.js"></script>
+</body>
+</html>

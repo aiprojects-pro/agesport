@@ -16,10 +16,18 @@ const wrapMulter = (uploader) => (req, res, next) => {
 };
 
 // ==================== DIRECTORIO PÚBLICO (solo socios autenticados) ====================
-router.get('/directorio', 
+router.get('/directorio',
   authenticateSocio,
   withAudit('VIEW_DIRECTORY', 'socios'),
   sociosController.getDirectorio
+);
+
+// Mapa intranet: cada punto lleva id, nombre, apellidos, entidad,
+// rol_cluster, provincia y localidad. Sólo visible con sesión socio,
+// y filtrado a los que consintieron mapa + visibilidad de datos.
+router.get('/mapa',
+  authenticateSocio,
+  sociosController.getMapaSocios
 );
 
 // ==================== PERFIL INDIVIDUAL ====================

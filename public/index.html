@@ -178,17 +178,18 @@
 
     .hero-points {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-      margin: 28px 0 0;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 20px;
+      margin: 32px 0 0;
     }
 
     .point {
-      padding: 16px 18px;
-      background: rgba(255,255,255,.72);
-      border: 1px solid rgba(13, 53, 95, 0.08);
-      border-radius: 18px;
-      box-shadow: 0 10px 30px rgba(13,53,95,.06);
+      padding: 14px 0 0;
+      background: transparent;
+      border: 0;
+      border-top: 1px solid rgba(13, 53, 95, 0.12);
+      border-radius: 0;
+      box-shadow: none;
       color: var(--navy-deep);
       font-weight: 700;
     }
@@ -196,8 +197,9 @@
       display: block;
       margin-top: 6px;
       color: var(--muted);
-      font-size: .95rem;
+      font-size: .9rem;
       font-weight: 500;
+      line-height: 1.4;
     }
 
     .hero-visual { position: relative; min-height: 480px; }
@@ -359,6 +361,54 @@
     }
     .login-panel .btn-secondary:hover { background: rgba(255,255,255,.22); }
 
+    /* Panel de accesos minimalista (reemplaza el status-panel oscuro) */
+    .access-panel { margin-top: 4px; }
+    .access-head h2 {
+      font-family: 'Fraunces', serif;
+      color: var(--navy-deep);
+      font-size: 1.6rem;
+      margin: 0 0 4px;
+    }
+    .access-head p { margin: 0 0 20px; font-size: .98rem; }
+    .access-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .access-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 20px 20px 22px;
+      border-radius: 16px;
+      background: white;
+      border: 1px solid rgba(13, 53, 95, 0.1);
+      color: var(--navy-deep);
+      text-decoration: none;
+      transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+    }
+    .access-card:hover {
+      border-color: rgba(15,137,91,.55);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(13,53,95,.08);
+    }
+    .access-card strong { font-size: 1rem; font-weight: 700; }
+    .access-card span { color: var(--muted); font-size: .88rem; line-height: 1.45; }
+    .access-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: rgba(15,137,91,.1);
+      color: var(--green-deep);
+      margin-bottom: 4px;
+    }
+    @media (max-width: 720px) {
+      .access-grid { grid-template-columns: 1fr; }
+    }
+
     .footer { padding: 24px 0 50px; color: var(--muted); font-size: .95rem; }
     .footer-inner {
       display: flex;
@@ -373,8 +423,12 @@
       .navlinks { display: none; }
       .hero-grid, .split, .cards-3, .cards-4 { grid-template-columns: 1fr; }
       .hero-visual { min-height: auto; }
-      .hero-points, .status-grid, .hero-meta { grid-template-columns: 1fr; }
+      .hero-points { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .status-grid, .hero-meta { grid-template-columns: 1fr; }
       .section-head, .footer-inner { flex-direction: column; align-items: start; }
+    }
+    @media (max-width: 560px) {
+      .hero-points { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 720px) {
@@ -386,6 +440,7 @@
     }
   </style>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <style>.leaflet-attribution-flag{display:none!important}</style>
 </head>
 <body>
   <header class="topbar">
@@ -401,7 +456,7 @@
       </nav>
       <div class="button-row">
         <a class="btn btn-ghost" href="/acceso.html" data-cms="topbar.cta1.label">Acceso socio</a>
-        <a class="btn btn-navy" href="/acceso.html#admin" data-cms="topbar.cta2.label">Acceso administración</a>
+        <a class="btn btn-navy" href="/acceso-admin.html" data-cms="topbar.cta2.label">Acceso administración</a>
       </div>
     </div>
   </header>
@@ -552,50 +607,39 @@
             </div>
           </div>
         </div>
+      </div>
+    </section>
 
-        <div id="estado">
-          <div class="status-panel">
-            <div class="status-line">
-              <span class="pulse" aria-hidden="true"></span>
-              <div>
-                <strong data-cms="estado.titulo">Plataforma disponible</strong><br>
-                <span style="color:rgba(255,255,255,.72)" data-cms="estado.subtitulo">Entorno privado accesible con conexión segura</span>
-              </div>
-            </div>
-
-            <!-- Cuadricula de estado: descripciones funcionales (sin
-                 divulgar componentes concretos de infraestructura).
-                 Hallazgo MEDIA auditoría 10 jun. -->
-            <div class="status-grid">
-              <div class="status-box">
-                <strong data-cms="estado.box1.label">Acceso</strong>
-                <span data-cms="estado.box1.value">Entorno privado con cuenta de socio</span>
-              </div>
-              <div class="status-box">
-                <strong data-cms="estado.box2.label">Conexión</strong>
-                <span data-cms="estado.box2.value">Cifrada extremo a extremo</span>
-              </div>
-              <div class="status-box">
-                <strong data-cms="estado.box3.label">Datos</strong>
-                <span data-cms="estado.box3.value">Cifrado en reposo (AES-256) y en tránsito</span>
-              </div>
-              <div class="status-box">
-                <strong data-cms="estado.box4.label">Disponibilidad</strong>
-                <span data-cms="estado.box4.value">24/7 con monitorización continua</span>
-              </div>
-            </div>
-
-            <div class="login-panel" id="acceso">
-              <h3 data-cms="acceso.h3">Acceso al entorno privado</h3>
-              <p data-cms="acceso.lead">Una vez dentro, accede al directorio del socio, al observatorio del talento, al visor gráfico y a la mensajería privada con el resto del clúster.</p>
-              <div class="button-row" style="margin-top: 14px">
-                <a class="btn btn-primary" href="/acceso.html" data-cms="acceso.cta1.label">Acceso socio</a>
-                <a class="btn btn-secondary" href="/registro.html" data-cms="acceso.cta2.label">Solicitar acceso</a>
-              </div>
-              <div class="button-row" style="margin-top: 10px">
-                <a class="btn btn-navy" href="/acceso.html#admin" style="width:100%" data-cms="acceso.cta3.label">Acceso administración</a>
-              </div>
-            </div>
+    <!-- Apartado propio para los accesos: ancho completo, minimalista. -->
+    <section class="block" style="padding-top:0">
+      <div class="shell">
+        <div id="acceso" class="access-panel">
+          <div class="access-head">
+            <h2 data-cms="acceso.h3">Accede a la plataforma</h2>
+            <p class="muted" data-cms="acceso.lead">Elige tu vía de entrada. Los accesos de socio y administración son independientes.</p>
+          </div>
+          <div class="access-grid">
+            <a class="access-card" href="/acceso.html">
+              <span class="access-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+              </span>
+              <strong data-cms="acceso.cta1.label">Acceso socio</strong>
+              <span>Entra a tu área privada, directorio y mensajería.</span>
+            </a>
+            <a class="access-card" href="/acceso-admin.html">
+              <span class="access-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>
+              </span>
+              <strong data-cms="acceso.cta3.label">Acceso administración</strong>
+              <span>Panel de gestión, aprobaciones y contenidos.</span>
+            </a>
+            <a class="access-card" href="/registro.html">
+              <span class="access-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              </span>
+              <strong data-cms="acceso.cta2.label">Solicitar acceso</strong>
+              <span>¿Aún no eres socio? Envía tu solicitud de alta.</span>
+            </a>
           </div>
         </div>
       </div>
@@ -610,6 +654,7 @@
   </footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="/assets/catalogos.js"></script>
   <script src="/assets/landing.js"></script>
 </body>
 </html>
