@@ -124,7 +124,7 @@
   function fillForm(socio) {
     ['nombre', 'apellidos', 'email', 'email_personal', 'telefono', 'entidad', 'cargo_actual',
      'anos_experiencia', 'localidad', 'linkedin_url', 'web_profesional', 'direccion_completa',
-     'nombre_organizacion', 'ambito'].forEach(function (id) {
+     'nombre_organizacion', 'ambito', 'sexo'].forEach(function (id) {
       const el = $(id);
       if (el) el.value = socio[id] || '';
     });
@@ -176,10 +176,14 @@
       cvDeleteBtn.style.display = '';
     }
 
-    ['acepta_mensajeria','acepta_notificaciones_email','visible_telefono','visible_email_directo','visible_web_profesional','visible_linkedin'].forEach(function (key) {
+    ['acepta_mensajeria','acepta_notificaciones_email','visible_telefono','visible_email_directo','visible_web_profesional','visible_linkedin',
+     'tutor_mentor','ponente','asistente','representacion','captacion_patrocinio','congreso_almeria'].forEach(function (key) {
       const el = $(key);
       if (el) el.checked = !!socio[key];
     });
+    // Nivel de disponibilidad (enum): sirve para el KPI "Mentores disponibles"
+    const dispSel = $('disponibilidad');
+    if (dispSel) dispSel.value = socio.disponibilidad || '';
   }
 
   function lockForOtherProfile() {
@@ -310,7 +314,16 @@
           visible_telefono: $('visible_telefono').checked,
           visible_email_directo: $('visible_email_directo').checked,
           visible_web_profesional: $('visible_web_profesional').checked,
-          visible_linkedin: $('visible_linkedin').checked
+          visible_linkedin: $('visible_linkedin').checked,
+          // Disponibilidad y colaboración (mentor, ponente, etc.)
+          sexo: $('sexo').value || null,
+          disponibilidad: $('disponibilidad').value || null,
+          tutor_mentor: $('tutor_mentor').checked,
+          ponente: $('ponente').checked,
+          asistente: $('asistente').checked,
+          representacion: $('representacion').checked,
+          captacion_patrocinio: $('captacion_patrocinio').checked,
+          congreso_almeria: $('congreso_almeria').checked
         })
       });
       setMessage(profileMessage, true, '✓ Perfil actualizado correctamente.');

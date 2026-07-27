@@ -170,6 +170,17 @@
             <label for="anos_experiencia">Años de experiencia</label>
             <input id="anos_experiencia" type="number" min="0" max="50">
           </div>
+          <div class="field">
+            <label for="sexo">Sexo (opcional)</label>
+            <select id="sexo">
+              <option value="">Prefiero no decirlo</option>
+              <option value="femenino">Femenino</option>
+              <option value="masculino">Masculino</option>
+            </select>
+            <span class="muted" style="font-size:.8rem;display:block;margin-top:4px">
+              Sólo se usa para estadísticas agregadas (nunca en tu ficha pública).
+            </span>
+          </div>
 
           <div class="field">
             <label for="comunidad_autonoma">Comunidad autónoma</label>
@@ -217,6 +228,53 @@
           <div class="field-full">
             <label for="direccion_completa">Dirección profesional (opcional, no se muestra públicamente)</label>
             <input id="direccion_completa">
+          </div>
+
+          <!-- ====== Disponibilidad y colaboración ======
+               Marca cómo puedes contribuir a la comunidad AGESPORT:
+               mentorías a jóvenes gestores, ponencias, asistencia a
+               eventos, representación institucional, etc. -->
+          <div class="field-full form-section">
+            <h3 style="margin:8px 0 4px;color:var(--navy)">Disponibilidad y colaboración</h3>
+            <p class="muted" style="margin:0 0 8px;font-size:.88rem">
+              Indica cómo puedes participar en la comunidad. Los perfiles con disponibilidad
+              activa aparecen destacados en el KPI de mentores del panel de socios.
+            </p>
+          </div>
+
+          <div class="field-full">
+            <label for="disponibilidad">Nivel de disponibilidad</label>
+            <select id="disponibilidad">
+              <option value="">No disponible por ahora</option>
+              <option value="Alta">Alta — disponibilidad continua</option>
+              <option value="Media">Media — disponibilidad ocasional</option>
+              <option value="Puntual">Puntual — casos concretos</option>
+            </select>
+          </div>
+
+          <div class="field-full checkbox-row">
+            <input id="tutor_mentor" type="checkbox">
+            <label for="tutor_mentor">Me ofrezco como <strong>mentor/a</strong> para jóvenes gestores deportivos (aunque esté jubilado/a o poco vinculado/a a la actividad).</label>
+          </div>
+          <div class="field-full checkbox-row">
+            <input id="ponente" type="checkbox">
+            <label for="ponente">Estoy disponible como <strong>ponente</strong> en jornadas, congresos y formaciones del clúster.</label>
+          </div>
+          <div class="field-full checkbox-row">
+            <input id="asistente" type="checkbox">
+            <label for="asistente">Me interesa asistir a eventos y actividades del clúster.</label>
+          </div>
+          <div class="field-full checkbox-row">
+            <input id="representacion" type="checkbox">
+            <label for="representacion">Disponible para tareas de representación institucional en nombre de AGESPORT.</label>
+          </div>
+          <div class="field-full checkbox-row">
+            <input id="captacion_patrocinio" type="checkbox">
+            <label for="captacion_patrocinio">Puedo colaborar en captación de patrocinios y relaciones con empresas.</label>
+          </div>
+          <div class="field-full checkbox-row">
+            <input id="congreso_almeria" type="checkbox">
+            <label for="congreso_almeria">Interesado/a en el Congreso Nacional AGESPORT.</label>
           </div>
 
           <div class="field-full">
@@ -287,5 +345,6 @@
   <script src="/assets/catalogos.js"></script>
   <script src="/assets/portal.js"></script>
   <script src="/assets/perfil.js"></script>
+  <script src="/assets/password-toggle.js" defer></script>
 </body>
 </html>

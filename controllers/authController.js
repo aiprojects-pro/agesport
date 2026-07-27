@@ -593,9 +593,13 @@ class AuthController {
       if (!token || typeof token !== 'string' || token.length < 32) {
         return res.status(400).json({ error: 'Token inválido' });
       }
-      if (!newPassword || newPassword.length < 8) {
+      // Mismo criterio que el registro: mín. 8 chars, 1 mayúscula, 1
+      // minúscula y 1 número. Antes sólo se exigían 8 chars y se podían
+      // fijar contraseñas triviales que confundían al usuario al volver.
+      const strong = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
+      if (!newPassword || !strong.test(newPassword)) {
         return res.status(400).json({
-          error: 'La nueva contraseña debe tener al menos 8 caracteres',
+          error: 'La nueva contraseña debe tener mínimo 8 caracteres, 1 mayúscula, 1 minúscula y 1 número.',
         });
       }
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
@@ -685,9 +689,10 @@ class AuthController {
       if (!token || typeof token !== 'string' || token.length < 32) {
         return res.status(400).json({ error: 'Token inválido' });
       }
-      if (!newPassword || newPassword.length < 8) {
+      const strong = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
+      if (!newPassword || !strong.test(newPassword)) {
         return res.status(400).json({
-          error: 'La nueva contraseña debe tener al menos 8 caracteres',
+          error: 'La nueva contraseña debe tener mínimo 8 caracteres, 1 mayúscula, 1 minúscula y 1 número.',
         });
       }
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex');

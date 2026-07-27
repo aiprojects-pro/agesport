@@ -40,6 +40,7 @@
     if (which === 'pendientes' && !window._pendLoaded) loadPendientes();
     if (which === 'accesos' && !window._accLoaded) loadAccesos();
     if (which === 'bajas' && !window._bajasLoaded) loadBajas();
+    if (which === 'correo' && !window._smtpLoaded) loadSmtpConfig();
   });
 
   document.getElementById('refreshBtn').addEventListener('click', function () {
@@ -534,13 +535,16 @@
 
     const dup = filas.filter(function (f) { return f.estado === 'duplicado'; }).length;
     $('csvStats').textContent = filas.length + ' filas · ' + dup + ' duplicados detectados';
-
-    $('csvSelectAll').addEventListener('change', function () {
-      Array.from(document.querySelectorAll('.csv-check:not(:disabled)')).forEach(function (cb) {
-        cb.checked = $('csvSelectAll').checked;
-      });
-    });
   }
+
+  // Listener "seleccionar todo" — se registra UNA sola vez al cargar la
+  // página (antes se re-registraba con cada preview y acumulaba handlers
+  // fantasma que confundían el estado).
+  $('csvSelectAll').addEventListener('change', function () {
+    Array.from(document.querySelectorAll('.csv-check:not(:disabled)')).forEach(function (cb) {
+      cb.checked = $('csvSelectAll').checked;
+    });
+  });
 
   $('approveInvitedBtn').addEventListener('click', async function () {
     const ids = Array.from(document.querySelectorAll('.csv-check:checked')).map(function (cb) { return cb.dataset.id; });
@@ -556,6 +560,83 @@
     // Tras aprobar, refrescamos accesos
     window._accLoaded = false;
   });
+
+  // =============================================================
+  // ==================== CORREO SALIENTE (SMTP) =================
+  // =============================================================
+  async function loadSmtpConfig() {
+    try {
+      const data = await request('/api/admin/config/smtp', { method: 'GET', headers: {} });
+      const cfg = data.config || {};
+      $('smtp_host').value      = cfg.host || '';
+      $('smtp_port').value      = cfg.port || 587;
+      $('smtp_secure').checked  = !!cfg.secure;
+      $('smtp_user').value      = cfg.user || '';
+      $('smtp_from_name').value = cfg.fromName || 'AGESPORT · Mapa del Talento';
+      $('smtp_from_email').value = cfg.fromEmail || '';
+      $('smtp_reply_to').value  = cfg.replyTo || '';
+      $('smtp_pass').placeholder = cfg.passwordSet
+        ? '••••••••  (deja en blanco para no cambiarla)'
+        : 'Contraseña / App password';
+      window._smtpLoaded = true;
+    } catch (err) {
+      setMessage($('smtpMessage'), false, err.message);
+    }
+  }
+
+  function readSmtpForm() {
+    return {
+      host: $('smtp_host').value.trim(),
+      port: parseInt($('smtp_port').value) || 587,
+      secure: $('smtp_secure').checked,
+      user: $('smtp_user').value.trim(),
+      pass: $('smtp_pass').value,
+      fromName: $('smtp_from_name').value.trim(),
+      fromEmail: $('smtp_from_email').value.trim(),
+      replyTo: $('smtp_reply_to').value.trim() || null,
+    };
+  }
+
+  const smtpForm = $('smtpForm');
+  if (smtpForm) {
+    smtpForm.addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      const btn = $('smtpSaveBtn');
+      btn.disabled = true; btn.textContent = 'Guardando...';
+      try {
+        const body = readSmtpForm();
+        const data = await request('/api/admin/config/smtp', {
+          method: 'POST', body: JSON.stringify(body),
+        });
+        setMessage($('smtpMessage'), true, data.message);
+        $('smtp_pass').value = '';
+        window._smtpLoaded = false;
+        loadSmtpConfig();
+      } catch (err) {
+        setMessage($('smtpMessage'), false, err.message);
+      } finally {
+        btn.disabled = false; btn.textContent = 'Guardar configuración';
+      }
+    });
+
+    $('smtpTestBtn').addEventListener('click', async function () {
+      const to = $('smtp_test_email').value.trim();
+      if (!to) { setMessage($('smtpMessage'), false, 'Indica el email destinatario de la prueba.'); return; }
+      const btn = $('smtpTestBtn');
+      btn.disabled = true; btn.textContent = 'Enviando prueba...';
+      try {
+        const body = Object.assign(readSmtpForm(), { to });
+        const data = await request('/api/admin/config/smtp/test', {
+          method: 'POST', body: JSON.stringify(body),
+        });
+        setMessage($('smtpMessage'), true, data.message);
+      } catch (err) {
+        setMessage($('smtpMessage'), false, err.message);
+      } finally {
+        btn.disabled = false; btn.textContent = 'Enviar email de prueba';
+      }
+    });
+  }
 
   // =============================================================
   requireSession('admin').then(function (session) {

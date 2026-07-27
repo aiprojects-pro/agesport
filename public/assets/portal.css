@@ -967,3 +967,27 @@ textarea:focus {
   color: #3e8e5a;
   text-decoration: underline;
 }
+
+/* Toggle "ver/ocultar contraseña" — se auto-inyecta desde
+   password-toggle.js. El wrapper hace de contenedor relative para posar
+   el botón sobre el borde derecho del input. */
+.pw-wrapper { position: relative; display: block; }
+.pw-wrapper input { padding-right: 44px; }
+.pw-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  padding: 6px;
+  color: var(--muted, #64748b);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background .12s ease, color .12s ease;
+}
+.pw-toggle:hover { background: rgba(15,137,91,.1); color: var(--green-deep, #0f895b); }
+.pw-toggle:focus-visible { outline: 2px solid rgba(168,207,47,.55); outline-offset: 2px; }

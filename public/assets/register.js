@@ -181,8 +181,6 @@
         telefono: $('telefono').value.trim() || null,
         password: $('password').value,
         entidad: $('entidad').value.trim() || ($('nombre_organizacion') ? $('nombre_organizacion').value.trim() : null),
-        cargo_actual: $('cargo_actual').value.trim(),
-        anos_experiencia: Number($('anos_experiencia').value || 0),
         web_profesional: $('web_profesional').value.trim() || null,
         comunidad_autonoma: ccaaSelect.value || null,
         provincia: $('provincia').value,
@@ -193,6 +191,12 @@
         acepta_visibilidad_datos: $('acepta_visibilidad_datos').checked,
         acepta_mensajeria: $('acepta_mensajeria').checked
       });
+
+      // Cargo actual y años de experiencia sólo aplican a personas físicas
+      if (tipoSocio !== 'asociado_corporativo') {
+        payload.cargo_actual = $('cargo_actual').value.trim();
+        payload.anos_experiencia = Number($('anos_experiencia').value || 0);
+      }
 
       await request('/api/auth/register', {
         method: 'POST',

@@ -98,6 +98,102 @@ pm2 reload ecosystem.config.js --env production
 
 Las migraciones son idempotentes: no dupliquen datos si se re-ejecutan.
 
+## Novedades v10 (sprint de bugs + rediseño landing)
+
+Todos los siguientes cambios ya vienen incluidos en este paquete y son
+compatibles con la BD existente en producción (basta con `npm run db:migrate`
+para aplicar la migración 015 que añade la columna `socios.sexo`).
+
+**Bugs corregidos**
+- Registro como persona jurídica (`asociado_corporativo`): el validador ya no
+  exige `cargo_actual` / `anos_experiencia` para cuentas corporativas y sí
+  exige `nombre_organizacion`.
+- Descarga CSV de socios: dos fallos (columna `telefono` inexistente y shadow
+  del módulo `csv`); ahora funciona y el teléfono cifrado se descifra para el
+  admin.
+- Importación CSV: listener duplicado del "seleccionar todo" que se
+  acumulaba con cada preview.
+- Reset de contraseña: si un admin lo hacía, la app le mandaba a
+  `/acceso.html` (login socio); ahora respeta `?type=admin` y va a
+  `/acceso-admin.html`.
+- Reset de contraseña: mismo criterio de validación que en el registro
+  (min. 8, 1 mayúscula, 1 minúscula, 1 número) — antes aceptaba passwords
+  triviales.
+- Mensajería: la query `getMensajes` fallaba con "bind message supplies 1
+  parameters, but prepared statement requires 2" al abrir cualquier chat.
+  Corregido pasando el sentinel de moderación.
+
+**Panel de configuración de correo saliente (nuevo)**
+- Nueva pestaña "Correo saliente" en `/admin.html`, sólo superadmin.
+- Configura Host / Puerto / TLS / Usuario / Contraseña / Nombre remitente /
+  Email remitente / Reply-to sin tocar `.env`.
+- La contraseña se cifra AES-256 en la tabla `configuracion`.
+- Botón de **prueba de envío** antes de guardar (envía un email de test para
+  validar credenciales).
+- `emailService` recarga la configuración en caliente al guardar (no hace
+  falta reiniciar el servidor).
+- Instrucción: crear una cuenta institucional `mapatalento@agesport.org`
+  (recomendado no-reply) con el proveedor de correo de AGESPORT y pegar los
+  credenciales en el panel.
+
+**Panel del socio — visor del talento**
+- Nuevos filtros del mapa: **Rol · Especialidad · Provincia · Limpiar
+  filtros**. Combinables con el filtro territorial existente.
+- Al seleccionar una provincia, el mapa hace **pan automático al centroide**
+  de esa provincia (con las 52 provincias españolas cargadas).
+- Nueva sección **"Indicadores del talento"** con 6 gráficos agregados:
+  distribución por sexo, delegación provincial (8 provincias andaluzas),
+  tipo de socio, ámbito profesional, rango de experiencia y actividad
+  reciente.
+- Los KPIs y los indicadores respetan todos los filtros activos.
+
+**Perfil profesional**
+- Nuevo campo **Sexo (opcional)** — sólo se usa para estadísticas
+  agregadas, nunca en la ficha pública.
+- Nueva sección **Disponibilidad y colaboración**: nivel + casillas de
+  mentor/ponente/asistente/representación/captación de patrocinios/congreso.
+- Icono del CV rediseñado (SVG documento verde en cuadrado, misma paleta).
+- Foto de perfil placeholder con el mismo formato que el CV.
+- Bloque "Visibilidad en el directorio" agrupa los dos toggles (email +
+  teléfono) juntos en el margen izquierdo.
+
+**Mensajería interna**
+- Ahora el destinatario recibe siempre una copia por email (si tiene
+  `acepta_notificaciones_email = true`). Antes dependía de un checkbox del
+  emisor.
+- Al hacer clic en un punto del mapa se abre un popup con dos botones:
+  **Enviar mensaje** (directo a `/mensajes.html?receptor=<id>`) y **Ver
+  perfil**. La conversación se crea automáticamente si no existía.
+- Endurecimiento RGPD: respuestas 403 uniformes al intentar acceder a
+  conversaciones ajenas (no filtra existencia de IDs).
+
+**Ver contraseña (toggle ojo)**
+- Añadido en acceso socio, acceso admin, registro, cambio de contraseña y
+  restablecimiento. Auto-inyectado por `password-toggle.js`.
+
+**Rediseño de la landing pública**
+- Título hero con palabra clave "talento" en cursiva verde con subrayado
+  gradiente + ornamentos radiales de fondo.
+- Kickers numerados por sección (01 · Proyecto, 02 · Capacidades,
+  03 · Implementación, 04 · Acceso).
+- Iconografía SVG en las 7 tarjetas de propósito y capacidades.
+- Micro-animaciones fade-in al scroll (IntersectionObserver, respetan
+  `prefers-reduced-motion`).
+- Sección Capacidades con fondo suave verde para dar ritmo visual.
+
+**Editor in-situ de la landing (nuevo)**
+- Modo edición sobre la landing real: sólo aparece cuando el visitante
+  tiene sesión de administrador.
+- Botón flotante "✎ Editar página" en la esquina inferior derecha.
+- Todos los bloques `[data-cms]` son editables inline con outline verde y
+  badge navy con el nombre de la clave para no confundir cuál se edita.
+- Las imágenes tienen overlay "🖼 Cambiar imagen".
+- Botón **Guardar cambios (N)** que envía por lote todas las modificaciones
+  a los endpoints existentes (`PUT /api/admin/landing/:clave` y
+  `POST /api/admin/landing/:clave/imagen`). No duplica lógica de storage.
+- Reutiliza la misma tabla `landing_content` que ya usaba el editor plano
+  del panel admin; ambos siguen funcionando en paralelo.
+
 ## Novedades incluidas en este paquete
 
 - Accesos **socio** y **administración** en páginas separadas (`/acceso.html` y `/acceso-admin.html`).

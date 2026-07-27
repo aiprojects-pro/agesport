@@ -1,6 +1,6 @@
 // controllers/adminController.js
 const db = require('../config/database');
-const { auditAction, hashPassword, encryptData } = require('../middleware/auth');
+const { auditAction, hashPassword, encryptData, decryptData } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 const uploadService = require('../services/uploadService');
 const geocodingService = require('../services/geocodingService');
@@ -789,7 +789,7 @@ class AdminController {
       if (!req.file) return res.status(400).json({ error: 'No se ha recibido ningún fichero' });
 
       // Strip BOM si Excel lo añadió al guardar el CSV. Sin
-      // esto, la primera celda del header sería "nombre" y todos
+      // esto, la primera celda del header sería "BOM+nombre" y todos
       // los lookups por `r.nombre` fallarían silenciosamente — la
       // usuaria reportaba "la plantilla descargada no se puede volver
       // a subir, tiene roaming" (BOM).
@@ -995,7 +995,7 @@ class AdminController {
           s.entidad,
           s.cargo_actual,
           s.anos_experiencia,
-          s.telefono,
+          s.telefono_encrypted,
           s.web_profesional,
           s.linkedin_url,
           s.provincia,
@@ -1087,7 +1087,7 @@ class AdminController {
           r.entidad,
           r.cargo_actual,
           r.anos_experiencia,
-          r.telefono,
+          r.telefono_encrypted ? (function () { try { return decryptData(r.telefono_encrypted); } catch (_) { return ''; } })() : '',
           r.web_profesional,
           r.linkedin_url,
           r.provincia,
@@ -1114,7 +1114,7 @@ class AdminController {
 
       // BOM UTF-8 para que Excel/Numbers detecten encoding y acentos
       const bom = '\uFEFF';
-      const csv = bom + header.map(escapeCSV).join(',') + '\n' + rows.join('\n') + '\n';
+      const csvBody = bom + header.map(escapeCSV).join(',') + '\n' + rows.join('\n') + '\n';
 
       // Audit
       try {
@@ -1128,10 +1128,118 @@ class AdminController {
       res.setHeader('Content-Disposition',
         'attachment; filename="agesport-socios' + sufijo + '-' + fecha + '.csv"');
       res.setHeader('Cache-Control', 'no-store');
-      res.send(csv);
+      res.send(csvBody);
     } catch (error) {
       console.error('Error exportando CSV:', error);
       res.status(500).json({ error: 'Error generando la exportación CSV' });
+    }
+  }
+
+  // =============== CORREO SALIENTE (SMTP) ===============
+
+  // GET /api/admin/config/smtp — devuelve la config actual sin exponer
+  // la contraseña. Un booleano `passwordSet` indica si está guardada.
+  async getSmtpConfig(req, res) {
+    try {
+      const row = await db.findOne('configuracion', { clave: 'smtp_config' });
+      const cfg = row ? JSON.parse(row.valor) : null;
+      res.json({
+        config: cfg ? {
+          host: cfg.host || '',
+          port: cfg.port || 587,
+          secure: !!cfg.secure,
+          user: cfg.user || '',
+          fromName: cfg.fromName || '',
+          fromEmail: cfg.fromEmail || cfg.user || '',
+          replyTo: cfg.replyTo || '',
+          passwordSet: !!cfg.passEncrypted,
+        } : null,
+      });
+    } catch (error) {
+      console.error('Error leyendo SMTP config:', error);
+      res.status(500).json({ error: 'No se pudo leer la configuración SMTP' });
+    }
+  }
+
+  // POST /api/admin/config/smtp — persiste la config. La contraseña se
+  // guarda cifrada con AES-256 (ENCRYPTION_KEY del .env). Si viene vacía
+  // conservamos la anterior; así el admin puede editar host/port/etc. sin
+  // volver a teclear la contraseña.
+  async saveSmtpConfig(req, res) {
+    try {
+      const { host, port, secure, user, pass, fromName, fromEmail, replyTo } = req.body || {};
+      if (!host || !user || !fromEmail) {
+        return res.status(400).json({ error: 'Host, usuario y email remitente son obligatorios.' });
+      }
+      const previous = await db.findOne('configuracion', { clave: 'smtp_config' });
+      const prevCfg = previous ? JSON.parse(previous.valor) : {};
+      const cfg = {
+        host: String(host).trim(),
+        port: parseInt(port) || 587,
+        secure: !!secure,
+        user: String(user).trim(),
+        fromName: (fromName || 'AGESPORT · Mapa del Talento').trim(),
+        fromEmail: String(fromEmail).trim(),
+        replyTo: (replyTo || '').trim() || null,
+        passEncrypted: pass ? encryptData(pass) : (prevCfg.passEncrypted || null),
+      };
+      const payload = JSON.stringify(cfg);
+      if (previous) {
+        await db.query('UPDATE configuracion SET valor = $1, updated_at = NOW() WHERE clave = $2',
+          [payload, 'smtp_config']);
+      } else {
+        await db.insert('configuracion', { clave: 'smtp_config', valor: payload });
+      }
+      // Recarga en caliente el transporter del emailService.
+      try { require('../services/emailService').reloadFromConfig(cfg); } catch (e) {
+        console.warn('No se pudo recargar emailService:', e.message);
+      }
+      await auditAction(null, req.adminId, 'UPDATE_SMTP_CONFIG', 'configuracion',
+        null, { host: cfg.host, fromEmail: cfg.fromEmail }, req);
+      res.json({ message: 'Configuración de correo saliente guardada correctamente.' });
+    } catch (error) {
+      console.error('Error guardando SMTP config:', error);
+      res.status(500).json({ error: 'No se pudo guardar la configuración SMTP' });
+    }
+  }
+
+  // POST /api/admin/config/smtp/test — envía un correo de prueba usando
+  // la configuración indicada (sin persistirla). Útil para validar
+  // credenciales antes de "Guardar".
+  async testSmtpConfig(req, res) {
+    try {
+      const { host, port, secure, user, pass, fromName, fromEmail, replyTo, to } = req.body || {};
+      if (!to || !host || !user) {
+        return res.status(400).json({ error: 'Necesitamos host, usuario y destinatario de la prueba.' });
+      }
+      // Si no viene contraseña, usamos la ya guardada (descifrada) — así
+      // el admin puede probar sin re-teclear el secret.
+      let passClear = pass;
+      if (!passClear) {
+        const prev = await db.findOne('configuracion', { clave: 'smtp_config' });
+        if (prev) {
+          const prevCfg = JSON.parse(prev.valor);
+          if (prevCfg.passEncrypted) {
+            try { passClear = decryptData(prevCfg.passEncrypted); } catch (_) { /* nada */ }
+          }
+        }
+      }
+      const emailService = require('../services/emailService');
+      const result = await emailService.sendTestEmail({
+        host, port: parseInt(port) || 587, secure: !!secure,
+        user, pass: passClear,
+        fromName: fromName || 'AGESPORT · Mapa del Talento',
+        fromEmail: fromEmail || user,
+        replyTo: replyTo || null,
+      }, to);
+      if (result.success) {
+        res.json({ message: 'Email de prueba enviado a ' + to + '. Revisa la bandeja de entrada.' });
+      } else {
+        res.status(502).json({ error: result.error || 'El servidor SMTP rechazó la conexión.' });
+      }
+    } catch (error) {
+      console.error('Error probando SMTP:', error);
+      res.status(500).json({ error: error.message || 'No se pudo enviar el correo de prueba.' });
     }
   }
 }

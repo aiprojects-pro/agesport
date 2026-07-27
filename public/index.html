@@ -128,7 +128,33 @@
       background: rgba(15, 137, 91, 0.10);
     }
 
-    .hero { padding: 52px 0 40px; }
+    .hero {
+      padding: 52px 0 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    /* Ornamento de fondo del hero: círculos suaves que dan movimiento sin distraer. */
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: -40% -20% auto auto;
+      width: 620px; height: 620px;
+      border-radius: 999px;
+      background: radial-gradient(closest-side, rgba(15,137,91,.09), transparent 70%);
+      z-index: 0;
+      pointer-events: none;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: auto auto -30% -10%;
+      width: 420px; height: 420px;
+      border-radius: 999px;
+      background: radial-gradient(closest-side, rgba(13,53,95,.06), transparent 70%);
+      z-index: 0;
+      pointer-events: none;
+    }
+    .hero > .shell { position: relative; z-index: 1; }
 
     .hero-grid {
       display: grid;
@@ -409,6 +435,101 @@
       .access-grid { grid-template-columns: 1fr; }
     }
 
+    /* =================== KICKERS + CARD ICONS + REVEAL =================== */
+
+    /* Chip pequeño encima de cada H2 con "01 · Proyecto", "02 · Capacidades"...
+       Aporta jerarquía visual y sensación de recorrido. */
+    .section-kicker {
+      display: inline-block;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--green-deep);
+      background: rgba(15,137,91,.08);
+      padding: 6px 12px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+    }
+
+    /* Icono redondo verde suave sobre cada tarjeta de propósito/capacidades. */
+    .card-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      background: rgba(15,137,91,.1);
+      color: var(--green-deep);
+      margin-bottom: 14px;
+      border: 1px solid rgba(15,137,91,.15);
+      transition: transform .2s ease, background .2s ease;
+    }
+    .card:hover .card-icon {
+      transform: scale(1.08) rotate(-2deg);
+      background: rgba(15,137,91,.18);
+    }
+
+    /* Bloque con fondo ligeramente distinto para dar ritmo visual entre
+       secciones sin romper la línea limpia. */
+    .block-alt {
+      background: linear-gradient(180deg, rgba(15,137,91,.03), rgba(15,137,91,.01) 60%, transparent);
+    }
+
+    /* Animación fade-in + slide-up al entrar en viewport. Se aplica a
+       elementos con clase .reveal; el observer les añade .revealed cuando
+       cruzan el 15% del viewport. Sin JS los elementos son visibles igual
+       (progressive enhancement). */
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        opacity: 0;
+        transform: translateY(24px);
+        transition: opacity .6s cubic-bezier(.2,.7,.3,1), transform .6s cubic-bezier(.2,.7,.3,1);
+        will-change: opacity, transform;
+      }
+      .reveal.revealed {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      /* Delay escalonado para 3 y 4 tarjetas por fila */
+      .cards-3 > .reveal:nth-child(2), .cards-4 > .reveal:nth-child(2) { transition-delay: .08s; }
+      .cards-3 > .reveal:nth-child(3), .cards-4 > .reveal:nth-child(3) { transition-delay: .16s; }
+      .cards-4 > .reveal:nth-child(4) { transition-delay: .24s; }
+      .timeline > .reveal:nth-child(2) { transition-delay: .08s; }
+      .timeline > .reveal:nth-child(3) { transition-delay: .16s; }
+      .timeline > .reveal:nth-child(4) { transition-delay: .24s; }
+    }
+
+    /* Cards más contundentes visualmente */
+    .card {
+      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(13,53,95,.08);
+      border-color: rgba(15,137,91,.28);
+    }
+
+    /* Título hero más contundente */
+    .hero-copy h1 {
+      letter-spacing: -.015em;
+    }
+    .hero-copy h1 em {
+      font-style: italic;
+      color: var(--green-deep);
+      position: relative;
+    }
+    .hero-copy h1 em::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      bottom: -4px;
+      height: 3px;
+      background: linear-gradient(90deg, rgba(15,137,91,.35), rgba(15,137,91,0));
+      border-radius: 2px;
+    }
+
     .footer { padding: 24px 0 50px; color: var(--muted); font-size: .95rem; }
     .footer-inner {
       display: flex;
@@ -441,6 +562,97 @@
   </style>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <style>.leaflet-attribution-flag{display:none!important}</style>
+
+  <!-- CSS del modo edición in-situ (sólo se activa si el visitante es admin). -->
+  <style>
+    #cms-toolbar {
+      position: fixed;
+      z-index: 9999;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: white;
+      border: 1px solid rgba(13,53,95,.12);
+      border-radius: 999px;
+      padding: 6px 10px;
+      box-shadow: 0 10px 30px rgba(13,53,95,.14);
+    }
+    .cms-btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-weight: 700;
+      font-size: .88rem;
+      cursor: pointer;
+      transition: filter .15s ease;
+    }
+    .cms-btn:hover { filter: brightness(0.95); }
+    .cms-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .cms-btn-primary { background: #0f895b; color: white; }
+    .cms-btn-save    { background: #0d355f; color: white; }
+    .cms-btn-cancel  { background: rgba(13,53,95,.08); color: #0d355f; }
+    .cms-status      { font-size: .82rem; color: #64748b; padding: 0 8px; min-width: 0; }
+    .cms-status.ok    { color: #0f895b; font-weight: 600; }
+    .cms-status.error { color: #b91c1c; font-weight: 600; }
+    .cms-status.info  { color: #0d355f; }
+
+    /* Bloques editables: outline dashed en hover / focus para dejar claro
+       qué se está editando. NO cambiamos layout — solo caja externa. */
+    body.cms-editing [data-cms] {
+      outline: 1px dashed rgba(15,137,91,.4);
+      outline-offset: 4px;
+      position: relative;
+      border-radius: 4px;
+      transition: outline-color .15s ease;
+    }
+    body.cms-editing [data-cms]:hover,
+    body.cms-editing [data-cms]:focus {
+      outline: 2px solid #0f895b;
+      outline-offset: 4px;
+      background: rgba(15,137,91,.04);
+    }
+    body.cms-editing [data-cms].cms-dirty {
+      outline-color: #d97706;
+      background: rgba(217,119,6,.08);
+    }
+    /* Badge con el nombre de la clave del bloque */
+    body.cms-editing .cms-badge {
+      position: absolute;
+      top: -22px;
+      left: 0;
+      background: #0d355f;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      pointer-events: none;
+      white-space: nowrap;
+      font-family: system-ui, -apple-system, sans-serif;
+      letter-spacing: .02em;
+    }
+    body.cms-editing [data-cms].cms-dirty .cms-badge { background: #d97706; }
+
+    /* Overlay para imágenes */
+    .cms-img-holder { position: relative; display: inline-block; }
+    body.cms-editing .cms-img-holder > img { outline: 2px dashed rgba(15,137,91,.5); outline-offset: 4px; }
+    .cms-img-overlay {
+      display: none;
+    }
+    body.cms-editing .cms-img-overlay {
+      position: absolute;
+      inset: auto 0 -34px 0;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      align-items: center;
+    }
+    .cms-img-btn { font-size: .78rem; padding: 6px 12px; }
+    .cms-img-info { font-size: .72rem; color: #64748b; }
+    body.cms-editing .cms-img-overlay.cms-dirty .cms-img-info { color: #d97706; font-weight: 600; }
+  </style>
 </head>
 <body>
   <header class="topbar">
@@ -512,24 +724,34 @@
 
     <section class="block" id="proyecto">
       <div class="shell">
-        <div class="section-head">
+        <div class="section-head reveal">
           <div>
+            <span class="section-kicker">01 · Proyecto</span>
             <h2 data-cms="proyecto.h2">Qué resuelve el Mapa del Talento</h2>
             <p data-cms="proyecto.lead">Una infraestructura de relación para AGESPORT, el clúster y el tejido profesional del deporte andaluz. Identifica, valida y conecta a quienes hacen deporte posible en el territorio.</p>
           </div>
         </div>
         <div class="cards-3">
-          <article class="card">
+          <article class="card reveal">
+            <span class="card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </span>
             <span class="tag" data-cms="proyecto.card1.tag">Propósito</span>
             <h3 data-cms="proyecto.card1.title">Identificar y ordenar el talento</h3>
             <p data-cms="proyecto.card1.body">Ubica físicamente la actividad profesional de cada socio y la conecta con experiencia, cargo, entidad y especialización técnica.</p>
           </article>
-          <article class="card">
+          <article class="card reveal">
+            <span class="card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </span>
             <span class="tag" data-cms="proyecto.card2.tag">Valor sectorial</span>
             <h3 data-cms="proyecto.card2.title">Activar sinergias reales</h3>
             <p data-cms="proyecto.card2.body">Permite localizar expertos, colaboradores, mentores, consultores y agentes con capacidad de aportar a proyectos concretos.</p>
           </article>
-          <article class="card">
+          <article class="card reveal">
+            <span class="card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            </span>
             <span class="tag navy" data-cms="proyecto.card3.tag">Clúster</span>
             <h3 data-cms="proyecto.card3.title">Extender AGESPORT al ecosistema B2B</h3>
             <p data-cms="proyecto.card3.body">Abre una lectura industrial del sector: gestión, proveedores, tecnología, servicios, formación, eventos y administración pública.</p>
@@ -538,28 +760,41 @@
       </div>
     </section>
 
-    <section class="block" id="capacidades">
+    <section class="block block-alt" id="capacidades">
       <div class="shell">
-        <div class="section-head">
+        <div class="section-head reveal">
           <div>
+            <span class="section-kicker">02 · Capacidades</span>
             <h2 data-cms="capacidades.h2">Capacidades planteadas</h2>
             <p data-cms="capacidades.lead">La plataforma se articula en torno a capacidades de identificación, conexión, colaboración sectorial y lectura territorial del talento.</p>
           </div>
         </div>
         <div class="cards-4">
-          <article class="card">
+          <article class="card reveal">
+            <span class="card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            </span>
             <h3 data-cms="capacidades.card1.title">Geolocalización profesional</h3>
             <p data-cms="capacidades.card1.body">Dirección, localidad, provincia, comunidad autónoma y área de influencia para lectura territorial útil.</p>
           </article>
-          <article class="card">
+          <article class="card reveal">
+            <span class="card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>
+            </span>
             <h3 data-cms="capacidades.card2.title">Especialización por áreas</h3>
             <p data-cms="capacidades.card2.body">15 especialidades: instalaciones, eventos, derecho, marketing, digitalización, RRHH, formación, sostenibilidad y más.</p>
           </article>
-          <article class="card">
+          <article class="card reveal">
+            <span class="card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M20 3H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/></svg>
+            </span>
             <h3 data-cms="capacidades.card3.title">Disponibilidad asociativa</h3>
             <p data-cms="capacidades.card3.body">Mentorías, grupos de trabajo, ponencias y participación en iniciativas clave del clúster.</p>
           </article>
-          <article class="card">
+          <article class="card reveal">
+            <span class="card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 4 4 5-6"/></svg>
+            </span>
             <h3 data-cms="capacidades.card4.title">Observatorio de gestión</h3>
             <p data-cms="capacidades.card4.body">Lectura de densidad profesional, especialidades dominantes y peso territorial del ecosistema.</p>
           </article>
@@ -570,35 +805,36 @@
     <section class="block" id="fases">
       <div class="shell split">
         <div>
-          <div class="section-head" style="margin-bottom:18px">
+          <div class="section-head reveal" style="margin-bottom:18px">
             <div>
+              <span class="section-kicker">03 · Implementación</span>
               <h2 data-cms="fases.h2">Implementación en 4 fases</h2>
               <p data-cms="fases.lead">La propuesta se organiza en cuatro etapas para estructurar la recogida de información, su validación, la visualización privada y la activación del ecosistema profesional.</p>
             </div>
           </div>
           <div class="timeline">
-            <div class="step">
+            <div class="step reveal">
               <div class="step-num">1</div>
               <div class="card">
                 <h3 data-cms="fases.fase1.title">Ficha del talento</h3>
                 <p data-cms="fases.fase1.body">Captura normalizada de datos de perfil profesional, especialidad, localización y relación con el clúster, con consentimientos RGPD explícitos.</p>
               </div>
             </div>
-            <div class="step">
+            <div class="step reveal">
               <div class="step-num">2</div>
               <div class="card">
                 <h3 data-cms="fases.fase2.title">Procesamiento y validación por AGESPORT</h3>
                 <p data-cms="fases.fase2.body">Revisión por Gerencia, alta del socio en el entorno privado y segmentación de la base para asegurar consistencia operativa.</p>
               </div>
             </div>
-            <div class="step">
+            <div class="step reveal">
               <div class="step-num">3</div>
               <div class="card">
                 <h3 data-cms="fases.fase3.title">Visualización privada del ecosistema</h3>
                 <p data-cms="fases.fase3.body">Acceso restringido para consulta del directorio, lectura del mapa territorial y localización de perfiles relevantes.</p>
               </div>
             </div>
-            <div class="step">
+            <div class="step reveal">
               <div class="step-num">4</div>
               <div class="card">
                 <h3 data-cms="fases.fase4.title">Dinamización del clúster</h3>
@@ -613,8 +849,9 @@
     <!-- Apartado propio para los accesos: ancho completo, minimalista. -->
     <section class="block" style="padding-top:0">
       <div class="shell">
-        <div id="acceso" class="access-panel">
+        <div id="acceso" class="access-panel reveal">
           <div class="access-head">
+            <span class="section-kicker">04 · Acceso</span>
             <h2 data-cms="acceso.h3">Accede a la plataforma</h2>
             <p class="muted" data-cms="acceso.lead">Elige tu vía de entrada. Los accesos de socio y administración son independientes.</p>
           </div>
@@ -656,5 +893,25 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="/assets/catalogos.js"></script>
   <script src="/assets/landing.js"></script>
+  <!-- Fade-in al scroll (progressive enhancement: si falla, no pasa nada). -->
+  <script>
+    (function () {
+      if (!('IntersectionObserver' in window)) {
+        document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('revealed'); });
+        return;
+      }
+      const io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) {
+            e.target.classList.add('revealed');
+            io.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+      document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+    })();
+  </script>
+  <!-- Editor in-situ: sólo se muestra si el visitante está autenticado como admin. -->
+  <script src="/assets/landing-editor.js" defer></script>
 </body>
 </html>

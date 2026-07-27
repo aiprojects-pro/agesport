@@ -151,11 +151,18 @@ class SociosController {
       const viewerId = req.socioId;
       const result = await db.query(`
         SELECT s.id, s.nombre, s.apellidos, s.entidad, s.provincia, s.localidad,
-               s.latitud, s.longitud,
+               s.comunidad_autonoma, s.latitud, s.longitud,
+               s.sexo, s.tipo_socio, s.ambito, s.anos_experiencia,
+               s.fecha_registro, s.ultimo_acceso,
                rc.rol AS rol_cluster,
                rc.b2b_ofrece, rc.b2b_busca, rc.b2b_licita,
                d.nivel AS disponibilidad,
-               d.tutor_mentor
+               d.tutor_mentor,
+               (
+                 SELECT COALESCE(array_agg(especialidad ORDER BY orden_prioridad), ARRAY[]::varchar[])
+                 FROM socio_especialidades
+                 WHERE socio_id = s.id
+               ) AS especialidades
         FROM socios s
         LEFT JOIN rol_cluster rc ON rc.socio_id = s.id
         LEFT JOIN disponibilidad d ON d.socio_id = s.id
@@ -174,6 +181,7 @@ class SociosController {
           apellidos: r.apellidos,
           entidad: r.entidad,
           provincia: r.provincia,
+          comunidad_autonoma: r.comunidad_autonoma,
           localidad: r.localidad,
           rol_cluster: r.rol_cluster,
           lat: Number(r.latitud),
@@ -183,6 +191,13 @@ class SociosController {
           b2b_ofrece: !!r.b2b_ofrece,
           b2b_busca: !!r.b2b_busca,
           b2b_licita: !!r.b2b_licita,
+          especialidades: Array.isArray(r.especialidades) ? r.especialidades : [],
+          sexo: r.sexo || null,
+          tipo_socio: r.tipo_socio || null,
+          ambito: r.ambito || null,
+          anos_experiencia: r.anos_experiencia || 0,
+          fecha_registro: r.fecha_registro,
+          ultimo_acceso: r.ultimo_acceso,
         })),
       });
     } catch (error) {
@@ -257,7 +272,7 @@ class SociosController {
       const {
         nombre, apellidos, dni_nie, telefono, linkedin_url, otras_redes,
         entidad, web_profesional, provincia, comunidad_autonoma, localidad, codigo_postal,
-        direccion_completa, ambito, cargo_actual, anos_experiencia,
+        direccion_completa, ambito, cargo_actual, anos_experiencia, sexo,
 
         // v2: campos nuevos
         tipo_socio, email_personal, email_preferido, nombre_organizacion,
@@ -310,6 +325,10 @@ class SociosController {
         if (ambito !== undefined) socioUpdate.ambito = ambito;
         if (cargo_actual !== undefined) socioUpdate.cargo_actual = cargo_actual;
         if (anos_experiencia !== undefined) socioUpdate.anos_experiencia = parseInt(anos_experiencia);
+        if (sexo !== undefined) {
+          // Sólo aceptamos los valores del catálogo (evita inyección de cualquier string).
+          socioUpdate.sexo = ['femenino','masculino'].includes(sexo) ? sexo : null;
+        }
 
         // v2: nuevos campos del perfil
         if (tipo_socio !== undefined) socioUpdate.tipo_socio = tipo_socio;

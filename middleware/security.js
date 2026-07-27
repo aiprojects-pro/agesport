@@ -233,15 +233,25 @@ const validateSocioFields = (mode) => (req, res, next) => {
   check(b.apellidos, (v) => v.trim().length >= 2, 'Apellidos debe tener al menos 2 caracteres');
   check(b.provincia, catalogos.isValidProvincia, 'Provincia inválida');
   check(b.localidad, (v) => v.trim().length >= 2, 'Localidad es requerida');
-  check(b.cargo_actual, (v) => v.trim().length >= 3, 'Cargo actual es requerido');
 
-  // anos_experiencia: required en registro, rango 0-50 cuando presente
-  if (b.anos_experiencia === undefined) {
-    if (required) errors.push('Años de experiencia debe ser entre 0 y 50');
+  // Persona jurídica (asociado_corporativo): cargo y años NO aplican
+  // (la cuenta es de una organización; los datos de la persona de
+  // contacto no equivalen a un cargo profesional del socio).
+  const esCorporativo = b.tipo_socio === 'asociado_corporativo';
+  if (!esCorporativo) {
+    check(b.cargo_actual, (v) => v.trim().length >= 3, 'Cargo actual es requerido');
+    if (b.anos_experiencia === undefined) {
+      if (required) errors.push('Años de experiencia debe ser entre 0 y 50');
+    } else {
+      const n = parseInt(b.anos_experiencia);
+      if (isNaN(n) || n < 0 || n > 50) {
+        errors.push('Años de experiencia debe ser entre 0 y 50');
+      }
+    }
   } else {
-    const n = parseInt(b.anos_experiencia);
-    if (isNaN(n) || n < 0 || n > 50) {
-      errors.push('Años de experiencia debe ser entre 0 y 50');
+    // En corporativos exigimos nombre de organización
+    if (!b.nombre_organizacion || b.nombre_organizacion.trim().length < 2) {
+      errors.push('Nombre de la organización es requerido');
     }
   }
 

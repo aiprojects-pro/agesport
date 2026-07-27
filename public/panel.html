@@ -26,6 +26,50 @@
       white-space: nowrap;
     }
     .leaflet-tooltip.socio-tooltip::before { display: none; }
+
+    /* Grid de gráficos agregados */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+    }
+    .chart-card {
+      background: var(--bg-soft);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .chart-card h4 {
+      margin: 0 0 12px;
+      color: var(--navy-deep);
+      font-size: .98rem;
+    }
+    .chart-card .chart-empty {
+      color: var(--muted);
+      font-size: .88rem;
+      padding: 20px 0;
+      text-align: center;
+    }
+    .bar-row {
+      display: grid;
+      grid-template-columns: 140px 1fr 40px;
+      gap: 8px;
+      align-items: center;
+      margin: 5px 0;
+      font-size: .85rem;
+    }
+    .bar-row .bar-label { color: var(--navy-deep); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar-row .bar-track { background: rgba(15,137,91,.1); border-radius: 4px; height: 10px; overflow: hidden; }
+    .bar-row .bar-fill  { background: var(--green-deep); height: 100%; transition: width .3s ease; }
+    .bar-row .bar-count { color: var(--muted); text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .bar-row .bar-fill.color-pink { background: #d4266e; }
+    .bar-row .bar-fill.color-blue { background: #1a4e7a; }
+    .bar-row .bar-fill.color-gray { background: #64748b; }
+    .chart-note {
+      color: var(--muted);
+      font-size: .78rem;
+      margin-top: 8px;
+    }
     .socio-popup { font-size: .9rem; line-height: 1.4; }
     .socio-popup strong { display:block; color: var(--navy); margin-bottom:2px; }
     .socio-popup .muted { color: var(--muted); font-size: .85rem; }
@@ -122,8 +166,32 @@
             <button type="button" data-label="rol">Ver por rol</button>
           </div>
         </div>
+        <!-- Filtros del mapa: rol y especialidad. Actúan sobre los
+             marcadores visibles y recalculan los KPIs. -->
+        <div style="padding:12px 20px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+          <label class="muted" style="font-size:.86rem;font-weight:600;color:var(--navy-deep);margin:0">Filtrar mapa:</label>
+          <select id="filtroRol" style="min-width:200px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:#fff">
+            <option value="">Todos los roles</option>
+          </select>
+          <select id="filtroEspecialidad" style="min-width:200px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:#fff">
+            <option value="">Todas las especialidades</option>
+          </select>
+          <select id="filtroProvincia" style="min-width:160px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:#fff">
+            <option value="">Todas las provincias</option>
+          </select>
+          <button type="button" id="filtroReset" class="btn btn-secondary" style="padding:6px 12px;font-size:.85rem;border-radius:8px">Limpiar filtros</button>
+        </div>
         <div id="mapContainer"></div>
         <div class="map-legend" id="rolLegend"></div>
+      </article>
+
+      <!-- ============ INDICADORES AGREGADOS DEL TALENTO ============ -->
+      <!-- Todos los datos son agregados anónimos: no se muestra ningún
+           socio individual. Respetan el ámbito y filtros activos. -->
+      <article class="form-card">
+        <h2 style="margin:0 0 10px">Indicadores del talento</h2>
+        <p class="muted" style="margin:0 0 14px">Distribución agregada de los socios visibles según los filtros activos.</p>
+        <div class="charts-grid" id="chartsGrid"></div>
       </article>
 
       <!-- Observatorio + mensajería debajo del mapa -->

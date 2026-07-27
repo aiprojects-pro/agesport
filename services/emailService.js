@@ -37,6 +37,8 @@ class EmailService {
   constructor() {
     // Configurar transporter solo si hay configuración de email
     this.transporter = null;
+    this.fromLabel = null;   // string listo para `from:` (ver reloadFromConfig)
+    this.replyTo = null;
     if (
       config.email.auth.user &&
       config.email.auth.pass &&
@@ -50,6 +52,70 @@ class EmailService {
         auth: config.email.auth
       });
     }
+    // Cargar override de BD si existe (permite que el admin cambie la
+    // config sin tocar .env). Async, sin bloquear el arranque.
+    this.loadDbOverrideAsync();
+  }
+
+  async loadDbOverrideAsync() {
+    try {
+      const row = await db.query("SELECT valor FROM configuracion WHERE clave = 'smtp_config'");
+      if (row.rows.length) {
+        const cfg = JSON.parse(row.rows[0].valor);
+        // La contraseña viene cifrada; descífrala en memoria.
+        const { decryptData } = require('../middleware/auth');
+        let pass = null;
+        if (cfg.passEncrypted) {
+          try { pass = decryptData(cfg.passEncrypted); } catch (_) { /* no romper el arranque */ }
+        }
+        this.reloadFromConfig({ ...cfg, pass });
+      }
+    } catch (e) {
+      // Sin config en BD → seguimos con la de .env (o sin SMTP).
+    }
+  }
+
+  // Recarga en caliente el transporter con una nueva config (viene del
+  // panel admin tras "Guardar configuración"). No requiere reiniciar.
+  reloadFromConfig(cfg) {
+    if (!cfg || !cfg.host || !cfg.user) return;
+    this.transporter = nodemailer.createTransport({
+      host: cfg.host,
+      port: cfg.port || 587,
+      secure: !!cfg.secure,
+      auth: cfg.pass ? { user: cfg.user, pass: cfg.pass } : undefined,
+    });
+    const fromEmail = cfg.fromEmail || cfg.user;
+    const fromName = cfg.fromName || 'AGESPORT · Mapa del Talento';
+    this.fromLabel = `"${fromName}" <${fromEmail}>`;
+    this.replyTo = cfg.replyTo || null;
+    console.log('[email] Config SMTP recargada:', cfg.host + ':' + (cfg.port || 587));
+  }
+
+  // Envío de prueba: usa la config recibida sin persistirla. Devuelve
+  // {success, error?} para que el admin vea el resultado en el panel.
+  async sendTestEmail(cfg, to) {
+    try {
+      if (!cfg.pass) {
+        return { success: false, error: 'Falta la contraseña. Introdúcela o guarda primero la configuración.' };
+      }
+      const t = nodemailer.createTransport({
+        host: cfg.host, port: cfg.port || 587, secure: !!cfg.secure,
+        auth: { user: cfg.user, pass: cfg.pass },
+      });
+      await t.sendMail({
+        from: `"${cfg.fromName}" <${cfg.fromEmail}>`,
+        to,
+        replyTo: cfg.replyTo || undefined,
+        subject: 'AGESPORT · Prueba de configuración de correo',
+        html: '<p>Este correo confirma que la configuración SMTP funciona correctamente.</p>' +
+              '<p>Host: <code>' + escapeHtml(cfg.host) + ':' + (cfg.port || 587) + '</code></p>' +
+              '<p>Enviado desde el panel de administración.</p>',
+      });
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   }
 
   async sendEmail(to, subject, html, text = null) {
@@ -59,13 +125,16 @@ class EmailService {
     }
 
     try {
+      // Cabeceras: si el admin configuró una nueva `fromLabel`/`replyTo`
+      // desde el panel, tienen prioridad sobre las de .env.
       const mailOptions = {
-        from: `"AGESPORT Mapa del Talento" <${config.email.auth.user}>`,
+        from: this.fromLabel || `"AGESPORT Mapa del Talento" <${config.email.auth.user}>`,
         to,
         subject,
         html,
         text: text || this.htmlToText(html)
       };
+      if (this.replyTo) mailOptions.replyTo = this.replyTo;
 
       const result = await this.transporter.sendMail(mailOptions);
       console.log('📧 Email enviado:', to, subject);

@@ -97,7 +97,10 @@
             body: JSON.stringify({ token, newPassword: p1 })
           });
           setMessage(msg, true, data.message + ' Redirigiendo al acceso…');
-          setTimeout(function () { window.location.href = '/acceso.html'; }, 1500);
+          // Redirigimos al login correcto según el tipo de cuenta —
+          // antes siempre iba a /acceso.html, dejando fuera al admin.
+          const target = isAdmin ? '/acceso-admin.html' : '/acceso.html';
+          setTimeout(function () { window.location.href = target; }, 1500);
         } catch (error) {
           setMessage(msg, false, error.message);
         } finally {
@@ -107,5 +110,6 @@
       });
     })();
   </script>
+  <script src="/assets/password-toggle.js" defer></script>
 </body>
 </html>
