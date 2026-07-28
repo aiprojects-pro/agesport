@@ -788,8 +788,8 @@ class AdminController {
       const adminId = req.adminId;
       if (!req.file) return res.status(400).json({ error: 'No se ha recibido ningún fichero' });
 
-      // Strip BOM si Excel lo añadió al guardar el CSV. Sin
-      // esto, la primera celda del header sería "BOM+nombre" y todos
+      // Strip BOM (﻿) si Excel lo añadió al guardar el CSV. Sin
+      // esto, la primera celda del header sería "﻿nombre" y todos
       // los lookups por `r.nombre` fallarían silenciosamente — la
       // usuaria reportaba "la plantilla descargada no se puede volver
       // a subir, tiene roaming" (BOM).

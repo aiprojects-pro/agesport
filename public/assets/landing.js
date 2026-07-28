@@ -90,9 +90,33 @@
       .catch((err) => console.warn('[landing] mapa público no disponible:', err));
   }
 
+  // Reveal on-scroll: cada elemento .reveal se hace visible cuando entra
+  // al viewport (el CSS lo mantiene con opacity:0 hasta que recibe .revealed).
+  // Si no hay IntersectionObserver (navegadores muy antiguos) los revelamos
+  // todos de golpe para no dejar la página en blanco.
+  function initReveal() {
+    const els = document.querySelectorAll('.reveal');
+    if (!els.length) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      els.forEach((el) => el.classList.add('revealed'));
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('revealed');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.05 });
+    els.forEach((el) => io.observe(el));
+  }
+
+  function boot() { initMap(); initReveal(); }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initMap);
+    document.addEventListener('DOMContentLoaded', boot);
   } else {
-    initMap();
+    boot();
   }
 })();

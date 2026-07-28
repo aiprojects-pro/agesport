@@ -315,6 +315,28 @@
     }
 
     .timeline { display: grid; gap: 16px; }
+    /* Variante horizontal para "Implementación en 4 fases": 4 columnas
+       con el número arriba de cada tarjeta. Colapsa a 2×2 en tablet y
+       a 1 columna en móvil. */
+    .timeline-h {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 20px;
+      margin-top: 10px;
+    }
+    .timeline-h .step {
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-items: stretch;
+    }
+    .timeline-h .step-num { margin-bottom: 0; }
+    .timeline-h .card { height: 100%; }
+    @media (max-width: 980px) {
+      .timeline-h { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      .timeline-h { grid-template-columns: 1fr; }
+      .timeline-h .step { grid-template-columns: 52px 1fr; }
+    }
     .step {
       display: grid;
       grid-template-columns: 52px 1fr;
@@ -803,43 +825,43 @@
     </section>
 
     <section class="block" id="fases">
-      <div class="shell split">
-        <div>
-          <div class="section-head reveal" style="margin-bottom:18px">
-            <div>
-              <span class="section-kicker">03 · Implementación</span>
-              <h2 data-cms="fases.h2">Implementación en 4 fases</h2>
-              <p data-cms="fases.lead">La propuesta se organiza en cuatro etapas para estructurar la recogida de información, su validación, la visualización privada y la activación del ecosistema profesional.</p>
+      <div class="shell">
+        <div class="section-head reveal">
+          <div>
+            <span class="section-kicker">03 · Implementación</span>
+            <h2 data-cms="fases.h2">Implementación en 4 fases</h2>
+            <p data-cms="fases.lead">La propuesta se organiza en cuatro etapas para estructurar la recogida de información, su validación, la visualización privada y la activación del ecosistema profesional.</p>
+          </div>
+        </div>
+        <!-- Timeline horizontal en 4 columnas para dar peso visual a cada fase
+             y eliminar el hueco vacío que dejaba el antiguo .split. -->
+        <div class="timeline timeline-h">
+          <div class="step reveal">
+            <div class="step-num">1</div>
+            <div class="card">
+              <h3 data-cms="fases.fase1.title">Ficha del talento</h3>
+              <p data-cms="fases.fase1.body">Captura normalizada de datos de perfil profesional, especialidad, localización y relación con el clúster, con consentimientos RGPD explícitos.</p>
             </div>
           </div>
-          <div class="timeline">
-            <div class="step reveal">
-              <div class="step-num">1</div>
-              <div class="card">
-                <h3 data-cms="fases.fase1.title">Ficha del talento</h3>
-                <p data-cms="fases.fase1.body">Captura normalizada de datos de perfil profesional, especialidad, localización y relación con el clúster, con consentimientos RGPD explícitos.</p>
-              </div>
+          <div class="step reveal">
+            <div class="step-num">2</div>
+            <div class="card">
+              <h3 data-cms="fases.fase2.title">Procesamiento y validación por AGESPORT</h3>
+              <p data-cms="fases.fase2.body">Revisión por Gerencia, alta del socio en el entorno privado y segmentación de la base para asegurar consistencia operativa.</p>
             </div>
-            <div class="step reveal">
-              <div class="step-num">2</div>
-              <div class="card">
-                <h3 data-cms="fases.fase2.title">Procesamiento y validación por AGESPORT</h3>
-                <p data-cms="fases.fase2.body">Revisión por Gerencia, alta del socio en el entorno privado y segmentación de la base para asegurar consistencia operativa.</p>
-              </div>
+          </div>
+          <div class="step reveal">
+            <div class="step-num">3</div>
+            <div class="card">
+              <h3 data-cms="fases.fase3.title">Visualización privada del ecosistema</h3>
+              <p data-cms="fases.fase3.body">Acceso restringido para consulta del directorio, lectura del mapa territorial y localización de perfiles relevantes.</p>
             </div>
-            <div class="step reveal">
-              <div class="step-num">3</div>
-              <div class="card">
-                <h3 data-cms="fases.fase3.title">Visualización privada del ecosistema</h3>
-                <p data-cms="fases.fase3.body">Acceso restringido para consulta del directorio, lectura del mapa territorial y localización de perfiles relevantes.</p>
-              </div>
-            </div>
-            <div class="step reveal">
-              <div class="step-num">4</div>
-              <div class="card">
-                <h3 data-cms="fases.fase4.title">Dinamización del clúster</h3>
-                <p data-cms="fases.fase4.body">Activación del sistema como base de networking, asesoramiento, contacto directo entre socios y generación de oportunidades B2B.</p>
-              </div>
+          </div>
+          <div class="step reveal">
+            <div class="step-num">4</div>
+            <div class="card">
+              <h3 data-cms="fases.fase4.title">Dinamización del clúster</h3>
+              <p data-cms="fases.fase4.body">Activación del sistema como base de networking, asesoramiento, contacto directo entre socios y generación de oportunidades B2B.</p>
             </div>
           </div>
         </div>
@@ -893,24 +915,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="/assets/catalogos.js"></script>
   <script src="/assets/landing.js"></script>
-  <!-- Fade-in al scroll (progressive enhancement: si falla, no pasa nada). -->
-  <script>
-    (function () {
-      if (!('IntersectionObserver' in window)) {
-        document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('revealed'); });
-        return;
-      }
-      const io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (e) {
-          if (e.isIntersecting) {
-            e.target.classList.add('revealed');
-            io.unobserve(e.target);
-          }
-        });
-      }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-      document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
-    })();
-  </script>
+  <!-- El fade-in al scroll vive dentro de landing.js (la sesión hermana lo
+       consolidó ahí). Se eliminó el observer inline duplicado que estaba aquí. -->
   <!-- Editor in-situ: sólo se muestra si el visitante está autenticado como admin. -->
   <script src="/assets/landing-editor.js" defer></script>
 </body>
