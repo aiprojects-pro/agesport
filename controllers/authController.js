@@ -73,11 +73,18 @@ class AuthController {
         if (found) ccaa = found.slug;
       }
 
-      // Verificar si el email ya existe
-      const existingSocio = await db.findOne('socios', { email });
-      if (existingSocio) {
-        return res.status(400).json({ 
-          error: 'Ya existe un socio registrado con este email' 
+      // Verificar si el email ya existe — sólo bloquea si el socio está
+      // ACTIVO. Los rechazados / dados de baja no impiden re-registro (antes
+      // cualquier baja dejaba el email inutilizable para siempre).
+      const existingSocio = await db.query(
+        `SELECT 1 FROM socios
+         WHERE email = $1 AND activo = true AND estado <> 'rechazado'
+         LIMIT 1`,
+        [email]
+      );
+      if (existingSocio.rows.length) {
+        return res.status(400).json({
+          error: 'Ya existe un socio registrado con este email'
         });
       }
 
@@ -505,8 +512,12 @@ class AuthController {
       // Hash nueva contraseña
       const newPasswordHash = await hashPassword(newPassword);
 
-      // Actualizar
-      await db.update(table, { password_hash: newPasswordHash }, { id: userId });
+      // Actualizar (incluyendo password_changed_at para invalidar sesiones
+      // abiertas emitidas antes del cambio).
+      await db.update(table,
+        { password_hash: newPasswordHash, password_changed_at: new Date() },
+        { id: userId }
+      );
 
       // Auditar
       await auditAction(
@@ -614,8 +625,10 @@ class AuthController {
 
       const newHash = await hashPassword(newPassword);
       await db.transaction(async (client) => {
-        await client.query('UPDATE socios SET password_hash = $1 WHERE id = $2',
-          [newHash, row.socio_id]);
+        await client.query(
+          'UPDATE socios SET password_hash = $1, password_changed_at = NOW() WHERE id = $2',
+          [newHash, row.socio_id]
+        );
         await client.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1',
           [row.id]);
       });
@@ -706,8 +719,10 @@ class AuthController {
 
       const newHash = await hashPassword(newPassword);
       await db.transaction(async (client) => {
-        await client.query('UPDATE administradores SET password_hash = $1 WHERE id = $2',
-          [newHash, row.admin_id]);
+        await client.query(
+          'UPDATE administradores SET password_hash = $1, password_changed_at = NOW() WHERE id = $2',
+          [newHash, row.admin_id]
+        );
         await client.query('UPDATE admin_password_reset_tokens SET used_at = NOW() WHERE id = $1',
           [row.id]);
       });

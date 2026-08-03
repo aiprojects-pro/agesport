@@ -1,194 +1,104 @@
 #!/bin/bash
 
 # ===================================================================
-# SCRIPT DE BACKUP AUTOMATIZADO - MAPA DEL TALENTO AGESPORT
+# BACKUP AUTOMÁTICO — MAPA DEL TALENTO AGESPORT
 # ===================================================================
-# Este script realiza backups de la base de datos y archivos
+# Hace tres cosas:
+#   1) Dump de PostgreSQL comprimido (gzip)
+#   2) Tarball de la carpeta uploads/ (fotos + CVs)
+#   3) Rotación local por RETENTION_DAYS
+#   4) Opcional: sincronización off-site con rclone si BACKUP_REMOTE
+#      está definido en .env (ej. BACKUP_REMOTE=seafile:mapa-talento/backups)
+#
+# Instalación como cron nocturno (2:15 AM cada día):
+#   crontab -e
+#   15 2 * * *  cd /var/www/mapa-talento && ./scripts/backup.sh >> logs/backup.log 2>&1
+#
+# Instalación como systemd timer alternativa: ver DEPLOY.md.
 
-set -e  # Salir si cualquier comando falla
+set -e
 
 # Cargar variables de entorno
 if [ -f .env ]; then
-    source .env
+    # shellcheck disable=SC1091
+    set -a; source .env; set +a
 else
     echo "❌ Archivo .env no encontrado"
     exit 1
 fi
 
-# Configuración
-BACKUP_DIR="./backups"
+BACKUP_DIR="${BACKUP_DIR:-./backups}"
 DATE=$(date +%Y%m%d-%H%M%S)
-RETENTION_DAYS=30
+RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
 
-# Colores para output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m'
+GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
+log()   { echo -e "${BLUE}[$(date +%H:%M:%S)]${NC} $1"; }
+ok()    { echo -e "${GREEN}✅${NC} $1"; }
+warn()  { echo -e "${YELLOW}⚠️ ${NC} $1"; }
+err()   { echo -e "${RED}❌${NC} $1"; }
 
-print_status() {
-    echo -e "${BLUE}[BACKUP]${NC} $1"
-}
-
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Crear directorio de backup si no existe
 mkdir -p "$BACKUP_DIR"
+log "Iniciando backup del Mapa del Talento AGESPORT..."
 
-print_status "Iniciando backup del Mapa del Talento AGESPORT..."
-
-# ===================================================================
-# 1. BACKUP DE BASE DE DATOS
-# ===================================================================
-
-print_status "Realizando backup de base de datos..."
-
-DB_BACKUP_FILE="$BACKUP_DIR/db-$DATE.sql"
-DB_COMPRESSED_FILE="$BACKUP_DIR/db-$DATE.sql.gz"
-
-# Realizar dump de la base de datos
+# 1) BASE DE DATOS
+DB_FILE="$BACKUP_DIR/db-$DATE.sql.gz"
+log "Dump de PostgreSQL..."
 PGPASSWORD="$DB_PASSWORD" pg_dump \
-    -h "$DB_HOST" \
-    -p "$DB_PORT" \
-    -U "$DB_USER" \
-    -d "$DB_NAME" \
-    --verbose \
-    --no-owner \
-    --no-privileges \
-    --create \
-    --clean \
-    --if-exists \
-    > "$DB_BACKUP_FILE"
+    -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+    --no-owner --no-privileges --clean --if-exists \
+    | gzip > "$DB_FILE"
+ok "BD: $DB_FILE ($(du -h "$DB_FILE" | cut -f1))"
 
-if [ $? -eq 0 ]; then
-    # Comprimir el backup
-    gzip "$DB_BACKUP_FILE"
-    DB_SIZE=$(du -h "$DB_COMPRESSED_FILE" | cut -f1)
-    print_success "Backup de BD completado: $DB_COMPRESSED_FILE ($DB_SIZE)"
+# 2) UPLOADS
+UPLOADS_PATH="${UPLOADS_PATH:-./uploads}"
+if [ -d "$UPLOADS_PATH" ]; then
+    UPLOADS_FILE="$BACKUP_DIR/uploads-$DATE.tar.gz"
+    log "Empaquetando uploads/..."
+    tar -czf "$UPLOADS_FILE" "$UPLOADS_PATH" 2>/dev/null
+    ok "Uploads: $UPLOADS_FILE ($(du -h "$UPLOADS_FILE" | cut -f1))"
 else
-    print_error "Error en backup de base de datos"
-    exit 1
+    warn "Directorio uploads no encontrado (esperado en instalación limpia)"
 fi
 
-# ===================================================================
-# 2. BACKUP DE ARCHIVOS UPLOADS
-# ===================================================================
+# 3) MANIFIESTO
+MANIFEST="$BACKUP_DIR/manifest-$DATE.txt"
+{
+  echo "AGESPORT · Mapa del Talento · Backup $DATE"
+  echo "Servidor: $(hostname)"
+  echo "Usuario:  $(whoami)"
+  echo "Node:     $(node --version 2>/dev/null || echo n/a)"
+  echo ""
+  echo "Ficheros generados:"
+  ls -la "$BACKUP_DIR"/*-"$DATE".* 2>/dev/null
+} > "$MANIFEST"
 
-if [ -d "${UPLOADS_PATH:-./uploads}" ]; then
-    print_status "Realizando backup de archivos uploads..."
-    
-    UPLOADS_BACKUP_FILE="$BACKUP_DIR/uploads-$DATE.tar.gz"
-    
-    tar -czf "$UPLOADS_BACKUP_FILE" "${UPLOADS_PATH:-./uploads}"
-    
-    if [ $? -eq 0 ]; then
-        UPLOADS_SIZE=$(du -h "$UPLOADS_BACKUP_FILE" | cut -f1)
-        print_success "Backup de uploads completado: $UPLOADS_BACKUP_FILE ($UPLOADS_SIZE)"
+# 4) ROTACIÓN LOCAL
+log "Rotando backups locales (>$RETENTION_DAYS días)..."
+find "$BACKUP_DIR" -name "*.sql.gz"  -mtime +"$RETENTION_DAYS" -delete
+find "$BACKUP_DIR" -name "*.tar.gz"  -mtime +"$RETENTION_DAYS" -delete
+find "$BACKUP_DIR" -name "manifest-*.txt" -mtime +"$RETENTION_DAYS" -delete
+ok "Rotación OK"
+
+# 5) SINCRONIZACIÓN OFF-SITE (opcional, requiere rclone configurado)
+if [ -n "$BACKUP_REMOTE" ]; then
+    if command -v rclone > /dev/null 2>&1; then
+        log "Subiendo a remote: $BACKUP_REMOTE"
+        if rclone copy "$BACKUP_DIR" "$BACKUP_REMOTE" \
+             --include "*-$DATE.*" --transfers 2 --checkers 2 --quiet; then
+            ok "Off-site OK · $BACKUP_REMOTE"
+        else
+            err "Falló la subida off-site (backup local sigue disponible)"
+        fi
     else
-        print_warning "Error en backup de uploads"
+        warn "BACKUP_REMOTE definido pero rclone no está instalado. Salta off-site."
     fi
-else
-    print_warning "Directorio de uploads no encontrado, saltando..."
 fi
 
-# ===================================================================
-# 3. BACKUP DE CONFIGURACIÓN
-# ===================================================================
-
-print_status "Realizando backup de configuración..."
-
-CONFIG_BACKUP_FILE="$BACKUP_DIR/config-$DATE.tar.gz"
-
-# Backup de archivos de configuración (sin .env por seguridad)
-tar -czf "$CONFIG_BACKUP_FILE" \
-    --exclude=".env" \
-    --exclude="node_modules" \
-    --exclude="logs" \
-    --exclude="backups" \
-    .
-
-if [ $? -eq 0 ]; then
-    CONFIG_SIZE=$(du -h "$CONFIG_BACKUP_FILE" | cut -f1)
-    print_success "Backup de configuración completado: $CONFIG_BACKUP_FILE ($CONFIG_SIZE)"
-else
-    print_warning "Error en backup de configuración"
-fi
-
-# ===================================================================
-# 4. GENERAR MANIFIESTO
-# ===================================================================
-
-print_status "Generando manifiesto de backup..."
-
-MANIFEST_FILE="$BACKUP_DIR/manifest-$DATE.txt"
-
-cat > "$MANIFEST_FILE" << EOF
-BACKUP MANIFEST - MAPA DEL TALENTO AGESPORT
-===========================================
-Fecha: $(date)
-Servidor: $(hostname)
-Usuario: $(whoami)
-Versión Node: $(node --version)
-
-ARCHIVOS INCLUIDOS:
-EOF
-
-# Listar archivos de backup del día actual
-ls -la "$BACKUP_DIR"/*-$DATE.* >> "$MANIFEST_FILE" 2>/dev/null || true
-
-print_success "Manifiesto generado: $MANIFEST_FILE"
-
-# ===================================================================
-# 5. LIMPIAR BACKUPS ANTIGUOS
-# ===================================================================
-
-print_status "Limpiando backups antiguos (>$RETENTION_DAYS días)..."
-
-DELETED_COUNT=0
-
-# Buscar y eliminar archivos más antiguos que RETENTION_DAYS
-find "$BACKUP_DIR" -name "*.sql.gz" -mtime +$RETENTION_DAYS -delete
-find "$BACKUP_DIR" -name "*.tar.gz" -mtime +$RETENTION_DAYS -delete  
-find "$BACKUP_DIR" -name "*.txt" -mtime +$RETENTION_DAYS -delete
-
-# Contar archivos restantes
-REMAINING_COUNT=$(ls -1 "$BACKUP_DIR" | wc -l)
-
-print_success "Limpieza completada. Archivos restantes: $REMAINING_COUNT"
-
-# ===================================================================
-# 6. RESUMEN FINAL
-# ===================================================================
-
-print_success "🎉 Backup completado exitosamente!"
+log "🎉 Backup completado exitosamente"
+echo "📊 Espacio usado por backups: $(du -sh "$BACKUP_DIR" | cut -f1)"
 echo ""
-print_status "Resumen:"
-echo "📅 Fecha: $DATE"
-echo "📁 Directorio: $BACKUP_DIR"
-echo "🗄️  Base de datos: ✅"
-echo "📄 Archivos: ✅"  
-echo "⚙️  Configuración: ✅"
-echo "📋 Manifiesto: ✅"
+echo "Restauración de la BD:"
+echo "  gunzip -c $DB_FILE | psql -h \$DB_HOST -U \$DB_USER -d \$DB_NAME"
 echo ""
-
-# Mostrar espacio usado por backups
-TOTAL_BACKUP_SIZE=$(du -sh "$BACKUP_DIR" | cut -f1)
-print_status "Espacio total usado por backups: $TOTAL_BACKUP_SIZE"
-
-# Sugerir verificación
-print_status "Para verificar el backup:"
-echo "  zcat $DB_COMPRESSED_FILE | head -50"
-echo ""
-print_status "Para restaurar el backup:"
-echo "  zcat $DB_COMPRESSED_FILE | psql -h \$DB_HOST -p \$DB_PORT -U \$DB_USER -d \$DB_NAME"
+echo "Restauración de uploads:"
+echo "  tar -xzf $BACKUP_DIR/uploads-$DATE.tar.gz -C /"

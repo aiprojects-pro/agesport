@@ -42,6 +42,16 @@
     espSelect.appendChild(opt);
   });
 
+  // Tipo de socio
+  const tipoSelect = $('tipo_socio');
+  if (tipoSelect) {
+    cat.TIPOS_SOCIO.forEach(function (t) {
+      const opt = document.createElement('option');
+      opt.value = t.slug; opt.textContent = t.label;
+      tipoSelect.appendChild(opt);
+    });
+  }
+
   // Cascada CCAA → provincias
   ccaaSelect.addEventListener('change', function () {
     if (!ccaaSelect.value) {
@@ -67,6 +77,18 @@
     if (provincia) params.set('provincia', provincia);
     if (rol) params.set('rol_cluster', rol);
     if (especialidad) params.set('especialidad', especialidad);
+    // Filtros avanzados añadidos en esta versión
+    const disponibilidad = ($('disponibilidad') || {}).value;
+    const ambito = ($('ambito') || {}).value;
+    const anosMin = ($('anos_experiencia_min') || {}).value;
+    const tipoSocio = ($('tipo_socio') || {}).value;
+    if (disponibilidad) params.set('disponibilidad', disponibilidad);
+    if (ambito) params.set('ambito', ambito);
+    if (anosMin && parseInt(anosMin) > 0) params.set('anos_experiencia_min', anosMin);
+    if (tipoSocio) params.set('tipo_socio', tipoSocio);
+    if ($('b2b_ofrece') && $('b2b_ofrece').checked) params.set('b2b_ofrece', 'true');
+    if ($('b2b_busca') && $('b2b_busca').checked) params.set('b2b_busca', 'true');
+    if ($('b2b_licita') && $('b2b_licita').checked) params.set('b2b_licita', 'true');
     params.set('limit', '50');
     return params.toString();
   }
@@ -85,13 +107,14 @@
       chips += '<span class="tag">' + escapeHtml(label) + '</span>';
     });
 
-    let avatar;
-    if (socio.foto_url) {
-      avatar = '<div class="avatar" style="width:54px;height:54px;background-image:url(\'' + escapeHtml(socio.foto_url) + '\');background-size:cover;background-position:center;border-radius:50%;flex-shrink:0"></div>';
-    } else {
-      const initials = ((socio.nombre || '?')[0] + (socio.apellidos || '')[0]).toUpperCase();
-      avatar = '<div class="avatar" style="width:54px;height:54px;background:linear-gradient(135deg,var(--green) 0%,var(--green-deep) 100%);border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800">' + escapeHtml(initials) + '</div>';
-    }
+    // Avatar unificado: si hay foto, se muestra; si no, iniciales + color
+    // derivado del email (mismo helper para todo el frontend).
+    const avatar = window.AgesportAvatar
+      ? window.AgesportAvatar.renderAvatar({
+          nombre: socio.nombre, apellidos: socio.apellidos, email: socio.email,
+          fotoUrl: socio.foto_url, size: 54,
+        })
+      : '';
 
     return (
       '<article class="person-card">' +
@@ -142,6 +165,14 @@
     cat.fillProvincesSelect(provinciaSelect, { placeholder: 'Todas' });
     rolSelect.value = '';
     espSelect.value = '';
+    // Filtros avanzados nuevos
+    if ($('disponibilidad')) $('disponibilidad').value = '';
+    if ($('ambito')) $('ambito').value = '';
+    if ($('anos_experiencia_min')) $('anos_experiencia_min').value = '';
+    if ($('b2b_ofrece')) $('b2b_ofrece').checked = false;
+    if ($('b2b_busca')) $('b2b_busca').checked = false;
+    if ($('b2b_licita')) $('b2b_licita').checked = false;
+    if ($('tipo_socio')) $('tipo_socio').value = '';
     load();
   });
   searchBtn.addEventListener('click', load);

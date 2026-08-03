@@ -325,6 +325,28 @@
         <div id="passwordMessage" class="message-box"></div>
       </article>
 
+      <!-- ====== Portabilidad de datos (RGPD art. 20) ======
+           Cualquier socio puede descargar en cualquier momento todos
+           sus datos personales que la plataforma guarda sobre él/ella.
+           El endpoint /api/socios/mis-datos/exportar devuelve un JSON
+           con perfil completo, consentimientos, especialidades,
+           disponibilidad, rol_cluster, foto/CV URLs, mensajes y auditoría. -->
+      <article class="form-card" id="portabilityCard">
+        <h2>Mis datos personales</h2>
+        <p class="muted" style="margin-top:8px">
+          Puedes descargar en cualquier momento todos tus datos guardados en la plataforma
+          (perfil, consentimientos, mensajes, historial de acciones). El fichero se
+          entrega en formato JSON, apto para conservarlo o trasladarlo a otra plataforma
+          (derecho de portabilidad · RGPD art. 20).
+        </p>
+        <div style="margin-top:14px">
+          <button class="btn btn-secondary" id="portabilityBtn" type="button">
+            Descargar mis datos (JSON)
+          </button>
+        </div>
+        <div id="portabilityMessage" class="message-box"></div>
+      </article>
+
       <article class="form-card" id="bajaCard">
         <h2>Solicitar baja</h2>
         <p class="muted" style="margin-top:8px">Si necesitas darte de baja, indícanos brevemente el motivo. La administración revisará la solicitud y te contactará.</p>

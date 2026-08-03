@@ -75,7 +75,14 @@ router.get('/observatorio/stats',
 );
 
 // ==================== RGPD ====================
-router.get('/mis-datos/exportar', 
+// Feed de novedades para el dashboard del socio: últimas altas cerca,
+// socios que buscan lo que ofrezco y viceversa.
+router.get('/feed',
+  require('../middleware/auth').authenticateSocio,
+  sociosController.getFeed
+);
+
+router.get('/mis-datos/exportar',
   authenticateSocio,
   sociosController.exportarDatosPersonales
 );

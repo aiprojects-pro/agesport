@@ -86,6 +86,34 @@ Tres cosas que hay que respaldar:
 
 En `deploy.sh` hay un script de ejemplo. `BACKUP_RETENTION_DAYS=30` controla la rotación local.
 
+## Alertas de caída (uptime monitoring)
+
+La aplicación expone `GET /health` con `{status:"OK", ...}` (HTTP 200) cuando
+está sana. Cualquier servicio externo de uptime monitoring puede sondearlo.
+
+Opciones gratuitas recomendadas:
+
+- **UptimeRobot** ([uptimerobot.com](https://uptimerobot.com/)) — plan gratuito con 50 monitores, alertas cada 5 minutos, notificaciones por email/Telegram/webhook.
+- **Better Stack** (antes Better Uptime, [betterstack.com/uptime](https://betterstack.com/uptime)) — 10 monitores gratis, alertas cada 3 minutos, status page pública opcional.
+- **Healthchecks.io** — pensado para cron jobs pero también sirve para HTTP.
+
+### Configuración recomendada en UptimeRobot
+
+1. Crear cuenta gratuita y añadir "New Monitor" tipo **HTTP(s)**.
+2. **URL:** `https://mapatalento.agesport.org/health` (ajusta al dominio real).
+3. **Monitoring Interval:** 5 minutos.
+4. **Timeout:** 30 s.
+5. **Alert Contacts:** el email de Gerencia + el del administrador de sistemas.
+6. **Advanced settings** → *Alert When:* HTTP status ≠ 200 · Response no contiene `"status":"OK"`.
+7. Confirmar la primera notificación de test.
+
+Con esta configuración, si el servidor se cae más de 5 minutos, ambos contactos
+reciben un email automático. Al recuperarse llega otro email de "Back up".
+
+Opcionalmente puedes publicar una **status page** pública en tu subdominio
+para que los socios vean el estado en tiempo real (útil durante ventanas
+de mantenimiento planificadas).
+
 ## Actualización de versión
 
 ```bash

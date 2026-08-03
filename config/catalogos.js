@@ -220,13 +220,34 @@ const findEspecialidadBySlug = (slug) =>
 const findCcaaByProvincia = (provincia) =>
   COMUNIDADES_AUTONOMAS.find((ca) => ca.provincias.includes(provincia)) || null;
 
+// Normaliza texto para comparación tolerante: quita acentos, colapsa espacios
+// y baja a minúsculas. Sin esto, "ALMERÍA" (tal cual viene en muchos CSV
+// de administraciones públicas) no encajaba con "Almería" del catálogo.
+const _norm = (s) => (s || '')
+  .toString()
+  .normalize('NFD')
+  .replace(/[̀-ͯ]/g, '')
+  .toLowerCase()
+  .trim()
+  .replace(/\s+/g, ' ');
+
+// Devuelve el nombre canónico de la provincia (respetando mayúsculas
+// del catálogo) a partir de cualquier variante razonable; null si no
+// se reconoce.
+const canonicalProvincia = (raw) => {
+  if (!raw) return null;
+  const n = _norm(raw);
+  return allProvinces().find((p) => _norm(p) === n) || null;
+};
+
 // Validadores
-const isValidProvincia = (provincia) => allProvinces().includes(provincia);
+const isValidProvincia = (provincia) => canonicalProvincia(provincia) !== null;
 const isValidRolSlug = (slug) => ROLES_CLUSTER.some((r) => r.slug === slug);
 const isValidEspecialidadSlug = (slug) => ESPECIALIDADES.some((e) => e.slug === slug);
 const isValidTipoSocio = (slug) => TIPOS_SOCIO.some((t) => t.slug === slug);
 
 module.exports = {
+  canonicalProvincia,
   TIPOS_SOCIO,
   ROLES_CLUSTER,
   ESPECIALIDADES,

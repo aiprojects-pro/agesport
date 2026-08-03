@@ -49,21 +49,34 @@ const authenticateSocio = async (req, res, next) => {
     }
 
     // Verificar que el socio existe y está activo
-    const socio = await db.findOne('socios', { 
-      id: decoded.socioId, 
-      activo: true, 
-      estado: 'aprobado' 
-    }, 'id, email, nombre, apellidos, ultimo_acceso');
+    const socio = await db.findOne('socios', {
+      id: decoded.socioId,
+      activo: true,
+      estado: 'aprobado'
+    }, 'id, email, nombre, apellidos, ultimo_acceso, password_changed_at');
 
     if (!socio) {
-      return res.status(401).json({ 
-        error: 'Socio no encontrado o inactivo.' 
+      return res.status(401).json({
+        error: 'Socio no encontrado o inactivo.'
       });
     }
 
+    // Invalidar el token si se cambió la contraseña después de emitirse.
+    // La columna es TIMESTAMP (sin zona); Postgres guarda NOW() en UTC pero
+    // node-postgres lo devuelve interpretándolo como local. Añadimos 'Z'
+    // para forzar UTC al parsearlo con Date.
+    if (socio.password_changed_at) {
+      const pwChangedSec = Math.floor(new Date(socio.password_changed_at).getTime() / 1000);
+      if (decoded.iat < pwChangedSec) {
+        return res.status(401).json({
+          error: 'Sesión invalidada tras cambio de contraseña. Inicia sesión de nuevo.'
+        });
+      }
+    }
+
     // Actualizar último acceso
-    await db.update('socios', 
-      { ultimo_acceso: new Date() }, 
+    await db.update('socios',
+      { ultimo_acceso: new Date() },
       { id: socio.id }
     );
 
@@ -102,20 +115,31 @@ const authenticateAdmin = async (req, res, next) => {
       });
     }
 
-    const admin = await db.findOne('administradores', { 
-      id: decoded.adminId, 
-      activo: true 
-    }, 'id, email, nombre, rol');
+    const admin = await db.findOne('administradores', {
+      id: decoded.adminId,
+      activo: true
+    }, 'id, email, nombre, rol, password_changed_at');
 
     if (!admin) {
-      return res.status(401).json({ 
-        error: 'Administrador no encontrado o inactivo.' 
+      return res.status(401).json({
+        error: 'Administrador no encontrado o inactivo.'
       });
     }
 
+    // Invalidar sesiones abiertas si la password se cambió después de
+    // emitirse el token (mismo enfoque que en socios, con corrección UTC).
+    if (admin.password_changed_at) {
+      const pwChangedSec = Math.floor(new Date(admin.password_changed_at).getTime() / 1000);
+      if (decoded.iat < pwChangedSec) {
+        return res.status(401).json({
+          error: 'Sesión invalidada tras cambio de contraseña. Inicia sesión de nuevo.'
+        });
+      }
+    }
+
     // Actualizar último acceso
-    await db.update('administradores', 
-      { ultimo_acceso: new Date() }, 
+    await db.update('administradores',
+      { ultimo_acceso: new Date() },
       { id: admin.id }
     );
 

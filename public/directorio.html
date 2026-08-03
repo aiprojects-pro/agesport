@@ -61,6 +61,47 @@
             <label for="especialidad">Especialidad</label>
             <select id="especialidad"></select>
           </div>
+          <div class="field">
+            <label for="tipo_socio">Tipo de socio</label>
+            <select id="tipo_socio"><option value="">Todos</option></select>
+          </div>
+          <!-- Filtros avanzados: disponibilidad, experiencia, ámbito e interés B2B. -->
+          <div class="field">
+            <label for="disponibilidad">Disponibilidad</label>
+            <select id="disponibilidad">
+              <option value="">Cualquiera</option>
+              <option value="Alta">Alta — disponibilidad continua</option>
+              <option value="Media">Media — ocasional</option>
+              <option value="Puntual">Puntual</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ambito">Ámbito</label>
+            <select id="ambito">
+              <option value="">Cualquiera</option>
+              <option value="Público">Público</option>
+              <option value="Privado">Privado</option>
+              <option value="Mixto / Otros">Mixto / Otros</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="anos_experiencia_min">Experiencia mínima (años)</label>
+            <input id="anos_experiencia_min" type="number" min="0" max="50" placeholder="0">
+          </div>
+          <div class="field-full">
+            <label style="margin-bottom:6px">Intereses B2B</label>
+            <div style="display:flex;flex-wrap:wrap;gap:14px">
+              <label style="display:flex;align-items:center;gap:6px;font-weight:normal">
+                <input id="b2b_ofrece" type="checkbox"> Ofrece servicios
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:normal">
+                <input id="b2b_busca" type="checkbox"> Busca proveedores
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:normal">
+                <input id="b2b_licita" type="checkbox"> Participa en licitaciones
+              </label>
+            </div>
+          </div>
         </div>
         <div class="toolbar" style="margin-top:16px">
           <div class="muted" id="resultsInfo">Cargando directorio.</div>
@@ -78,6 +119,7 @@
 
   <script src="/assets/catalogos.js"></script>
   <script src="/assets/portal.js"></script>
+  <script src="/assets/avatar.js"></script>
   <script src="/assets/directorio.js"></script>
 </body>
 </html>

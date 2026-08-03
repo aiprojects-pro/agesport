@@ -148,6 +148,14 @@ router.post('/socios/invitados/:invitadoId/aprobar',
   adminController.aprobarAccesoInvitado
 );
 
+// Editar una fila del CSV (para corregir errores antes de aprobar).
+// Revalida y actualiza el estado a 'pendiente' si ya no hay errores.
+router.put('/socios/invitados/:invitadoId',
+  authenticateAdmin,
+  validateInput,
+  adminController.updateAccesoInvitado
+);
+
 // ==================== v2: ACCESOS GENERADOS ====================
 router.get('/socios/accesos',
   authenticateAdmin,
@@ -201,6 +209,80 @@ router.post('/config/smtp/test',
   authenticateAdmin, requireSuperadmin,
   validateInput,
   adminController.testSmtpConfig
+);
+
+// ==================== USUARIOS Y ROLES (SUPERADMIN) ====================
+// Gestión de administradores desde la UI: alta, cambio de rol, activar/
+// desactivar y reseteo de contraseña. Sólo accesible para superadmin.
+router.get('/administradores',
+  authenticateAdmin, requireSuperadmin,
+  adminController.listAdmins
+);
+router.post('/administradores',
+  authenticateAdmin, requireSuperadmin,
+  validateInput,
+  adminController.createAdmin
+);
+router.put('/administradores/:id',
+  authenticateAdmin, requireSuperadmin,
+  validateInput,
+  adminController.updateAdmin
+);
+router.post('/administradores/:id/reset-password',
+  authenticateAdmin, requireSuperadmin,
+  adminController.resetAdminPassword
+);
+router.delete('/administradores/:id',
+  authenticateAdmin, requireSuperadmin,
+  adminController.deactivateAdmin
+);
+
+// Gestión avanzada de socios: cambiar tipo_socio o restablecer contraseña
+// (envía email al socio con enlace de reseteo).
+router.put('/socios/:socioId/tipo',
+  authenticateAdmin, requireSuperadmin,
+  validateInput,
+  adminController.changeSocioType
+);
+router.post('/socios/:socioId/reset-password',
+  authenticateAdmin, requireSuperadmin,
+  adminController.resetSocioPassword
+);
+
+// Reenviar email de bienvenida a un socio ya aprobado. Útil cuando el
+// original quedó en spam, el socio cambió de email o no lo recibió.
+router.post('/socios/:socioId/reenviar-bienvenida',
+  authenticateAdmin,
+  adminController.reenviarBienvenida
+);
+
+// Evolución mensual: altas de socios agregadas por mes (últimos 12 meses).
+// Sirve para el gráfico del dashboard admin y para reportes a la Junta.
+router.get('/stats/altas-mensuales',
+  authenticateAdmin,
+  adminController.getAltasMensuales
+);
+
+// La ruta GET /api/admin/auditoria ya está definida más arriba
+// (usa adminController.getAuditoria). Aquí sólo añadimos la exportación
+// CSV con los mismos filtros para no duplicar rutas.
+router.get('/auditoria/exportar',
+  authenticateAdmin,
+  adminController.exportarAuditoriaCSV
+);
+
+// ==================== COMUNICACIONES MASIVAS ====================
+// Preview de destinatarios que cumplen los filtros, sin enviar nada.
+router.post('/comunicaciones/preview',
+  authenticateAdmin,
+  validateInput,
+  adminController.previewComunicacion
+);
+// Envío real. Requiere superadmin porque puede afectar a cientos de socios.
+router.post('/comunicaciones/enviar',
+  authenticateAdmin, requireSuperadmin,
+  validateInput,
+  adminController.enviarComunicacion
 );
 
 module.exports = router;

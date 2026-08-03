@@ -460,7 +460,78 @@
     renderCharts();
     renderObservatorio();
     renderMensajeria(msgRes.estadisticas || {});
+
+    // Cargar feed en background (no bloquea el resto del dashboard)
+    loadFeed();
   }).catch(function () {});
+
+  // ===================================================================
+  // ==================== FEED DE NOVEDADES ============================
+  // ===================================================================
+  async function loadFeed() {
+    const container = $('feedContent');
+    if (!container) return;
+    try {
+      const data = await request('/api/socios/feed', { method: 'GET', headers: {} });
+      const sections = [];
+      const rolLabel = function (slug) {
+        const r = cat.ROLES_CLUSTER.find(function (x) { return x.slug === slug; });
+        return r ? r.label : '';
+      };
+      const renderPersonas = function (list) {
+        if (!list.length) return '<p class="empty">Sin resultados por ahora.</p>';
+        return '<div style="display:flex;flex-direction:column;gap:8px">' +
+          list.map(function (s) {
+            const nom = (s.nombre || '') + ' ' + (s.apellidos || '');
+            const meta = [s.entidad, rolLabel(s.rol_cluster), s.provincia].filter(Boolean).join(' · ');
+            const avatar = window.AgesportAvatar
+              ? window.AgesportAvatar.renderAvatar({
+                  nombre: s.nombre, apellidos: s.apellidos, email: s.email,
+                  fotoUrl: s.foto_url, size: 36,
+                })
+              : '';
+            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--bg-soft);border-radius:8px;gap:10px">' +
+              '<div style="display:flex;align-items:center;gap:10px;min-width:0">' +
+                avatar +
+                '<div style="min-width:0">' +
+                  '<strong style="color:var(--navy-deep);font-size:.94rem;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(nom.trim()) + '</strong>' +
+                  '<div class="muted" style="font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(meta || '—') + '</div>' +
+                '</div>' +
+              '</div>' +
+              '<a href="/perfil.html?socioId=' + encodeURIComponent(s.id) + '" style="font-size:.85rem;color:var(--green-deep);text-decoration:none;font-weight:600;flex-shrink:0">Ver perfil →</a>' +
+            '</div>';
+          }).join('') + '</div>';
+      };
+      if ((data.altas_cerca || []).length) {
+        sections.push({
+          title: 'Últimas altas' + (data.provincia_referencia ? ' en ' + data.provincia_referencia : ''),
+          body: renderPersonas(data.altas_cerca),
+        });
+      }
+      if ((data.b2b_ofrece || []).length) {
+        sections.push({
+          title: 'Socios que ofrecen servicios (B2B)',
+          body: renderPersonas(data.b2b_ofrece),
+        });
+      }
+      if ((data.b2b_busca || []).length) {
+        sections.push({
+          title: 'Socios que buscan proveedores (B2B)',
+          body: renderPersonas(data.b2b_busca),
+        });
+      }
+      container.innerHTML = sections.length
+        ? '<div class="grid-3">' + sections.map(function (s) {
+            return '<div>' +
+              '<h4 style="margin:0 0 8px;color:var(--navy-deep);font-size:.9rem;font-weight:700">' + escapeHtml(s.title) + '</h4>' +
+              s.body +
+            '</div>';
+          }).join('') + '</div>'
+        : '<p class="empty">Aún no hay novedades destacadas.</p>';
+    } catch (err) {
+      container.innerHTML = '<p class="empty">No se pudo cargar el feed.</p>';
+    }
+  }
 
   // ===================================================================
   // ==================== INDICADORES AGREGADOS =========================

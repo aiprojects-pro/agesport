@@ -368,6 +368,45 @@
     }
   });
 
+  // ===== Portabilidad RGPD: descargar mis datos =====
+  const portabilityBtn = $('portabilityBtn');
+  const portabilityMessage = $('portabilityMessage');
+  if (portabilityBtn) {
+    portabilityBtn.addEventListener('click', async function () {
+      portabilityBtn.disabled = true;
+      const oldLabel = portabilityBtn.textContent;
+      portabilityBtn.textContent = 'Generando...';
+      try {
+        // El endpoint devuelve JSON con todos los datos del socio.
+        // Usamos fetch directamente para poder crear el Blob.
+        const res = await fetch('/api/socios/mis-datos/exportar', {
+          credentials: 'same-origin',
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(function () { return {}; });
+          throw new Error(err.error || 'No se pudo generar el fichero');
+        }
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const fecha = new Date().toISOString().slice(0, 10);
+        a.download = 'agesport-mis-datos-' + fecha + '.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        setMessage(portabilityMessage, true, 'Fichero descargado correctamente.');
+      } catch (error) {
+        setMessage(portabilityMessage, false, error.message);
+      } finally {
+        portabilityBtn.disabled = false;
+        portabilityBtn.textContent = oldLabel;
+      }
+    });
+  }
+
   // ===== Solicitud de baja =====
   bajaForm.addEventListener('submit', async function (event) {
     event.preventDefault();

@@ -50,11 +50,25 @@
       <button class="tab" data-tab="importacion">Importación masiva</button>
       <button class="tab" data-tab="landing">Landing pública</button>
       <button class="tab" data-tab="correo">Correo saliente</button>
+      <button class="tab" data-tab="emails">Plantillas email</button>
+      <button class="tab" data-tab="comunicaciones">Comunicaciones</button>
+      <button class="tab" data-tab="auditoria">Actividad</button>
+      <button class="tab" data-tab="usuarios">Usuarios y roles</button>
     </div>
 
     <!-- ============ DASHBOARD ============ -->
     <section class="tab-panel active" data-panel="dashboard">
       <section class="grid-4" id="adminKpis"></section>
+
+      <!-- Evolución mensual: altas de socios en los últimos 12 meses.
+           Gráfico de barras SVG puro, sin librerías externas. -->
+      <article class="card" style="margin-top:18px" id="altasCard">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">
+          <h3 style="margin:0">Evolución del clúster · últimos 12 meses</h3>
+          <span id="altasTotal" class="muted"></span>
+        </div>
+        <div id="altasChart" style="margin-top:14px">Cargando…</div>
+      </article>
 
       <section class="grid-2" style="margin-top:18px">
         <article class="card">
@@ -211,7 +225,7 @@
               <thead>
                 <tr>
                   <th style="width:36px"><input type="checkbox" id="csvSelectAll"></th>
-                  <th>Email</th><th>Nombre</th><th>Entidad</th><th>Provincia</th><th>Rol</th><th>Estado</th>
+                  <th>Email</th><th>Nombre</th><th>Entidad</th><th>Provincia</th><th>Rol</th><th>Estado</th><th>Acciones</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -319,6 +333,208 @@
           </div>
         </form>
         <div id="smtpMessage" class="message-box"></div>
+      </article>
+    </section>
+
+    <!-- ============ PLANTILLAS DE EMAIL ============ -->
+    <section class="tab-panel" data-panel="emails">
+      <article class="form-card">
+        <h2 style="margin:0 0 6px">Plantillas de email</h2>
+        <p class="muted" style="margin:0 0 14px">
+          Textos que reciben los socios en los emails automáticos del sistema
+          (bienvenida al aprobar acceso, restablecimiento de contraseña, etc.).
+          Los cambios se guardan al instante. Puedes usar el marcador
+          <code>{nombre}</code> en el saludo — se sustituye por el nombre real del socio.
+        </p>
+        <div id="emailTemplates"></div>
+        <div id="emailTemplatesMsg" class="message-box"></div>
+      </article>
+    </section>
+
+    <!-- ============ COMUNICACIONES MASIVAS (superadmin) ============ -->
+    <section class="tab-panel" data-panel="comunicaciones">
+      <article class="form-card">
+        <h2 style="margin:0 0 6px">Comunicaciones a socios</h2>
+        <p class="muted" style="margin:0 0 14px">
+          Envía un email a todos los socios activos que cumplan los filtros. Sólo
+          se envía a socios con <code>acepta_mensajeria=true</code>. Puedes usar
+          <code>{nombre}</code> en el cuerpo para personalizar el saludo. Sólo superadmin.
+        </p>
+        <form id="comForm" class="form-grid">
+          <div class="field-full form-section"><h3 style="margin:0">Filtrar destinatarios</h3></div>
+          <div class="field">
+            <label for="comProvincia">Provincia</label>
+            <select id="comProvincia"><option value="">Todas</option></select>
+          </div>
+          <div class="field">
+            <label for="comRol">Rol clúster</label>
+            <select id="comRol"><option value="">Todos</option></select>
+          </div>
+          <div class="field">
+            <label for="comDisponibilidad">Disponibilidad</label>
+            <select id="comDisponibilidad">
+              <option value="">Todas</option>
+              <option value="Alta">Alta</option>
+              <option value="Media">Media</option>
+              <option value="Puntual">Puntual</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="comAmbito">Ámbito</label>
+            <select id="comAmbito">
+              <option value="">Todos</option>
+              <option value="Público">Público</option>
+              <option value="Privado">Privado</option>
+              <option value="Mixto / Otros">Mixto / Otros</option>
+            </select>
+          </div>
+          <div class="field-full checkbox-row">
+            <input id="comSoloMentores" type="checkbox">
+            <label for="comSoloMentores">Sólo socios que se ofrecen como mentores</label>
+          </div>
+          <div class="field-full">
+            <button type="button" class="btn btn-secondary" id="comPreviewBtn">Calcular destinatarios</button>
+            <span id="comPreviewResult" class="muted" style="margin-left:12px"></span>
+          </div>
+          <div class="field-full form-section"><h3 style="margin:0">Contenido del email</h3></div>
+          <div class="field-full">
+            <label for="comAsunto">Asunto</label>
+            <input id="comAsunto" placeholder="Ej: Comunicado de Gerencia · Nueva convocatoria">
+          </div>
+          <div class="field-full">
+            <label for="comCuerpo">Cuerpo (texto plano; usa {nombre} para personalizar)</label>
+            <textarea id="comCuerpo" rows="10" placeholder="Estimado/a {nombre},&#10;&#10;Le informamos de..."></textarea>
+          </div>
+          <div class="field-full">
+            <button type="submit" class="btn btn-primary" id="comSendBtn">Enviar comunicación</button>
+          </div>
+        </form>
+        <div id="comMessage" class="message-box"></div>
+      </article>
+    </section>
+
+    <!-- ============ AUDITORÍA / ACTIVIDAD ============ -->
+    <section class="tab-panel" data-panel="auditoria">
+      <article class="form-card">
+        <div class="toolbar" style="margin-bottom:12px">
+          <div>
+            <h2 style="margin:0">Registro de actividad</h2>
+            <p class="muted" style="margin:6px 0 0">Historial de acciones realizadas en la plataforma. Trazabilidad completa por socio y admin.</p>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-secondary" id="auditExportBtn">Exportar CSV</button>
+          </div>
+        </div>
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="field">
+            <label for="auditAccion">Acción</label>
+            <select id="auditAccion"><option value="">Todas</option></select>
+          </div>
+          <div class="field">
+            <label for="auditDesde">Desde</label>
+            <input id="auditDesde" type="date">
+          </div>
+          <div class="field">
+            <label for="auditHasta">Hasta</label>
+            <input id="auditHasta" type="date">
+          </div>
+          <div class="field-full">
+            <button type="button" class="btn btn-secondary" id="auditApplyBtn">Aplicar filtros</button>
+            <button type="button" class="btn btn-secondary" id="auditResetBtn" style="margin-left:6px">Limpiar</button>
+          </div>
+        </div>
+        <table class="table-list" id="auditTable">
+          <thead>
+            <tr>
+              <th>Fecha</th><th>Acción</th><th>Recurso</th><th>Quién</th><th>IP</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div id="auditPagination" class="muted" style="margin-top:10px"></div>
+        <div id="auditMessage" class="message-box"></div>
+      </article>
+    </section>
+
+    <!-- ============ USUARIOS Y ROLES (superadmin) ============ -->
+    <section class="tab-panel" data-panel="usuarios">
+      <!-- Administradores -->
+      <article class="form-card">
+        <div class="toolbar" style="margin-bottom:12px">
+          <div>
+            <h2 style="margin:0">Administradores</h2>
+            <p class="muted" style="margin:6px 0 0">Gestiona quién puede acceder al panel y qué permisos tiene.</p>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-primary" id="btnNuevoAdmin">Añadir administrador</button>
+          </div>
+        </div>
+
+        <!-- Formulario alta (oculto por defecto) -->
+        <div id="nuevoAdminForm" style="display:none;background:var(--bg-soft);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px">
+          <div class="form-grid">
+            <div class="field">
+              <label for="admNombre">Nombre</label>
+              <input id="admNombre" placeholder="Nombre y apellidos">
+            </div>
+            <div class="field">
+              <label for="admEmail">Email</label>
+              <input id="admEmail" type="email" placeholder="usuario@agesport.org">
+            </div>
+            <div class="field">
+              <label for="admPassword">Contraseña temporal</label>
+              <input id="admPassword" type="password" placeholder="Mín. 8 caracteres, 1 mayúscula, 1 número">
+            </div>
+            <div class="field">
+              <label for="admRol">Rol</label>
+              <select id="admRol">
+                <option value="admin">Administrador</option>
+                <option value="superadmin">Superadministrador (acceso total)</option>
+              </select>
+            </div>
+          </div>
+          <div class="actions" style="margin-top:14px">
+            <button type="button" class="btn btn-secondary" id="cancelNuevoAdmin">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="createAdminBtn">Crear administrador</button>
+          </div>
+        </div>
+
+        <table class="table-list" id="adminsTable">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>Último acceso</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div id="adminsMessage" class="message-box"></div>
+      </article>
+
+      <!-- Socios avanzado -->
+      <article class="form-card" style="margin-top:18px">
+        <h2 style="margin:0 0 6px">Socios — gestión avanzada</h2>
+        <p class="muted" style="margin:0 0 14px">Cambia el tipo de socio o envía un email de restablecimiento de contraseña a cualquier socio activo.</p>
+        <div class="toolbar" style="margin-bottom:12px">
+          <input id="sociosBusqueda" placeholder="Buscar por nombre o email…" style="min-width:280px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:#fff">
+        </div>
+        <table class="table-list" id="sociosAdvTable">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Tipo</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div id="sociosAdvMessage" class="message-box"></div>
       </article>
     </section>
   </main>

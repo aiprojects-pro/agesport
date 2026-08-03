@@ -8,6 +8,25 @@ const csv = require('../services/csv');
 const catalogos = require('../config/catalogos');
 const crypto = require('crypto');
 
+// Helper para comunicaciones masivas: construye WHERE + params a partir de
+// un objeto de filtros. Función libre (no método) para evitar problemas de
+// binding de `this` al pasarla como handler de Express.
+function buildSocioFilterWhere(f) {
+  const wh = ["s.estado='aprobado'", 's.activo=true', 'c.acepta_mensajeria=true'];
+  const params = [];
+  let i = 1;
+  if (f.provincia)    { wh.push(`s.provincia = $${i++}`);          params.push(f.provincia); }
+  if (f.comunidad)    { wh.push(`s.comunidad_autonoma = $${i++}`); params.push(f.comunidad); }
+  if (f.tipo_socio)   { wh.push(`s.tipo_socio = $${i++}`);         params.push(f.tipo_socio); }
+  if (f.rol_cluster)  { wh.push(`rc.rol = $${i++}`);               params.push(f.rol_cluster); }
+  if (f.disponibilidad){wh.push(`d.nivel = $${i++}`);              params.push(f.disponibilidad); }
+  if (f.ambito)       { wh.push(`s.ambito = $${i++}`);             params.push(f.ambito); }
+  if (f.solo_mentores === true || f.solo_mentores === 'true') {
+    wh.push('d.tutor_mentor = true');
+  }
+  return { where: 'WHERE ' + wh.join(' AND '), params };
+}
+
 // Geocodifica en background el municipio de un socio recién creado o
 // aprobado si aún no tiene coordenadas. `setImmediate` para no
 // bloquear la respuesta HTTP: si Nominatim tarda, el admin ya recibió
@@ -475,6 +494,18 @@ class AdminController {
         paramIndex++;
       }
 
+      // Total de resultados con los mismos filtros (sin paginar) — se usa
+      // para la paginación en la UI. Guardamos el WHERE construido antes
+      // de añadir el LIMIT/OFFSET.
+      const countQuery = `SELECT COUNT(*)::int AS c FROM auditoria a WHERE 1=1${query.split('WHERE 1=1')[1].split('ORDER BY')[0]}`;
+      const totalRes = await db.query(countQuery, params.slice());
+      const total = totalRes.rows[0].c;
+
+      // Lista de acciones distintas para el filtro desplegable.
+      const accionesDistintas = await db.query(
+        'SELECT DISTINCT accion FROM auditoria ORDER BY accion'
+      );
+
       query += ` ORDER BY a.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       const offset = (page - 1) * limit;
       params.push(limit, offset);
@@ -483,6 +514,8 @@ class AdminController {
 
       res.json({
         auditoria: auditoria.rows,
+        total,
+        acciones: accionesDistintas.rows.map(function (r) { return r.accion; }),
         filters: { socio_id, admin_id, accion, desde, hasta },
         pagination: {
           page: parseInt(page),
@@ -808,10 +841,26 @@ class AdminController {
         const r = {};
         header.forEach(function (h, idx) { r[h] = (cols[idx] || '').trim() || null; });
         const errores = [];
-        if (!r.email) errores.push('Email vacío');
-        if (r.provincia && !catalogos.isValidProvincia(r.provincia)) errores.push('Provincia no válida');
-        if (r.rol_cluster && !catalogos.isValidRolSlug(r.rol_cluster)) errores.push('Rol no válido');
-        if (r.tipo_socio && !catalogos.isValidTipoSocio(r.tipo_socio)) errores.push('Tipo de socio no válido');
+
+        if (!r.email) errores.push('Falta el email');
+
+        // Provincia: aceptamos cualquier variante razonable (mayúsculas,
+        // sin tilde, con espacios) y la normalizamos al nombre canónico del
+        // catálogo. Sin esto, "ALMERÍA" se rechazaba como "Provincia no válida".
+        if (r.provincia) {
+          const canon = catalogos.canonicalProvincia(r.provincia);
+          if (canon) {
+            r.provincia = canon; // ← guardamos ya el nombre canónico
+          } else {
+            errores.push('Provincia "' + r.provincia + '" no está en el catálogo');
+          }
+        }
+        if (r.rol_cluster && !catalogos.isValidRolSlug(r.rol_cluster)) {
+          errores.push('Rol "' + r.rol_cluster + '" no está en el catálogo');
+        }
+        if (r.tipo_socio && !catalogos.isValidTipoSocio(r.tipo_socio)) {
+          errores.push('Tipo de socio "' + r.tipo_socio + '" no está en el catálogo');
+        }
         const ccaa = r.comunidad_autonoma || (r.provincia ? (catalogos.findCcaaByProvincia(r.provincia) || {}).slug : null);
 
         // Si la fila tiene errores de validación, queda en estado
@@ -820,8 +869,20 @@ class AdminController {
         // tautología y filas inválidas pasaban a aprobables.
         let estado = errores.length ? 'con_errores' : 'pendiente';
         if (r.email) {
-          const exists = await db.findOne('socios', { email: r.email });
-          if (exists) { estado = 'duplicado'; errores.push('Email ya existente en socios'); }
+          // Sólo cuenta como duplicado si existe un socio ACTIVO con ese
+          // email. Los borrados (activo=false / estado='rechazado') no
+          // deben bloquear una nueva importación — antes cualquier baja
+          // dejaba el email inutilizable para toda la vida.
+          const exists = await db.query(
+            `SELECT 1 FROM socios
+             WHERE email = $1 AND activo = true AND estado <> 'rechazado'
+             LIMIT 1`,
+            [r.email]
+          );
+          if (exists.rows.length) {
+            estado = 'duplicado';
+            errores.push('Email ya existente en socios');
+          }
         }
 
         const inserted = await db.insert('accesos_invitados', {
@@ -873,6 +934,80 @@ class AdminController {
     }
   }
 
+  // PUT /api/admin/socios/invitados/:invitadoId
+  // Corrige una fila del CSV que quedó con errores, revalida y (si ya no
+  // hay errores) la deja lista para aprobar.
+  async updateAccesoInvitado(req, res) {
+    try {
+      const { invitadoId } = req.params;
+      const invitado = await db.findOne('accesos_invitados', { id: invitadoId });
+      if (!invitado) return res.status(404).json({ error: 'Fila no encontrada' });
+      if (['aprobado', 'rechazado'].includes(invitado.estado)) {
+        return res.status(409).json({ error: 'La fila ya fue procesada' });
+      }
+
+      // Campos editables desde la UI de importación
+      const editable = ['nombre','apellidos','email','entidad','cargo_actual',
+        'provincia','localidad','rol_cluster','tipo_socio'];
+      const patch = {};
+      for (const k of editable) {
+        if (k in (req.body || {})) patch[k] = (req.body[k] || '').trim() || null;
+      }
+
+      // Normalizamos provincia + revalidamos catálogos
+      const errores = [];
+      const merged = { ...invitado, ...patch };
+      if (!merged.email) errores.push('Falta el email');
+      if (merged.provincia) {
+        const canon = catalogos.canonicalProvincia(merged.provincia);
+        if (canon) patch.provincia = canon;
+        else errores.push('Provincia "' + merged.provincia + '" no está en el catálogo');
+      }
+      if (merged.rol_cluster && !catalogos.isValidRolSlug(merged.rol_cluster)) {
+        errores.push('Rol "' + merged.rol_cluster + '" no está en el catálogo');
+      }
+      if (merged.tipo_socio && !catalogos.isValidTipoSocio(merged.tipo_socio)) {
+        errores.push('Tipo de socio "' + merged.tipo_socio + '" no está en el catálogo');
+      }
+
+      // Duplicado: sólo si hay un socio ACTIVO con ese email
+      if (merged.email) {
+        const dup = await db.query(
+          `SELECT 1 FROM socios
+           WHERE email = $1 AND activo = true AND estado <> 'rechazado' LIMIT 1`,
+          [merged.email]
+        );
+        if (dup.rows.length) errores.push('Email ya existente en socios');
+      }
+
+      let nuevoEstado;
+      if (errores.length === 0) nuevoEstado = 'pendiente';
+      else if (errores.some((e) => e.startsWith('Email ya existente'))) nuevoEstado = 'duplicado';
+      else nuevoEstado = 'con_errores';
+
+      // Autocompletamos CCAA si viene provincia y no CCAA
+      if (patch.provincia && !merged.comunidad_autonoma) {
+        const ca = catalogos.findCcaaByProvincia(patch.provincia);
+        if (ca) patch.comunidad_autonoma = ca.slug;
+      }
+
+      patch.estado = nuevoEstado;
+      patch.errores = errores.length ? JSON.stringify(errores) : null;
+
+      await db.update('accesos_invitados', patch, { id: invitadoId });
+      const refreshed = await db.findOne('accesos_invitados', { id: invitadoId });
+      res.json({
+        message: nuevoEstado === 'pendiente'
+          ? 'Fila corregida y lista para aprobar'
+          : 'Fila actualizada · ' + errores.length + ' error(es) pendiente(s)',
+        fila: refreshed,
+      });
+    } catch (error) {
+      console.error('Error actualizando invitado:', error);
+      res.status(500).json({ error: 'No se pudo guardar la fila' });
+    }
+  }
+
   async aprobarAccesoInvitado(req, res) {
     try {
       const { invitadoId } = req.params;
@@ -885,29 +1020,77 @@ class AdminController {
       const tempPass = require('crypto').randomBytes(8).toString('base64').slice(0, 12) + 'A1!';
       const passwordHash = await hashPassword(tempPass);
 
-      const result = await db.query(`
-        INSERT INTO socios (
-          email, password_hash, nombre, apellidos, telefono, entidad,
-          cargo_actual, provincia, comunidad_autonoma, tipo_socio, estado, activo
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'aprobado', true)
-        RETURNING id, email, nombre
-      `, [
-        invitado.email,
-        passwordHash,
-        invitado.nombre || 'Socio',
-        invitado.apellidos || '',
-        invitado.telefono,
-        invitado.entidad,
-        invitado.cargo_actual,
-        invitado.provincia,
-        invitado.comunidad_autonoma,
-        invitado.tipo_socio || 'numero'
-      ]);
+      // Si ya hay un socio con ese email PERO está borrado/rechazado, lo
+      // REACTIVAMOS con los nuevos datos en lugar de fallar por la unique
+      // constraint. Así una baja no bloquea el email para siempre.
+      // `localidad` es NOT NULL en la tabla `socios`; si el CSV no la trae,
+      // caemos a la provincia como respaldo razonable (ambos casos se
+      // pueden editar después desde el perfil).
+      const localidadFinal = invitado.localidad || invitado.provincia || 'Sin especificar';
 
-      const nuevoSocio = result.rows[0];
+      const previo = await db.findOne('socios', { email: invitado.email });
+      let nuevoSocio;
+      if (previo && !previo.activo) {
+        const upd = await db.query(`
+          UPDATE socios SET
+            password_hash = $1, nombre = $2, apellidos = $3,
+            telefono_encrypted = $4, entidad = $5, cargo_actual = $6,
+            provincia = $7, comunidad_autonoma = $8, localidad = $9,
+            tipo_socio = $10,
+            estado = 'aprobado', activo = true, notas_moderacion = NULL
+          WHERE id = $11
+          RETURNING id, email, nombre
+        `, [
+          passwordHash,
+          invitado.nombre || 'Socio',
+          invitado.apellidos || '',
+          invitado.telefono_encrypted,
+          invitado.entidad,
+          invitado.cargo_actual,
+          invitado.provincia,
+          invitado.comunidad_autonoma,
+          localidadFinal,
+          invitado.tipo_socio || 'numero',
+          previo.id,
+        ]);
+        nuevoSocio = upd.rows[0];
+      } else {
+        const result = await db.query(`
+          INSERT INTO socios (
+            email, password_hash, nombre, apellidos, telefono_encrypted, entidad,
+            cargo_actual, provincia, comunidad_autonoma, localidad, tipo_socio, estado, activo
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'aprobado', true)
+          RETURNING id, email, nombre
+        `, [
+          invitado.email,
+          passwordHash,
+          invitado.nombre || 'Socio',
+          invitado.apellidos || '',
+          invitado.telefono_encrypted,
+          invitado.entidad,
+          invitado.cargo_actual,
+          invitado.provincia,
+          invitado.comunidad_autonoma,
+          localidadFinal,
+          invitado.tipo_socio || 'numero'
+        ]);
+        nuevoSocio = result.rows[0];
+      }
 
       if (invitado.rol_cluster) {
-        await db.query('INSERT INTO rol_cluster (socio_id, rol) VALUES ($1, $2)', [nuevoSocio.id, invitado.rol_cluster]);
+        // rol_cluster no tiene UNIQUE en socio_id, así que hacemos
+        // upsert manual: UPDATE primero, INSERT si no había fila. Así
+        // no falla al reactivar un socio que ya tenía rol.
+        const upd = await db.query(
+          'UPDATE rol_cluster SET rol = $2 WHERE socio_id = $1',
+          [nuevoSocio.id, invitado.rol_cluster]
+        );
+        if (upd.rowCount === 0) {
+          await db.query(
+            'INSERT INTO rol_cluster (socio_id, rol) VALUES ($1, $2)',
+            [nuevoSocio.id, invitado.rol_cluster]
+          );
+        }
       }
 
       await db.update('accesos_invitados', {
@@ -1240,6 +1423,428 @@ class AdminController {
     } catch (error) {
       console.error('Error probando SMTP:', error);
       res.status(500).json({ error: error.message || 'No se pudo enviar el correo de prueba.' });
+    }
+  }
+
+  // =============== GESTIÓN DE ADMINISTRADORES (SUPERADMIN) ===============
+
+  // GET /api/admin/administradores — listar todos los administradores.
+  async listAdmins(req, res) {
+    try {
+      const result = await db.query(
+        `SELECT id, email, nombre, rol, activo, created_at, ultimo_acceso
+         FROM administradores ORDER BY id ASC`
+      );
+      res.json({ administradores: result.rows });
+    } catch (error) {
+      console.error('Error listando admins:', error);
+      res.status(500).json({ error: 'No se pudo obtener la lista de administradores' });
+    }
+  }
+
+  // POST /api/admin/administradores — crear nuevo admin.
+  async createAdmin(req, res) {
+    try {
+      const { email, nombre, password, rol } = req.body || {};
+      if (!email || !nombre || !password) {
+        return res.status(400).json({ error: 'Email, nombre y contraseña son obligatorios.' });
+      }
+      const strong = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
+      if (!strong.test(password)) {
+        return res.status(400).json({
+          error: 'Contraseña débil: mínimo 8 caracteres con 1 mayúscula, 1 minúscula y 1 número.',
+        });
+      }
+      const rolLimpio = rol === 'superadmin' ? 'superadmin' : 'admin';
+      const existing = await db.findOne('administradores', { email: email.trim().toLowerCase() });
+      if (existing) return res.status(409).json({ error: 'Ya existe un administrador con ese email.' });
+
+      const hash = await hashPassword(password);
+      const inserted = await db.insert('administradores', {
+        email: email.trim().toLowerCase(),
+        nombre: nombre.trim(),
+        password_hash: hash,
+        rol: rolLimpio,
+        activo: true,
+      });
+      await auditAction(null, req.adminId, 'CREATE_ADMIN', 'administradores',
+        null, { id: inserted.id, email: inserted.email, rol: rolLimpio }, req);
+      res.status(201).json({
+        message: 'Administrador creado correctamente.',
+        administrador: {
+          id: inserted.id, email: inserted.email, nombre: inserted.nombre,
+          rol: inserted.rol, activo: inserted.activo,
+        },
+      });
+    } catch (error) {
+      console.error('Error creando admin:', error);
+      res.status(500).json({ error: 'No se pudo crear el administrador' });
+    }
+  }
+
+  // PUT /api/admin/administradores/:id — cambiar nombre / rol / activo.
+  // Un superadmin NO puede quitarse a sí mismo el rol ni desactivarse (regla
+  // de seguridad: siempre debe quedar al menos un superadmin operativo).
+  async updateAdmin(req, res) {
+    try {
+      const id = parseInt(req.params.id);
+      if (!id) return res.status(400).json({ error: 'ID inválido' });
+      const { nombre, rol, activo } = req.body || {};
+      const target = await db.findOne('administradores', { id });
+      if (!target) return res.status(404).json({ error: 'Administrador no encontrado' });
+
+      const changes = {};
+      if (nombre !== undefined) changes.nombre = String(nombre).trim();
+      if (rol !== undefined) changes.rol = (rol === 'superadmin' ? 'superadmin' : 'admin');
+      if (activo !== undefined) changes.activo = !!activo;
+
+      // Auto-protección: si el superadmin actual es el único, no puede degradarse
+      // ni desactivarse.
+      if (id === req.adminId) {
+        const superCount = await db.query(
+          "SELECT COUNT(*)::int AS c FROM administradores WHERE rol='superadmin' AND activo=true"
+        );
+        const soloYo = superCount.rows[0].c <= 1 && target.rol === 'superadmin';
+        if (soloYo && (changes.rol === 'admin' || changes.activo === false)) {
+          return res.status(400).json({
+            error: 'No puedes degradar ni desactivar al único superadmin activo. Nombra otro superadmin primero.',
+          });
+        }
+      }
+
+      if (Object.keys(changes).length === 0) {
+        return res.json({ message: 'Sin cambios' });
+      }
+      await db.update('administradores', changes, { id });
+      await auditAction(null, req.adminId, 'UPDATE_ADMIN', 'administradores',
+        { id: target.id, rol: target.rol, activo: target.activo }, changes, req);
+      res.json({ message: 'Administrador actualizado correctamente.' });
+    } catch (error) {
+      console.error('Error actualizando admin:', error);
+      res.status(500).json({ error: 'No se pudo actualizar el administrador' });
+    }
+  }
+
+  // POST /api/admin/administradores/:id/reset-password — enviar email de
+  // restablecimiento al admin destino (reutiliza el flujo público existente).
+  async resetAdminPassword(req, res) {
+    try {
+      const id = parseInt(req.params.id);
+      const target = await db.findOne('administradores', { id });
+      if (!target) return res.status(404).json({ error: 'Administrador no encontrado' });
+
+      const crypto = require('crypto');
+      const raw = crypto.randomBytes(32).toString('hex');
+      const hash = crypto.createHash('sha256').update(raw).digest('hex');
+      await db.query(
+        `INSERT INTO admin_password_reset_tokens (admin_id, token_hash, expires_at)
+         VALUES ($1, $2, NOW() + INTERVAL '1 hour')`,
+        [id, hash]
+      );
+      const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+      const resetUrl = `${base || 'http://localhost:3001'}/restablecer.html?type=admin&token=${raw}`;
+      try {
+        const emailService = require('../services/emailService');
+        await emailService.sendPasswordReset(
+          { email: target.email, nombre: target.nombre },
+          { resetUrl, expiresAt: new Date(Date.now() + 60 * 60 * 1000) }
+        );
+      } catch (e) { console.warn('[email] reset admin failed:', e.message); }
+      await auditAction(null, req.adminId, 'ADMIN_RESET_PASSWORD_REQUEST',
+        'administradores', null, { target_id: id, target_email: target.email }, req);
+      res.json({ message: 'Enviado email de restablecimiento a ' + target.email });
+    } catch (error) {
+      console.error('Error reset admin password:', error);
+      res.status(500).json({ error: 'No se pudo iniciar el reseteo' });
+    }
+  }
+
+  // DELETE /api/admin/administradores/:id — desactivación (soft-delete).
+  // Sólo marca activo=false. La auditoría se mantiene por integridad.
+  async deactivateAdmin(req, res) {
+    try {
+      const id = parseInt(req.params.id);
+      if (id === req.adminId) {
+        return res.status(400).json({ error: 'No puedes desactivarte a ti mismo.' });
+      }
+      const target = await db.findOne('administradores', { id });
+      if (!target) return res.status(404).json({ error: 'Administrador no encontrado' });
+      // Si el target es el último superadmin, bloquear
+      if (target.rol === 'superadmin') {
+        const r = await db.query(
+          "SELECT COUNT(*)::int AS c FROM administradores WHERE rol='superadmin' AND activo=true"
+        );
+        if (r.rows[0].c <= 1) {
+          return res.status(400).json({ error: 'No puedes desactivar al único superadmin activo.' });
+        }
+      }
+      await db.update('administradores', { activo: false }, { id });
+      await auditAction(null, req.adminId, 'DEACTIVATE_ADMIN', 'administradores',
+        { id, email: target.email }, { activo: false }, req);
+      res.json({ message: 'Administrador desactivado.' });
+    } catch (error) {
+      console.error('Error desactivando admin:', error);
+      res.status(500).json({ error: 'No se pudo desactivar' });
+    }
+  }
+
+  // =============== GESTIÓN AVANZADA DE SOCIOS (SUPERADMIN) ===============
+
+  // PUT /api/admin/socios/:socioId/tipo — cambiar tipo_socio.
+  async changeSocioType(req, res) {
+    try {
+      const id = parseInt(req.params.socioId);
+      const { tipo_socio } = req.body || {};
+      if (!catalogos.isValidTipoSocio(tipo_socio)) {
+        return res.status(400).json({ error: 'Tipo de socio no válido' });
+      }
+      const target = await db.findOne('socios', { id });
+      if (!target) return res.status(404).json({ error: 'Socio no encontrado' });
+      await db.update('socios', { tipo_socio }, { id });
+      await auditAction(null, req.adminId, 'CHANGE_SOCIO_TYPE', 'socios',
+        { id, tipo_anterior: target.tipo_socio }, { tipo_socio }, req);
+      res.json({ message: 'Tipo de socio actualizado a: ' + tipo_socio });
+    } catch (error) {
+      console.error('Error cambio tipo socio:', error);
+      res.status(500).json({ error: 'No se pudo cambiar el tipo' });
+    }
+  }
+
+  // POST /api/admin/socios/:socioId/reenviar-bienvenida — reenvía el email
+  // de bienvenida al socio. Muy demandado en soporte de primer día.
+  async reenviarBienvenida(req, res) {
+    try {
+      const id = parseInt(req.params.socioId);
+      const socio = await db.findOne('socios', { id });
+      if (!socio) return res.status(404).json({ error: 'Socio no encontrado' });
+      if (socio.estado !== 'aprobado' || !socio.activo) {
+        return res.status(400).json({
+          error: 'Sólo se puede reenviar la bienvenida a socios aprobados y activos.',
+        });
+      }
+      const emailService = require('../services/emailService');
+      const result = await emailService.notifySocioApproved({
+        email: socio.email, nombre: socio.nombre, apellidos: socio.apellidos,
+      });
+      await auditAction(null, req.adminId, 'RESEND_WELCOME_EMAIL', 'socios',
+        null, { target_id: id, target_email: socio.email }, req);
+      if (result && result.success === false && result.reason !== 'smtp_unreachable') {
+        return res.status(502).json({
+          error: 'No se pudo enviar: ' + (result.error || result.reason || 'SMTP no disponible'),
+        });
+      }
+      res.json({ message: 'Email de bienvenida reenviado a ' + socio.email });
+    } catch (error) {
+      console.error('Error reenviando bienvenida:', error);
+      res.status(500).json({ error: 'No se pudo reenviar el email' });
+    }
+  }
+
+  // GET /api/admin/stats/altas-mensuales — altas de socios por mes en los
+  // últimos 12 meses. Devuelve todos los meses en el rango aunque valgan 0
+  // (para que el gráfico salga sin huecos).
+  async getAltasMensuales(req, res) {
+    try {
+      const result = await db.query(`
+        WITH meses AS (
+          SELECT date_trunc('month', d)::date AS mes
+          FROM generate_series(
+            date_trunc('month', NOW()) - INTERVAL '11 months',
+            date_trunc('month', NOW()),
+            INTERVAL '1 month'
+          ) AS d
+        ),
+        altas AS (
+          SELECT date_trunc('month', fecha_registro)::date AS mes,
+                 COUNT(*)::int AS n
+          FROM socios
+          WHERE estado = 'aprobado'
+            AND fecha_registro >= date_trunc('month', NOW()) - INTERVAL '11 months'
+          GROUP BY 1
+        )
+        SELECT m.mes, COALESCE(a.n, 0) AS altas
+        FROM meses m LEFT JOIN altas a USING (mes)
+        ORDER BY m.mes;
+      `);
+      const total = result.rows.reduce(function (s, r) { return s + r.altas; }, 0);
+      res.json({
+        meses: result.rows.map(function (r) {
+          const d = new Date(r.mes);
+          return {
+            mes: d.toISOString().slice(0, 7),
+            label: d.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' }),
+            altas: r.altas,
+          };
+        }),
+        total_12m: total,
+      });
+    } catch (error) {
+      console.error('Error stats altas mensuales:', error);
+      res.status(500).json({ error: 'No se pudo calcular la evolución mensual' });
+    }
+  }
+
+  // GET /api/admin/auditoria/exportar — CSV con los mismos filtros que /auditoria.
+  async exportarAuditoriaCSV(req, res) {
+    try {
+      const { accion, socio_id, admin_id, desde, hasta } = req.query;
+      const params = [];
+      const wh = [];
+      let i = 1;
+      if (accion)   { wh.push(`a.accion = $${i++}`);      params.push(accion); }
+      if (socio_id) { wh.push(`a.socio_id = $${i++}`);    params.push(parseInt(socio_id)); }
+      if (admin_id) { wh.push(`a.admin_id = $${i++}`);    params.push(parseInt(admin_id)); }
+      if (desde)    { wh.push(`a.created_at >= $${i++}`); params.push(desde); }
+      if (hasta)    { wh.push(`a.created_at <= $${i++}`); params.push(hasta); }
+      const where = wh.length ? 'WHERE ' + wh.join(' AND ') : '';
+
+      const rows = await db.query(
+        `SELECT a.id, a.accion, a.recurso, a.created_at,
+                a.ip_address::text AS ip,
+                s.email AS socio, ad.email AS admin
+         FROM auditoria a
+         LEFT JOIN socios s ON s.id = a.socio_id
+         LEFT JOIN administradores ad ON ad.id = a.admin_id
+         ${where}
+         ORDER BY a.created_at DESC
+         LIMIT 10000`, params
+      );
+      const escapeCSV = csv.escape;
+      const header = ['ID','Fecha','Acción','Recurso','Socio','Admin','IP'];
+      const body = rows.rows.map(function (r) {
+        return [
+          r.id,
+          new Date(r.created_at).toISOString().slice(0, 19).replace('T', ' '),
+          r.accion, r.recurso || '', r.socio || '', r.admin || '', r.ip || '',
+        ].map(escapeCSV).join(',');
+      });
+      const bom = '﻿';
+      const csvOut = bom + header.map(escapeCSV).join(',') + '\n' + body.join('\n') + '\n';
+      const fecha = new Date().toISOString().slice(0, 10);
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition',
+        'attachment; filename="agesport-auditoria-' + fecha + '.csv"');
+      res.setHeader('Cache-Control', 'no-store');
+      res.send(csvOut);
+    } catch (error) {
+      console.error('Error exportando auditoría:', error);
+      res.status(500).json({ error: 'No se pudo exportar la auditoría' });
+    }
+  }
+
+  // =============== COMUNICACIONES MASIVAS ===============
+
+  // POST /api/admin/comunicaciones/preview — cuántos socios recibirán.
+  async previewComunicacion(req, res) {
+    try {
+      const filtros = req.body || {};
+      const { where, params } = buildSocioFilterWhere(filtros);
+      const result = await db.query(
+        `SELECT COUNT(DISTINCT s.id)::int AS total
+         FROM socios s
+         JOIN consentimientos c ON c.socio_id = s.id
+         LEFT JOIN rol_cluster rc ON rc.socio_id = s.id
+         LEFT JOIN disponibilidad d ON d.socio_id = s.id
+         ${where}`,
+        params
+      );
+      res.json({ destinatarios: result.rows[0].total });
+    } catch (error) {
+      console.error('Error preview comunicación:', error);
+      res.status(500).json({ error: 'No se pudo calcular la preview' });
+    }
+  }
+
+  // POST /api/admin/comunicaciones/enviar — envía un email a todos los
+  // socios que cumplen los filtros. Uso: comunicados de Gerencia, avisos
+  // de eventos, cambios de política. Uno por uno en background.
+  async enviarComunicacion(req, res) {
+    try {
+      const { asunto, cuerpo, filtros } = req.body || {};
+      if (!asunto || asunto.trim().length < 3) {
+        return res.status(400).json({ error: 'El asunto es obligatorio' });
+      }
+      if (!cuerpo || cuerpo.trim().length < 10) {
+        return res.status(400).json({ error: 'El cuerpo del mensaje es demasiado corto' });
+      }
+      const { where, params } = buildSocioFilterWhere(filtros || {});
+      const dests = await db.query(
+        `SELECT DISTINCT s.id, s.email, s.nombre
+         FROM socios s
+         JOIN consentimientos c ON c.socio_id = s.id
+         LEFT JOIN rol_cluster rc ON rc.socio_id = s.id
+         LEFT JOIN disponibilidad d ON d.socio_id = s.id
+         ${where}`,
+        params
+      );
+      const adminId = req.adminId;
+      const emailService = require('../services/emailService');
+
+      // Devolvemos ya al admin y disparamos envíos en background.
+      res.json({
+        message: 'Comunicación en cola',
+        destinatarios: dests.rows.length,
+      });
+
+      // Auditar el disparo
+      try {
+        await auditAction(null, adminId, 'SEND_MASS_COMMUNICATION', 'socios',
+          null, { destinatarios: dests.rows.length, asunto }, req);
+      } catch (_) { /* no bloquear */ }
+
+      // Envío en background — no bloquea la respuesta
+      const html = '<div style="font-family:Arial,sans-serif;color:#333;line-height:1.5">' +
+        '<p>' + String(cuerpo).replace(/\n/g, '<br>') + '</p>' +
+        '<hr><p style="font-size:.85em;color:#666">AGESPORT · Mapa del Talento</p>' +
+      '</div>';
+      setImmediate(function () {
+        (async function () {
+          for (const d of dests.rows) {
+            try {
+              const personalized = html.replace(/\{nombre\}/g, d.nombre || 'socio');
+              await emailService.sendEmail(d.email, asunto, personalized);
+            } catch (e) {
+              console.warn('[mass-comm] fallo para', d.email, ':', e.message);
+            }
+          }
+        })();
+      });
+    } catch (error) {
+      console.error('Error enviando comunicación:', error);
+      res.status(500).json({ error: 'No se pudo enviar la comunicación' });
+    }
+  }
+
+  // POST /api/admin/socios/:socioId/reset-password — reset password del socio
+  // (envía email con enlace, mismo flujo que "he olvidado mi contraseña").
+  async resetSocioPassword(req, res) {
+    try {
+      const id = parseInt(req.params.socioId);
+      const target = await db.findOne('socios', { id });
+      if (!target) return res.status(404).json({ error: 'Socio no encontrado' });
+      const crypto = require('crypto');
+      const raw = crypto.randomBytes(32).toString('hex');
+      const hash = crypto.createHash('sha256').update(raw).digest('hex');
+      await db.query(
+        `INSERT INTO password_reset_tokens (socio_id, token_hash, expires_at)
+         VALUES ($1, $2, NOW() + INTERVAL '1 hour')`,
+        [id, hash]
+      );
+      const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+      const resetUrl = `${base || 'http://localhost:3001'}/restablecer.html?token=${raw}`;
+      try {
+        const emailService = require('../services/emailService');
+        await emailService.sendPasswordReset(
+          { email: target.email, nombre: target.nombre },
+          { resetUrl, expiresAt: new Date(Date.now() + 60 * 60 * 1000) }
+        );
+      } catch (e) { console.warn('[email] reset socio failed:', e.message); }
+      await auditAction(null, req.adminId, 'ADMIN_RESET_SOCIO_PASSWORD_REQUEST',
+        'socios', null, { target_id: id, target_email: target.email }, req);
+      res.json({ message: 'Enviado email de restablecimiento a ' + target.email });
+    } catch (error) {
+      console.error('Error reset socio password:', error);
+      res.status(500).json({ error: 'No se pudo iniciar el reseteo' });
     }
   }
 }

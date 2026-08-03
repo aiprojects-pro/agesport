@@ -29,6 +29,8 @@ class SociosController {
         b2b_ofrece = '',
         b2b_busca = '',
         b2b_licita = '',
+        ambito = '',
+        tipo_socio = '',
         page = 1,
         limit = 20
       } = req.query;
@@ -96,6 +98,18 @@ class SociosController {
 
         if (b2b_licita === 'true') {
           query += ` AND b2b_licita = true`;
+        }
+
+        if (ambito) {
+          query += ` AND ambito = $${paramIndex}`;
+          params.push(ambito);
+          paramIndex++;
+        }
+
+        if (tipo_socio) {
+          query += ` AND tipo_socio = $${paramIndex}`;
+          params.push(tipo_socio);
+          paramIndex++;
         }
 
         // Paginación
@@ -203,6 +217,73 @@ class SociosController {
     } catch (error) {
       console.error('Error en mapa intranet:', error);
       res.status(500).json({ error: 'Error obteniendo el mapa' });
+    }
+  }
+
+  // ==================== FEED DE NOVEDADES ====================
+  // GET /api/socios/feed — datos para el "muro" del dashboard del socio:
+  //   - últimas 5 altas en la misma provincia
+  //   - hasta 5 socios que ofrecen servicios B2B
+  //   - hasta 5 socios que buscan proveedores B2B
+  // Todo respeta consentimiento acepta_visibilidad_datos y excluye al propio
+  // socio consultante.
+  async getFeed(req, res) {
+    try {
+      const socioId = req.socioId;
+      const yo = await db.findOne('socios', { id: socioId }, 'provincia');
+
+      const cerca = await db.query(`
+        SELECT s.id, s.nombre, s.apellidos, s.entidad, s.provincia,
+               s.localidad, s.foto_url, s.fecha_registro,
+               rc.rol AS rol_cluster
+        FROM socios s
+        LEFT JOIN rol_cluster rc ON rc.socio_id = s.id
+        JOIN consentimientos c ON c.socio_id = s.id
+        WHERE s.estado = 'aprobado' AND s.activo = true
+          AND s.id <> $1
+          AND c.acepta_visibilidad_datos = true
+          AND ($2::text IS NULL OR s.provincia = $2)
+        ORDER BY s.fecha_registro DESC
+        LIMIT 5
+      `, [socioId, yo ? yo.provincia : null]);
+
+      const b2bOfrece = await db.query(`
+        SELECT s.id, s.nombre, s.apellidos, s.entidad, s.provincia,
+               s.foto_url, rc.rol AS rol_cluster
+        FROM socios s
+        JOIN rol_cluster rc ON rc.socio_id = s.id
+        JOIN consentimientos c ON c.socio_id = s.id
+        WHERE s.estado = 'aprobado' AND s.activo = true
+          AND s.id <> $1
+          AND c.acepta_visibilidad_datos = true
+          AND rc.b2b_ofrece = true
+        ORDER BY s.fecha_registro DESC
+        LIMIT 5
+      `, [socioId]);
+
+      const b2bBusca = await db.query(`
+        SELECT s.id, s.nombre, s.apellidos, s.entidad, s.provincia,
+               s.foto_url, rc.rol AS rol_cluster
+        FROM socios s
+        JOIN rol_cluster rc ON rc.socio_id = s.id
+        JOIN consentimientos c ON c.socio_id = s.id
+        WHERE s.estado = 'aprobado' AND s.activo = true
+          AND s.id <> $1
+          AND c.acepta_visibilidad_datos = true
+          AND rc.b2b_busca = true
+        ORDER BY s.fecha_registro DESC
+        LIMIT 5
+      `, [socioId]);
+
+      res.json({
+        provincia_referencia: yo ? yo.provincia : null,
+        altas_cerca: cerca.rows,
+        b2b_ofrece: b2bOfrece.rows,
+        b2b_busca: b2bBusca.rows,
+      });
+    } catch (error) {
+      console.error('Error feed:', error);
+      res.status(500).json({ error: 'No se pudo cargar el feed' });
     }
   }
 
@@ -633,6 +714,12 @@ class SociosController {
         datos.telefono = decryptData(datos.telefono_encrypted);
         delete datos.telefono_encrypted;
       }
+      // Higiene RGPD: nunca exponer el hash de la contraseña ni tokens
+      // internos aunque estén cifrados/hasheados. El derecho de portabilidad
+      // cubre los datos personales, no los credenciales técnicos.
+      delete datos.password_hash;
+      delete datos.notas_moderacion;
+      delete datos.moderado_por;
 
       // Obtener historial de mensajes
       const mensajes = await db.query(`
