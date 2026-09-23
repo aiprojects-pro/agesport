@@ -9,9 +9,12 @@ const config = require('../config/config');
 const GEOCODE_TIMEOUT_MS = 8000;
 
 function attachTimeout(httpsReq, label) {
-  httpsReq.setTimeout(GEOCODE_TIMEOUT_MS, () => {
+  // Límite total: también cubre DNS y conexión, no sólo inactividad del socket.
+  const timer = setTimeout(() => {
     httpsReq.destroy(new Error(`${label} timeout (${GEOCODE_TIMEOUT_MS}ms)`));
-  });
+  }, GEOCODE_TIMEOUT_MS);
+  timer.unref();
+  httpsReq.once('close', () => clearTimeout(timer));
 }
 
 class GeocodingService {
@@ -31,7 +34,7 @@ class GeocodingService {
       const encodedAddress = encodeURIComponent(address);
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1&countrycodes=es`;
       
-      https.get(url, {
+      const request = https.get(url, {
         headers: {
           'User-Agent': 'AGESPORT-Mapa-Talento/1.0'
         }
@@ -62,6 +65,7 @@ class GeocodingService {
       }).on('error', (error) => {
         reject(new Error(`Error en geocodificación: ${error.message}`));
       });
+      attachTimeout(request, 'Geocodificación');
     });
   }
 
@@ -70,7 +74,7 @@ class GeocodingService {
       const encodedAddress = encodeURIComponent(address);
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?access_token=${config.geocoding.mapboxKey}&country=es&limit=1`;
       
-      https.get(url, (res) => {
+      const request = https.get(url, (res) => {
         let data = '';
         
         res.on('data', (chunk) => {
@@ -98,6 +102,7 @@ class GeocodingService {
       }).on('error', (error) => {
         reject(new Error(`Error en geocodificación: ${error.message}`));
       });
+      attachTimeout(request, 'Geocodificación');
     });
   }
 

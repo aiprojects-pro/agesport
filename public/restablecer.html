@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="/assets/portal.css">
 </head>
 <body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
   <header class="site-topbar">
     <div class="shell inner">
       <a class="site-brand" href="/">
@@ -30,12 +31,12 @@
     </div>
   </header>
 
-  <main class="page shell">
+  <main id="contenido" tabindex="-1" class="page shell">
     <section class="hero-grid">
       <article class="hero-block">
         <div class="eyebrow">Recuperar acceso</div>
         <h1>Nueva contraseña</h1>
-        <p>Introduce la nueva contraseña que quieras usar. Debe tener al menos 8 caracteres.</p>
+        <p>Introduce la nueva contraseña que quieras usar. Debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número. Símbolos permitidos: @ $ ! % * ? &amp;.</p>
       </article>
     </section>
 
@@ -56,60 +57,13 @@
           </div>
         </form>
         <div id="resetMessage" class="message-box"></div>
+        <p><a id="requestAgain" href="/acceso.html">Solicitar otro enlace de recuperación</a></p>
       </article>
     </section>
   </main>
 
   <script src="/assets/portal.js"></script>
-  <script>
-    (function () {
-      const { request, setMessage } = window.AgesportPortal;
-      const form = document.getElementById('resetForm');
-      const msg = document.getElementById('resetMessage');
-      const btn = document.getElementById('resetBtn');
-
-      const params = new URLSearchParams(window.location.search);
-      const token = params.get('token');
-      const isAdmin = params.get('type') === 'admin';
-      const endpoint = isAdmin
-        ? '/api/auth/admin/reset-password'
-        : '/api/auth/reset-password';
-
-      if (!token) {
-        setMessage(msg, false, 'Falta el token en el enlace. Vuelve a solicitar el restablecimiento.');
-        form.style.display = 'none';
-        return;
-      }
-
-      form.addEventListener('submit', async function (event) {
-        event.preventDefault();
-        const p1 = document.getElementById('newPassword').value;
-        const p2 = document.getElementById('newPasswordConfirm').value;
-        if (p1 !== p2) {
-          setMessage(msg, false, 'Las dos contraseñas no coinciden.');
-          return;
-        }
-        btn.disabled = true;
-        btn.textContent = 'Restableciendo…';
-        try {
-          const data = await request(endpoint, {
-            method: 'POST',
-            body: JSON.stringify({ token, newPassword: p1 })
-          });
-          setMessage(msg, true, data.message + ' Redirigiendo al acceso…');
-          // Redirigimos al login correcto según el tipo de cuenta —
-          // antes siempre iba a /acceso.html, dejando fuera al admin.
-          const target = isAdmin ? '/acceso-admin.html' : '/acceso.html';
-          setTimeout(function () { window.location.href = target; }, 1500);
-        } catch (error) {
-          setMessage(msg, false, error.message);
-        } finally {
-          btn.disabled = false;
-          btn.textContent = 'Restablecer contraseña';
-        }
-      });
-    })();
-  </script>
+  <script src="/assets/reset-password.js"></script>
   <script src="/assets/password-toggle.js" defer></script>
   <script src="/assets/cookie-banner.js" defer></script>
 </body>

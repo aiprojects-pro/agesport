@@ -71,6 +71,7 @@
   });
   forgotAdminCancel.addEventListener('click', function () {
     forgotAdminForm.style.display = 'none';
+    forgotAdminLink.focus();
     forgotAdminMessage.textContent = '';
     forgotAdminMessage.className = 'message-box';
   });

@@ -113,6 +113,7 @@
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
   <header class="site-topbar">
     <div class="shell inner">
       <a class="site-brand" href="/">
@@ -124,7 +125,7 @@
     </div>
   </header>
 
-  <main class="page shell private-layout">
+  <main id="contenido" tabindex="-1" class="page shell private-layout">
     <aside class="sidebar panel">
       <h3>Navegación</h3>
       <nav class="nav-list">
@@ -156,7 +157,7 @@
         <div style="margin-top:14px">
           <label>Destinatarios</label>
           <div class="compose-chips" id="receptorChips"></div>
-          <input id="receptorSearch" placeholder="Busca por nombre o entidad..." style="margin-top:8px">
+          <input aria-label="Buscar destinatarios" id="receptorSearch" placeholder="Busca por nombre o entidad..." style="margin-top:8px">
           <div class="compose-suggestions" id="receptorSuggestions"></div>
         </div>
 
@@ -183,7 +184,7 @@
             <span class="pill ok" id="convCount">0</span>
           </div>
           <div class="conv-search">
-            <input id="convSearch" placeholder="Filtrar por nombre o entidad...">
+            <input aria-label="Buscar conversaciones" id="convSearch" placeholder="Filtrar por nombre o entidad...">
           </div>
           <div class="table-wrap">
             <div class="conversation-items" id="conversationItems"></div>

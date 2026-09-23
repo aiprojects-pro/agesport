@@ -110,7 +110,7 @@
     }
   }
   typeCards.forEach(function (card) {
-    card.addEventListener('click', function () { applyTipo(card.dataset.tipo); });
+    card.querySelector('input').addEventListener('change', function () { applyTipo(card.dataset.tipo); });
   });
   applyTipo('numero');
 
@@ -192,11 +192,9 @@
         acepta_mensajeria: $('acepta_mensajeria').checked
       });
 
-      // Cargo actual y años de experiencia sólo aplican a personas físicas
-      if (tipoSocio !== 'asociado_corporativo') {
-        payload.cargo_actual = $('cargo_actual').value.trim();
-        payload.anos_experiencia = Number($('anos_experiencia').value || 0);
-      }
+      // Ambos tipos muestran estos campos; conservar también los del contacto corporativo.
+      payload.cargo_actual = $('cargo_actual').value.trim();
+      payload.anos_experiencia = Number($('anos_experiencia').value || 0);
 
       await request('/api/auth/register', {
         method: 'POST',

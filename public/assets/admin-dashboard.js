@@ -297,13 +297,13 @@
       }
       $('pendientesEmpty').style.display = 'none';
       $('pendientesList').innerHTML = '<table class="table-list"><thead><tr>' +
-          '<th style="width:36px"><input type="checkbox" id="pendSelectAll"></th>' +
+          '<th style="width:36px"><input type="checkbox" id="pendSelectAll" aria-label="Seleccionar todas las solicitudes"></th>' +
           '<th>Nombre</th><th>Email</th><th>Entidad</th><th>Provincia</th><th>Rol</th><th></th>' +
         '</tr></thead><tbody>' +
         socios.map(function (s) {
           const rol = cat.findRolBySlug(s.rol_cluster);
           return '<tr class="selectable-row" data-id="' + s.id + '">' +
-            '<td><input type="checkbox" class="pend-check" data-id="' + s.id + '"></td>' +
+            '<td><input type="checkbox" class="pend-check" aria-label="Seleccionar ' + escapeHtml((s.nombre || '') + ' ' + (s.apellidos || '')) + '" data-id="' + s.id + '"></td>' +
             '<td>' + escapeHtml((s.nombre || '') + ' ' + (s.apellidos || '')) + '</td>' +
             '<td>' + escapeHtml(s.email || '') + '</td>' +
             '<td>' + escapeHtml(s.entidad || '') + '</td>' +

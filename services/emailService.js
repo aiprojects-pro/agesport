@@ -194,7 +194,7 @@ class EmailService {
           <p>Un nuevo socio se ha registrado en el Mapa del Talento y está esperando aprobación.</p>
           
           <p style="text-align: center; margin: 30px 0;">
-            <a href="${config.app.publicBaseUrl}/admin/socios/pendientes" class="button">
+            <a href="${config.app.publicBaseUrl}/acceso-admin.html" class="button">
               Revisar en Panel Admin
             </a>
           </p>
@@ -245,6 +245,7 @@ class EmailService {
           
           <p>¡Excelentes noticias! Tu registro en el Mapa del Talento de AGESPORT ha sido aprobado por nuestra Gerencia.</p>
           
+          <p>Entra con el email y la contraseña que elegiste al registrarte.</p>
           <p>Ya puedes acceder a la plataforma y:</p>
           <ul>
             <li>Explorar el directorio de socios</li>
@@ -254,7 +255,7 @@ class EmailService {
           </ul>
           
           <p style="text-align: center; margin: 30px 0;">
-            <a href="${config.app.publicBaseUrl}/login" class="button">
+            <a href="${config.app.publicBaseUrl}/acceso.html" class="button">
               Acceder a la Plataforma
             </a>
           </p>

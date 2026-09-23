@@ -60,7 +60,7 @@
       const active = String(conv.conversacion_id) === String(activeConversation);
       const unread = parseInt(conv.no_leidos || 0, 10);
       const avatar = '<div class="conv-avatar" style="background:linear-gradient(135deg,var(--green),var(--green-deep))">' + escapeHtml(initials({ nombre: conv.otro_socio_nombre || '?', apellidos: '' })) + '</div>';
-      return '<div class="conversation-item ' + (active ? 'active' : '') + '" data-id="' + conv.conversacion_id + '">' +
+      return '<button type="button" class="conversation-item ' + (active ? 'active' : '') + '" data-id="' + conv.conversacion_id + '">' +
         avatar +
         '<div class="conv-body">' +
           '<strong>' + escapeHtml(conv.otro_socio_nombre || 'Conversación') + '</strong>' +
@@ -68,14 +68,14 @@
           '<div class="muted" style="font-size:.78rem;margin-top:2px">' + escapeHtml(formatDate(conv.ultima_actividad)) + '</div>' +
         '</div>' +
         (unread > 0 ? '<span class="unread-badge">' + unread + '</span>' : '') +
-      '</div>';
+      '</button>';
     }).join('');
     Array.from(document.querySelectorAll('.conversation-item')).forEach(function (node) {
-      node.addEventListener('click', function () { loadMessages(node.dataset.id); });
+      node.addEventListener('click', function () { loadMessages(node.dataset.id, true); });
     });
   }
 
-  async function loadMessages(id) {
+  async function loadMessages(id, focusConversation) {
     activeConversation = id;
     const data = await request('/api/mensajeria/conversaciones/' + id + '/mensajes', { method: 'GET', headers: {} });
     const current = conversations.find(function (item) { return String(item.conversacion_id) === String(id); });
@@ -89,7 +89,8 @@
     }).join('');
     messagesBox.scrollTop = messagesBox.scrollHeight;
     // Refrescar lista para que el contador no leídos se actualice
-    loadConversations();
+    await loadConversations();
+    if (focusConversation) { title.setAttribute('tabindex', '-1'); title.focus(); }
   }
 
   async function loadConversations() {
