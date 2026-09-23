@@ -34,7 +34,7 @@
   const requestedReceiverId = queryParam('receptor');
 
   function initials(socio) {
-    return ((socio.nombre || '?')[0] + (socio.apellidos || '')[0]).toUpperCase();
+    return ((socio.nombre || '?').charAt(0) + (socio.apellidos || '').charAt(0)).toUpperCase();
   }
 
   function renderConversations(filter) {

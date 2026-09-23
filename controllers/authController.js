@@ -306,6 +306,7 @@ class AuthController {
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 días
       };
 
+      res.clearCookie('adminToken');
       res.cookie('token', token, cookieOptions);
       res.cookie('refreshToken', refreshToken, { 
         ...cookieOptions, 
@@ -385,6 +386,8 @@ class AuthController {
         maxAge: 8 * 60 * 60 * 1000 // 8 horas (más corto que socios)
       };
 
+      res.clearCookie('token');
+      res.clearCookie('refreshToken');
       res.cookie('adminToken', token, cookieOptions);
 
       // Auditar login exitoso

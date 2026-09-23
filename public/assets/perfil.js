@@ -253,7 +253,7 @@
   // ===== Inicialización de sesión =====
   requireSession('socio').then(async function (session) {
     currentSession = session;
-    profileId = queryParam('id') || session.user.id;
+    profileId = queryParam('id') || queryParam('socioId') || session.user.id;
     isOwnProfile = String(profileId) === String(session.user.id);
 
     const data = await request('/api/socios/perfil/' + profileId, { method: 'GET', headers: {} });

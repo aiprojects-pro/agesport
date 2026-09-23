@@ -509,6 +509,14 @@ class SociosController {
         if (visible_linkedin !== undefined) consentimientoUpdate.visible_linkedin = visible_linkedin;
 
         if (Object.keys(consentimientoUpdate).length > 0) {
+          // Las cuentas importadas antiguas pueden no tener esta fila.
+          // No conceder visibilidad ni mensajería sin elección del socio.
+          await client.query(`
+            INSERT INTO consentimientos (socio_id, acepta_mensajeria,
+              acepta_notificaciones_email, visible_web_profesional, visible_linkedin)
+            VALUES ($1, false, false, false, false)
+            ON CONFLICT (socio_id) DO NOTHING
+          `, [socioId]);
           await client.query(`
             UPDATE consentimientos SET ${Object.keys(consentimientoUpdate).map((key, i) => `${key} = $${i + 2}`).join(', ')}
             WHERE socio_id = $1

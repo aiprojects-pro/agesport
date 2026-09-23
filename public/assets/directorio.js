@@ -10,6 +10,7 @@
   const clearBtn = $('clearBtn');
   const ccaaSelect = $('comunidad_autonoma');
   const provinciaSelect = $('provincia');
+  let currentUserId;
 
   $('logoutBtn').addEventListener('click', logout);
 
@@ -126,7 +127,7 @@
           '</div>' +
           '<div class="actions">' +
             '<a class="btn btn-secondary" href="/perfil.html?id=' + encodeURIComponent(socio.id) + '">Ver perfil</a>' +
-            '<a class="btn btn-primary" href="/mensajes.html?receptor=' + encodeURIComponent(socio.id) + '">Contactar</a>' +
+            (String(socio.id) === String(currentUserId) ? '' : '<a class="btn btn-primary" href="/mensajes.html?receptor=' + encodeURIComponent(socio.id) + '">Contactar</a>') +
           '</div>' +
         '</div>' +
         '<div class="muted">' + escapeHtml(socio.cargo_actual || '') + '</div>' +
@@ -140,7 +141,7 @@
     searchBtn.textContent = 'Buscando...';
     try {
       const data = await request('/api/socios/directorio?' + buildQuery(), { method: 'GET', headers: {} });
-      const socios = (data.socios || []).filter(function (s) { return s.nombre && s.email; }); // Filtra residuos "32 fantasma"
+      const socios = (data.socios || []).filter(function (s) { return s.id && s.nombre; });
       resultsInfo.textContent = socios.length + ' perfiles encontrados';
       if (!socios.length) {
         results.innerHTML = '';
@@ -195,7 +196,8 @@
     if (especialidad) espSelect.value = especialidad;
   }
 
-  requireSession('socio').then(function () {
+  requireSession('socio').then(function (session) {
+    currentUserId = session.user.id;
     applyUrlFilters();
     return load();
   }).catch(function () {});

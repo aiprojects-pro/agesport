@@ -79,23 +79,22 @@
       }).join('');
 
       const tp = $('topProvincias');
-      tp.innerHTML = (stats.provincias_mas_activas || []).slice(0, 6).map(function (p) {
+      tp.innerHTML = (data.provincias_mas_activas || []).slice(0, 6).map(function (p) {
         return '<li>' + escapeHtml(p.provincia || '-') + ' — ' + escapeHtml(p.total || 0) + ' socios</li>';
       }).join('') || '<li>Sin datos</li>';
 
       const te = $('topEspecialidades');
-      const obsRes = await request('/api/socios/observatorio/stats', { method: 'GET', headers: {} }).catch(function () { return null; });
-      const topEsp = obsRes && obsRes.charts ? (obsRes.charts.top_especialidades || []) : [];
+      const topEsp = data.top_especialidades || [];
       te.innerHTML = topEsp.slice(0, 6).map(function (e) {
         const esp = cat.findEspecialidadBySlug(e.especialidad);
         return '<li>' + escapeHtml(esp ? esp.label : e.especialidad) + ' — ' + escapeHtml(e.total || 0) + '</li>';
       }).join('') || '<li>Sin datos</li>';
 
       const act = $('actividadReciente');
-      const acciones = (stats.actividad_reciente || []).slice(0, 12);
+      const acciones = (data.actividad_reciente || []).slice(0, 12);
       act.innerHTML = acciones.length
         ? '<ul style="margin:0;padding-left:18px">' + acciones.map(function (a) {
-            return '<li>' + escapeHtml(a.accion || '') + ' · ' + escapeHtml(a.tabla_afectada || '') + ' · ' + escapeHtml(formatDate(a.created_at)) + '</li>';
+            return '<li>' + escapeHtml(a.accion || '') + ' · ' + escapeHtml(a.total || 0) + ' acciones · ' + escapeHtml(formatDate(a.fecha)) + '</li>';
           }).join('') + '</ul>'
         : 'Sin actividad reciente registrada.';
 
@@ -716,12 +715,25 @@
     if (!ids.length) { setMessage($('importMessage'), false, 'No has seleccionado ninguna fila.'); return; }
     if (!window.confirm('¿Crear ' + ids.length + ' accesos y enviar email de bienvenida?')) return;
 
+    $('approveInvitedBtn').disabled = true;
     let ok = 0, fail = 0;
+    const errores = [];
     for (const id of ids) {
-      try { await request('/api/admin/socios/invitados/' + id + '/aprobar', { method: 'POST', body: JSON.stringify({}) }); ok++; }
-      catch (e) { fail++; console.warn(e); }
+      try {
+        await request('/api/admin/socios/invitados/' + id + '/aprobar', { method: 'POST', body: JSON.stringify({}) });
+        ok++;
+        window._csvFilas = window._csvFilas.map(function (f) {
+          return String(f.id) === String(id) ? Object.assign({}, f, { estado: 'aprobado' }) : f;
+        });
+        const fila = window._csvFilas.find(function (f) { return String(f.id) === String(id); });
+        const row = document.querySelector('#csvTable tr[data-fila-id="' + id + '"]');
+        if (row && fila) row.outerHTML = renderCSVRow(fila);
+      }
+      catch (e) { fail++; errores.push('Fila ' + id + ': ' + e.message); }
     }
-    setMessage($('importMessage'), fail === 0, 'Procesados ' + ok + ' de ' + ids.length + (fail ? ' (' + fail + ' errores)' : ''));
+    $('approveInvitedBtn').disabled = false;
+    $('csvSelectAll').checked = false;
+    setMessage($('importMessage'), fail === 0, 'Procesados ' + ok + ' de ' + ids.length + (fail ? '. ' + errores.join('; ') : ''));
     // Tras aprobar, refrescamos accesos
     window._accLoaded = false;
   });

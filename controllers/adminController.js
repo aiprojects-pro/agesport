@@ -426,6 +426,11 @@ class AdminController {
 
       res.json({
         stats: stats.rows[0],
+        top_especialidades: (await db.query(`
+          SELECT especialidad, COUNT(*) AS total
+          FROM vista_socios_completos, unnest(especialidades) AS especialidad
+          GROUP BY especialidad ORDER BY total DESC LIMIT 6
+        `)).rows,
         registros_por_mes: registrosPorMes.rows,
         provincias_mas_activas: provinciasMasActivas.rows,
         actividad_reciente: actividadReciente.rows,
@@ -843,6 +848,7 @@ class AdminController {
         const errores = [];
 
         if (!r.email) errores.push('Falta el email');
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)) errores.push('Email no válido');
 
         // Provincia: aceptamos cualquier variante razonable (mayúsculas,
         // sin tilde, con espacios) y la normalizamos al nombre canónico del
@@ -958,6 +964,7 @@ class AdminController {
       const errores = [];
       const merged = { ...invitado, ...patch };
       if (!merged.email) errores.push('Falta el email');
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(merged.email)) errores.push('Email no válido');
       if (merged.provincia) {
         const canon = catalogos.canonicalProvincia(merged.provincia);
         if (canon) patch.provincia = canon;
@@ -1015,6 +1022,9 @@ class AdminController {
       const invitado = await db.findOne('accesos_invitados', { id: invitadoId });
       if (!invitado) return res.status(404).json({ error: 'Invitado no encontrado' });
       if (invitado.estado !== 'pendiente') return res.status(409).json({ error: 'El invitado ya ha sido procesado' });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(invitado.email || '')) {
+        return res.status(400).json({ error: 'Email no válido; corrige la fila antes de aprobar' });
+      }
 
       // Crear contraseña aleatoria temporal y socio aprobado
       const tempPass = require('crypto').randomBytes(8).toString('base64').slice(0, 12) + 'A1!';
