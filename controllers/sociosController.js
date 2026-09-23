@@ -314,6 +314,13 @@ class SociosController {
       const socio = result.rows[0];
       const isOwner = socio.id === req.socioId;
 
+      // La vista histórica no incluye esta preferencia. Recuperarla para
+      // el propietario evita que la UI desmarque y sobrescriba su elección.
+      if (isOwner || isAdmin) {
+        const consentimientos = await db.findOne('consentimientos', { socio_id: socio.id });
+        socio.acepta_notificaciones_email = !!(consentimientos && consentimientos.acepta_notificaciones_email);
+      }
+
       // DNI sólo se descifra para owner/admin.
       if ((isOwner || isAdmin) && socio.dni_nie_encrypted) {
         socio.dni_nie = decryptData(socio.dni_nie_encrypted);

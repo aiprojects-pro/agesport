@@ -31,6 +31,11 @@ test('imported account preferences persist without granting unrelated visibility
   assert.equal(saved.acepta_visibilidad_datos, false);
   assert.equal(saved.visible_email_directo, false);
 
+  const reloaded = response();
+  await socios.getPerfil({ ...req, params: { socioId: String(socioId) } }, reloaded);
+  assert.equal(reloaded.statusCode, 200);
+  assert.equal(reloaded.body.socio.acepta_notificaciones_email, true);
+
   // Updating one preference must preserve the others and the single row.
   req.body = { acepta_mensajeria: false };
   await socios.updatePerfil(req, response());
