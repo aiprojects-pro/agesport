@@ -207,6 +207,7 @@ const authenticateAny = async (req, res, next) => {
       return res.status(401).json({ error: 'Usuario no encontrado.' });
     }
 
+    if (req.user.password_changed_at && decoded.iat < Math.floor(new Date(req.user.password_changed_at).getTime()/1000)) return res.status(401).json({error:'Sesión caducada. Inicia sesión de nuevo.'});
     next();
   } catch {
     res.status(401).json({ error: 'Token inválido.' });
@@ -337,8 +338,7 @@ const filterSensitiveData = (socioData, viewerIsOwner = false, viewerIsAdmin = f
   if (viewerIsAdmin || viewerIsOwner) return filtered;
 
   // Datos que siempre se ocultan de otros socios
-  delete filtered.email;
-
+  delete filtered.cv_url;
   delete filtered.email_personal;
   if (!socioData.visible_telefono_personal) delete filtered.telefono_personal;
 

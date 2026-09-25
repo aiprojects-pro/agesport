@@ -84,7 +84,7 @@ test('filterSensitiveData: other socio with visible_telefono=false NO sees telef
   assert.strictEqual(result.telefono_encrypted, undefined);
 });
 
-test('filterSensitiveData: other socio never sees dni_nie_encrypted nor email', () => {
+test('filterSensitiveData: other socio sees only explicitly authorized professional email, never ciphertext', () => {
   const socio = {
     id: 1,
     email: 'a@b.com',
@@ -97,5 +97,6 @@ test('filterSensitiveData: other socio never sees dni_nie_encrypted nor email', 
   };
   const result = filterSensitiveData(socio, false, false);
   assert.strictEqual(result.dni_nie_encrypted, undefined);
-  assert.strictEqual(result.email, undefined);
+  assert.strictEqual(result.email, 'a@b.com');
+  assert.strictEqual(filterSensitiveData({...socio,visible_email_directo:false},false,false).email, undefined);
 });

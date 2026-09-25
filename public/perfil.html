@@ -94,7 +94,7 @@
 
           <div class="field">
             <label for="tipo_socio">Tipo de socio</label>
-            <select id="tipo_socio"></select>
+            <select id="tipo_socio" disabled aria-describedby="tipoSocioHelp"></select><small id="tipoSocioHelp">Administración gestiona tu categoría. Solicita cualquier cambio a AGESPORT.</small>
           </div>
           <div class="field">
             <label for="nombre">Nombre</label>
@@ -137,7 +137,7 @@
           </div>
 
           <div class="field-full">
-            <label>¿Qué email quieres usar como contacto principal?</label>
+            <label>¿En qué email quieres recibir los avisos de mensajes?</label>
             <div class="segmented" id="emailPreferido">
               <button type="button" data-value="profesional">Profesional</button>
               <button type="button" data-value="personal">Personal</button>
@@ -278,6 +278,13 @@
             <label for="congreso_almeria">Interesado/a en el Congreso Nacional AGESPORT.</label>
           </div>
 
+          <fieldset class="field-full"><legend>Intereses de colaboración empresarial (B2B)</legend>
+            <label class="checkbox-row"><input id="b2b_ofrece" type="checkbox"> Ofrezco servicios</label>
+            <label class="checkbox-row"><input id="b2b_busca" type="checkbox"> Busco proveedores o colaboraciones</label>
+            <label class="checkbox-row"><input id="b2b_licita" type="checkbox"> Me interesan licitaciones</label>
+            <p class="muted">Selecciona un rol profesional para guardar estos intereses. No representan proyectos en marcha.</p>
+          </fieldset>
+          <div class="field-full"><p id="locationStatus" role="status"></p><p id="profileMapMode" class="muted"></p></div>
           <div class="field-full">
             <h3 style="margin:8px 0 6px;color:var(--navy)">Visibilidad en el directorio</h3>
           </div>
@@ -287,7 +294,7 @@
           </div>
           <div class="field-full checkbox-row">
             <input id="acepta_mapa_interactivo" type="checkbox">
-            <label for="acepta_mapa_interactivo">Mostrar mi municipio en el mapa privado cuando mi perfil sea visible.</label>
+            <label for="acepta_mapa_interactivo">Aparecer en el mapa privado cuando mi perfil sea visible (municipio o referencia provincial aproximada).</label>
           </div>
           <div class="field-full checkbox-row">
             <input id="acepta_mensajeria" type="checkbox">
@@ -295,7 +302,7 @@
           </div>
           <div class="field-full checkbox-row">
             <input id="acepta_notificaciones_email" type="checkbox">
-            <label for="acepta_notificaciones_email">Enviarme una copia por email de los mensajes recibidos.</label>
+            <label for="acepta_notificaciones_email">Enviarme un aviso por email con un extracto y un enlace a los mensajes recibidos.</label>
           </div>
           <!-- visible_telefono y visible_email_directo se han movido
                junto a sus campos correspondientes en la sección de

@@ -260,7 +260,7 @@ const validateSocioFields = (mode) => (req, res, next) => {
   const esCorporativo = b.tipo_socio === 'asociado_corporativo';
   if (!esCorporativo) {
     check(b.cargo_actual, (v) => v.trim().length >= 3, 'Cargo actual es requerido');
-    if (b.anos_experiencia === undefined) {
+    if (b.anos_experiencia === undefined || (!required && b.anos_experiencia === null)) {
       if (required) errors.push('Años de experiencia debe ser entre 0 y 50');
     } else {
       const n = parseInt(b.anos_experiencia);

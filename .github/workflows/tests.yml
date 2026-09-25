@@ -29,3 +29,4 @@ jobs:
       - run: node --test test/qa/qa-regressions.test.js
       - run: node --test test/qa/public-flows.test.js
       - run: node --test test/qa/tester-feedback.test.js
+      - run: node --test test/qa/review-improvements.test.js

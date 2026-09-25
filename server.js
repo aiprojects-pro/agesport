@@ -109,7 +109,12 @@ app.use('/api/mensajeria', mensajeriaRoutes);
 app.use('/api/public', publicRoutes);
 
 const uploadsPath = path.resolve(config.uploads.path || './uploads');
-app.use('/uploads', express.static(uploadsPath, { maxAge: '7d', fallthrough: true }));
+app.get('/uploads/cvs/:filename', require('./middleware/auth').authenticateAny, require('./controllers/cvController').download);
+// Expose only public images. CVs are never served by express.static.
+for (const sub of ['fotos','logos','landing']) {
+  app.use('/uploads/' + sub, express.static(path.join(uploadsPath,sub), {maxAge:'7d',fallthrough:true}));
+}
+app.use('/uploads', (req,res) => res.status(404).end());
 
 // Páginas privadas: NO deben cachearse en proxies intermedios ni en el
 // historial del navegador (hallazgo MEDIA auditoría 10 jun: admin.html

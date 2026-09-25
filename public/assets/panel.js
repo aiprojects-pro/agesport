@@ -66,7 +66,9 @@
   let currentRolFilter = '';
   let currentEspFilter = '';
   let currentProvFilter = '';
-  let observatorio = null;
+  const adminView = new URLSearchParams(location.search).get('administracion') === '1';
+  let mapaInfo = null;
+  let mapLoaded = false;
   let mapaLeaflet = null;
   let markersLayer = null;
   let sociosMapa = [];
@@ -127,14 +129,17 @@
       markersLayer = L.layerGroup().addTo(mapaLeaflet);
     }
     try {
-      const data = await request('/api/socios/mapa', { method: 'GET', headers: {} });
-      sociosMapa = (data.socios || []).filter(function (s) {
-        return typeof s.lat === 'number' && typeof s.lng === 'number';
-      });
-      renderMarkers();
+      const data = await request(adminView ? '/api/admin/mapa' : '/api/socios/mapa', { method: 'GET', headers: {} });
+      mapaInfo = data; mapLoaded = true;
+      sociosMapa = (data.socios || []).filter(s => Number.isFinite(s.lat) && Number.isFinite(s.lng));
+      const mode = data.modo_prueba || {};
+      $('mapModeNotice').textContent = mode.enabled ? 'MODO DE PRUEBA · Todas las cuentas aprobadas y activas, incluidas cuentas de prueba. Visible para socios hasta ' + new Date(mode.expiresAt).toLocaleString('es-ES') + '. Las preferencias habituales se aplican al finalizar la prueba.' : (adminView ? 'Mapa de gestión: todas las cuentas aprobadas y activas. Los socios solo ven los perfiles autorizados fuera del modo de prueba.' : 'Mapa privado: perfiles aprobados y activos según sus preferencias de visibilidad.');
+      $('mapUpdated').textContent = 'Datos consultados: ' + new Date().toLocaleString('es-ES') + (data.sin_ubicacion ? '. Sin referencia geográfica: ' + data.sin_ubicacion : '');
+      applyFilters();
     } catch (err) {
       console.warn('Error cargando mapa socios:', err);
-      mapContainer.innerHTML = '<p class="empty">No se ha podido cargar el mapa.</p>';
+      $('mapUpdated').textContent = 'No se pudieron actualizar los datos del mapa. Inténtalo de nuevo.';
+      if (!mapLoaded) { kpis.textContent='Indicadores no disponibles'; $('chartsGrid').textContent='Datos no disponibles'; }
     }
   }
 
@@ -161,7 +166,10 @@
     if (!markersLayer) return;
     markersLayer.clearLayers();
     const visibles = sociosMapa.filter(matchesFilters);
-    visibles.forEach(function (s) {
+    const groups = new Map();
+    visibles.forEach(s => { const key=s.lat+','+s.lng; if(!groups.has(key)) groups.set(key,[]); groups.get(key).push(s); });
+    groups.forEach(function (members) {
+      const s = members[0];
       const color = rolColor(s.rol_cluster);
       const marker = L.circleMarker([s.lat, s.lng], {
         radius: 11,
@@ -178,30 +186,20 @@
       const label = currentLabelMode === 'rol'
         ? (rolLabelText || '—')
         : (nombreCorto || s.localidad || '—');
-      marker.bindTooltip(label, {
-        permanent: true,
+      marker.bindTooltip(escapeHtml(members.length > 1 ? members.length + ' socios · ' + (s.provincia || '') : label), {
+        permanent: members.length > 1,
         direction: 'right',
         offset: [12, 0],
         className: 'socio-tooltip',
       });
-      const rolLabel = (function () {
-        return [s.rol_cluster,s.rol_secundario].map(function(slug) { const r = cat.ROLES_CLUSTER.find(function(x) { return x.slug === slug; }); return r ? r.label : ''; }).filter(Boolean).join(' / ');
-      })();
-      const nombreCompleto = escapeHtml((s.nombre || '') + ' ' + (s.apellidos || '')).trim();
-      marker.bindPopup(
-        '<div class="socio-popup">' +
-          '<strong>' + (nombreCompleto || '(sin nombre)') + '</strong>' +
-          (s.entidad ? '<div>' + escapeHtml(s.entidad) + '</div>' : '') +
-          (rolLabel ? '<div class="muted" style="color:' + color + '">' + escapeHtml(rolLabel) + '</div>' : '') +
-          '<div class="muted">' + escapeHtml((s.localidad || '') + (s.provincia ? ', ' + s.provincia : '')) + '</div>' +
-          '<div class="socio-popup-actions">' +
-            '<a class="btn btn-primary btn-sm" href="/mensajes.html?receptor=' + encodeURIComponent(s.id) + '">Enviar mensaje</a>' +
-            '<a class="btn btn-secondary btn-sm" href="/perfil.html?socioId=' + encodeURIComponent(s.id) + '">Ver perfil</a>' +
-          '</div>' +
-        '</div>'
-      );
+      marker.bindPopup('<div class="socio-popup" style="max-height:280px;overflow:auto">'+members.map(s => {
+        const name=escapeHtml(((s.nombre || '')+' '+(s.apellidos || '')).trim());
+        return '<section style="margin-bottom:14px"><strong>'+name+'</strong><div>'+escapeHtml(s.entidad || '')+'</div><div>'+escapeHtml((s.localidad || '')+', '+(s.provincia || ''))+'</div><div class="muted">'+(s.precision === 'provincia' ? 'Referencia provincial aproximada; municipio pendiente.' : 'Ubicación aproximada del municipio.')+'</div>'+(!adminView && s.perfil_visible ? '<a href="/perfil.html?socioId='+encodeURIComponent(s.id)+'">Ver ficha</a>' : '')+(!adminView && s.mensajeria ? ' · <a href="/mensajes.html?receptor='+encodeURIComponent(s.id)+'">Enviar mensaje</a>' : '')+'</section>';
+      }).join('')+'</div>');
       markersLayer.addLayer(marker);
     });
+    $('mapListCount').textContent = visibles.length + ' perfiles en el mapa · ' + groups.size + ' ubicaciones';
+    $('mapList').innerHTML = visibles.length ? visibles.map(socioItem).join('') : '<p>No hay perfiles con estos filtros.</p>';
     // Encaja viewport. Si hay filtro de provincia activo, dominamos con
     // el centroide de la provincia (aunque no haya marcadores ahí, el
     // visor "aterriza" en la provincia seleccionada). Sino, ajustamos
@@ -227,7 +225,6 @@
     setTimeout(function () { mapaLeaflet.invalidateSize(); }, 60);
   }
 
-  function applyScopeHighlight() { renderMarkers(); }
 
   // Filtro territorial segmentado
   territoryFilter.addEventListener('click', function (ev) {
@@ -236,10 +233,7 @@
     Array.from(territoryFilter.querySelectorAll('button')).forEach(function (b) { b.classList.remove('active'); });
     btn.classList.add('active');
     currentScope = btn.dataset.scope;
-    applyScopeHighlight();
-    renderKPIs();
-    renderKpiDetail();
-    renderCharts();
+    applyFilters();
   });
 
   // Toggle etiqueta del marcador: nombre vs rol
@@ -261,6 +255,7 @@
     renderKPIs();
     renderKpiDetail();
     renderCharts();
+    renderObservatorio();
   }
   if (filtroRol) filtroRol.addEventListener('change', function () {
     currentRolFilter = filtroRol.value || '';
@@ -290,48 +285,23 @@
     applyFilters();
   });
 
-  function filterByScope(kpiData) {
-    if (!observatorio) return kpiData;
-    const charts = observatorio.charts || {};
-    const distProv = charts.distribucion_provincias || [];
-
-    if (currentScope === 'andalucia') {
-      return {
-        socios: kpiData.total_socios || 0,
-        provincias: kpiData.provincias_activas || 0,
-        scopeLabel: 'Andalucía'
-      };
-    }
-    if (currentScope === 'espana') {
-      return {
-        socios: kpiData.total_socios || 0,
-        provincias: kpiData.provincias_activas || 0,
-        scopeLabel: 'España'
-      };
-    }
-    const provincias = currentScope === 'oriental' ? PROV_ORIENTAL : PROV_OCCIDENTAL;
-    const total = distProv.filter(function (d) { return provincias.indexOf(d.provincia) !== -1; })
-                          .reduce(function (a, b) { return a + parseInt(b.total || 0, 10); }, 0);
-    return {
-      socios: total,
-      provincias: provincias.length,
-      scopeLabel: currentScope === 'oriental' ? 'Andalucía oriental' : 'Andalucía occidental'
-    };
+  function filterByScope() {
+    return {scopeLabel: ({andalucia:'Andalucía',oriental:'Andalucía oriental',occidental:'Andalucía occidental',espana:'España'})[currentScope]};
   }
 
   function renderKPIs() {
-    if (!observatorio) return;
-    const scoped = filterByScope(observatorio.kpis || {});
+    if (!mapLoaded) return;
+    const scoped = filterByScope();
     // Aplicar también los filtros de rol/especialidad al listado de KPIs
     const inScopeSocios = sociosMapa.filter(matchesFilters);
-    const mentoresInScope = inScopeSocios.filter(function (s) { return s.disponibilidad === 'Alta' || s.tutor_mentor; });
+    const mentoresInScope = inScopeSocios.filter(function (s) { return s.tutor_mentor; });
     const b2bInScope = inScopeSocios.filter(function (s) { return s.b2b_ofrece || s.b2b_busca || s.b2b_licita; });
 
     const items = [
-      { key: 'socios',    label: 'Socios registrados',    value: inScopeSocios.length, desc: 'Perfiles visibles en ' + scoped.scopeLabel, highlight: true },
-      { key: 'provincias',label: 'Provincias activas',    value: new Set(inScopeSocios.map(function(s){return s.provincia;})).size, desc: 'Cobertura territorial actual' },
-      { key: 'mentores',  label: 'Mentores disponibles',  value: mentoresInScope.length, desc: 'Disponibilidad alta o rol de mentor' },
-      { key: 'b2b',       label: 'Proyectos B2B activos', value: b2bInScope.length, desc: 'Socios con interés B2B activo' }
+      { key: 'socios',    label: 'Perfiles en el mapa',    value: inScopeSocios.length, desc: 'Perfiles visibles en ' + scoped.scopeLabel, highlight: true },
+      { key: 'provincias',label: 'Provincias activas',    value: new Set(inScopeSocios.map(s => s.provincia).filter(Boolean)).size, desc: 'Cobertura territorial actual' },
+      { key: 'mentores',  label: 'Mentores disponibles',  value: mentoresInScope.length, desc: 'Han marcado tutoría o mentoría' },
+      { key: 'b2b',       label: 'Socios con interés B2B', value: b2bInScope.length, desc: 'Socios con interés B2B activo' }
     ];
 
     kpis.innerHTML = items.map(function (it) {
@@ -355,17 +325,18 @@
       '<span class="name">' + escapeHtml(((s.nombre || '') + ' ' + (s.apellidos || '')).trim() || '(sin nombre)') + '</span>' +
       '<span class="meta">' + escapeHtml(s.entidad || '—') + ' · ' + escapeHtml(rolLabel) + '</span>' +
       '<span class="meta">' + escapeHtml((s.localidad || '') + (s.provincia ? ', ' + s.provincia : '')) + '</span>' +
-      '<a href="/perfil.html?socioId=' + encodeURIComponent(s.id) + '">Ver perfil</a>' +
+      '<span class="meta">' + (s.precision === 'provincia' ? 'Referencia provincial aproximada' : 'Ubicación municipal aproximada') + '</span>' +
+      (!adminView && s.perfil_visible ? '<a href="/perfil.html?socioId=' + encodeURIComponent(s.id) + '">Ver perfil</a>' : '') +
     '</div>';
   }
 
   function renderKpiDetail() {
     if (!selectedKpi) { kpiDetail.hidden = true; kpiDetail.innerHTML = ''; return; }
-    const scoped = filterByScope(observatorio ? (observatorio.kpis || {}) : {});
+    const scoped = filterByScope();
     // Aplicar también los filtros de rol/especialidad al listado de KPIs
     const inScopeSocios = sociosMapa.filter(matchesFilters);
     const headings = {
-      socios:     'Socios registrados en ' + scoped.scopeLabel,
+      socios:     'Perfiles en el mapa de ' + scoped.scopeLabel,
       provincias: 'Provincias activas en ' + scoped.scopeLabel,
       mentores:   'Mentores disponibles en ' + scoped.scopeLabel,
       b2b:        'Socios con interés B2B en ' + scoped.scopeLabel
@@ -389,7 +360,7 @@
     } else {
       let filtered;
       if (selectedKpi === 'mentores') {
-        filtered = inScopeSocios.filter(function (s) { return s.disponibilidad === 'Alta' || s.tutor_mentor; });
+        filtered = inScopeSocios.filter(function (s) { return s.tutor_mentor; });
       } else if (selectedKpi === 'b2b') {
         filtered = inScopeSocios.filter(function (s) { return s.b2b_ofrece || s.b2b_busca || s.b2b_licita; });
       } else {
@@ -422,15 +393,11 @@
   });
 
   function renderObservatorio() {
-    if (!observatorio) return;
-    const top3 = (observatorio.charts.top_especialidades || []).slice(0, 3).map(function (row) {
-      const esp = cat.findEspecialidadBySlug(row.especialidad);
-      return esp ? esp.label : row.especialidad;
-    });
-    observatorioSummary.innerHTML = [
-      '<p><strong>Proyectos B2B:</strong> ' + escapeHtml(observatorio.kpis.proyectos_b2b || 0) + '</p>',
-      '<p><strong>Top especialidades:</strong> ' + (top3.length ? top3.map(escapeHtml).join(', ') : 'Sin datos') + '</p>'
-    ].join('');
+    if (!mapLoaded) return;
+    const visible=sociosMapa.filter(matchesFilters); const counts={};
+    visible.forEach(s => new Set(s.especialidades || []).forEach(e => counts[e]=(counts[e]||0)+1));
+    const top=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    observatorioSummary.innerHTML='<p><strong>Especialidades entre los perfiles del mapa:</strong></p>'+ (top.length ? '<ul>'+top.map(([slug,n])=>'<li>'+escapeHtml(cat.findEspecialidadBySlug(slug)?.label || slug)+' · '+n+'</li>').join('')+'</ul>' : '<p>Sin especialidades declaradas para estos filtros.</p>');
   }
 
   function renderMensajeria(stats) {
@@ -441,26 +408,23 @@
     ].join('');
   }
 
-  requireSession('socio').then(async function (session) {
-    welcomeTitle.textContent = 'Bienvenida, ' + session.user.nombre;
-    welcomeText.textContent = 'Consulta tus indicadores de actividad, explora el directorio profesional y accede a las herramientas de relación del entorno privado.';
-
+  $('refreshMap').addEventListener('click', loadMap);
+  requireSession(adminView ? 'admin' : 'socio').then(async function (session) {
+    welcomeTitle.textContent = adminView ? 'Mapa de gestión y prueba' : 'Bienvenida, ' + session.user.nombre;
+    welcomeText.textContent = 'Mapa e indicadores calculados sobre los mismos perfiles y filtros. Actualiza los datos después de modificar un perfil.';
+    if (adminView) {
+      document.querySelector('.sidebar nav').innerHTML='<a class="nav-link" href="/admin.html">Volver a administración</a>';
+      document.querySelector('.hero-block .eyebrow').textContent='Administración';
+      $('feedCard').hidden=true;
+      mensajeriaSummary.closest('article').hidden=true;
+      document.querySelector('section.grid-3').hidden=true;
+    }
     await loadMap();
-
-    const [obsRes, msgRes] = await Promise.all([
-      request('/api/socios/observatorio/stats', { method: 'GET', headers: {} }),
-      request('/api/mensajeria/estadisticas', { method: 'GET', headers: {} })
-    ]);
-
-    observatorio = obsRes;
-    renderKPIs();
-    renderCharts();
-    renderObservatorio();
-    renderMensajeria(msgRes.estadisticas || {});
-
-    // Cargar feed en background (no bloquea el resto del dashboard)
-    loadFeed();
-  }).catch(function () {});
+    if (!adminView) {
+      request('/api/mensajeria/estadisticas', {method:'GET'}).then(data => renderMensajeria(data.estadisticas || {})).catch(() => { mensajeriaSummary.textContent='No se pudo consultar la mensajería.'; });
+      loadFeed();
+    }
+  }).catch(function (err) { welcomeText.textContent=err.message; });
 
   // ===================================================================
   // ==================== FEED DE NOVEDADES ============================
@@ -610,13 +574,9 @@
   }
 
   function chartAmbito(socios) {
-    const g = groupBy(socios, function (s) { return s.ambito; });
-    const total = socios.length;
-    let body = '';
-    ['Público','Privado','Mixto / Otros'].forEach(function (a) {
-      if (g[a]) body += bar(a, g[a], total);
-    });
-    return chartCard('Ámbito profesional', body || null);
+    const g=groupBy(socios,s => s.sector || 'sin_dato');
+    const labels={publico:'Sector público',privado:'Sector privado',tercer_sector:'Tercer sector',sin_dato:'Sin declarar'};
+    return chartCard('Sector de actividad',Object.keys(g).map(k => bar(labels[k] || 'Sin clasificar',g[k],socios.length)).join(''));
   }
 
   function chartExperiencia(socios) {
@@ -624,7 +584,7 @@
     if (total === 0) return chartCard('Rango de experiencia', null);
     let junior = 0, medior = 0, senior = 0, sin = 0;
     socios.forEach(function (s) {
-      const y = parseInt(s.anos_experiencia);
+      const y = s.anos_experiencia == null ? NaN : Number(s.anos_experiencia);
       if (!y && y !== 0) { sin++; return; }
       if (y < 5) junior++;
       else if (y < 15) medior++;
@@ -643,9 +603,9 @@
     const DAY = 24 * 60 * 60 * 1000;
     const total = socios.length;
     if (total === 0) return chartCard('Actividad reciente', null);
-    const altas30 = socios.filter(function (s) { return s.fecha_registro && (now - new Date(s.fecha_registro).getTime()) < 30 * DAY; }).length;
-    const altas90 = socios.filter(function (s) { return s.fecha_registro && (now - new Date(s.fecha_registro).getTime()) < 90 * DAY; }).length;
-    const activos30 = socios.filter(function (s) { return s.ultimo_acceso && (now - new Date(s.ultimo_acceso).getTime()) < 30 * DAY; }).length;
+    const altas30 = socios.filter(function (s) { return s.fecha_registro && (now - new Date(s.fecha_registro).getTime()) >= 0 && (now - new Date(s.fecha_registro).getTime()) < 30 * DAY; }).length;
+    const altas90 = socios.filter(function (s) { return s.fecha_registro && (now - new Date(s.fecha_registro).getTime()) >= 0 && (now - new Date(s.fecha_registro).getTime()) < 90 * DAY; }).length;
+    const activos30 = socios.filter(function (s) { return s.ultimo_acceso && (now - new Date(s.ultimo_acceso).getTime()) >= 0 && (now - new Date(s.ultimo_acceso).getTime()) < 30 * DAY; }).length;
     let body = '';
     body += bar('Altas últimos 30 días', altas30, total);
     body += bar('Altas últimos 90 días', altas90, total);

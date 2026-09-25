@@ -58,6 +58,9 @@ const SEARCH_FILTERABLE_COLUMNS = new Set([
   'ambito',
   'estado',
   'activo',
+  'b2b_ofrece',
+  'b2b_busca',
+  'b2b_licita',
 ]);
 
 // Búsqueda full-text en español sobre nombre, apellidos y entidad.

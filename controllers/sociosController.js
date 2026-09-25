@@ -45,6 +45,11 @@ class SociosController {
           rol_cluster: rol_cluster || undefined,
           sector: sector || undefined,
           disponibilidad: disponibilidad || undefined,
+          especialidad: especialidad ? [especialidad] : undefined,
+          tipo_socio: tipo_socio || undefined,
+          b2b_ofrece: b2b_ofrece === 'true' ? true : undefined,
+          b2b_busca: b2b_busca === 'true' ? true : undefined,
+          b2b_licita: b2b_licita === 'true' ? true : undefined,
           anos_experiencia_min: anos_experiencia_min ? parseInt(anos_experiencia_min) : undefined
         };
         
@@ -162,15 +167,16 @@ class SociosController {
   // ==================== MAPA INTRANET ====================
   // Devuelve un array de socios con coordenadas + identidad, filtrado
   // por consentimientos. Solo socios autenticados; se sirve desde
-  // /api/socios/mapa. El viewer siempre puede verse a sí mismo aunque
-  // haya opt-out (coherente con getDirectorio).
+  // /api/socios/mapa. El modo temporal incluye todas las cuentas aprobadas
+  // y activas, sin modificar sus consentimientos guardados.
   async getMapaSocios(req, res) {
     try {
-      const viewerId = req.socioId;
+      const viewerId = req.socioId || null;
+      const testMode = await require('../services/mapTestMode').getStatus();
       const result = await db.query(`
         SELECT s.id, s.nombre, s.apellidos, s.entidad, s.provincia, s.localidad,
-               s.comunidad_autonoma, s.latitud, s.longitud,
-               s.sexo, s.tipo_socio, s.ambito, s.anos_experiencia,
+               s.comunidad_autonoma, s.latitud, s.longitud, c.acepta_visibilidad_datos, c.acepta_mensajeria,
+               s.sexo, s.tipo_socio, s.ambito, s.sector, s.anos_experiencia,
                s.fecha_registro, s.ultimo_acceso,
                rc.rol AS rol_cluster, rc.rol_secundario,
                rc.b2b_ofrece, rc.b2b_busca, rc.b2b_licita,
@@ -184,16 +190,23 @@ class SociosController {
         FROM socios s
         LEFT JOIN rol_cluster rc ON rc.socio_id = s.id
         LEFT JOIN disponibilidad d ON d.socio_id = s.id
-        JOIN consentimientos c ON c.socio_id = s.id
+        LEFT JOIN consentimientos c ON c.socio_id = s.id
         WHERE s.estado = 'aprobado'
           AND s.activo = true
-          AND s.latitud IS NOT NULL
-          AND s.longitud IS NOT NULL
-          AND c.acepta_mapa_interactivo = true
-          AND (c.acepta_visibilidad_datos = true OR s.id = $1)
-      `, [viewerId]);
+          AND ($2::boolean OR (c.acepta_mapa_interactivo = true
+            AND (c.acepta_visibilidad_datos = true OR s.id = $1)))
+      `, [viewerId, testMode.enabled || !!req.adminId]);
+      const located = result.rows.map(r => {
+        const hasCoords = r.latitud != null && r.longitud != null && Number.isFinite(Number(r.latitud)) && Number.isFinite(Number(r.longitud));
+        const coords = hasCoords ? {lat: Number(r.latitud), lng: Number(r.longitud)} : geocodingService.getProvinciaCoords(r.provincia);
+        return {...r, coords, precision: hasCoords ? 'municipio' : 'provincia'};
+      });
+      res.set('Cache-Control', 'no-store');
       res.json({
-        socios: result.rows.map((r) => ({
+        modo_prueba: testMode,
+        total_elegibles: located.length,
+        sin_ubicacion: located.filter(r => !r.coords).length,
+        socios: located.filter(r => r.coords).map((r) => ({
           id: r.id,
           nombre: r.nombre,
           apellidos: r.apellidos,
@@ -203,8 +216,11 @@ class SociosController {
           localidad: r.localidad,
           rol_cluster: r.rol_cluster,
           rol_secundario: r.rol_secundario,
-          lat: Number(r.latitud),
-          lng: Number(r.longitud),
+          lat: r.coords.lat,
+          lng: r.coords.lng,
+          precision: r.precision,
+          perfil_visible: !!req.adminId || r.id === viewerId || !!r.acepta_visibilidad_datos,
+          mensajeria: !!r.acepta_mensajeria,
           disponibilidad: r.disponibilidad || null,
           tutor_mentor: !!r.tutor_mentor,
           b2b_ofrece: !!r.b2b_ofrece,
@@ -213,8 +229,9 @@ class SociosController {
           especialidades: Array.isArray(r.especialidades) ? r.especialidades : [],
           sexo: r.sexo || null,
           tipo_socio: r.tipo_socio || null,
+          sector: r.sector || null,
           ambito: r.ambito || null,
-          anos_experiencia: r.anos_experiencia || 0,
+          anos_experiencia: r.anos_experiencia == null ? null : Number(r.anos_experiencia),
           fecha_registro: r.fecha_registro,
           ultimo_acceso: r.ultimo_acceso,
         })),
@@ -338,6 +355,8 @@ class SociosController {
 
       if (socio.telefono_personal_encrypted) socio.telefono_personal = decryptData(socio.telefono_personal_encrypted);
       const perfilFiltrado = filterSensitiveData(socio, isOwner, isAdmin);
+      if (socio.cv_url && await require('../services/cvAccess').canRead(req, socio.id)) perfilFiltrado.cv_url = socio.cv_url;
+      if (isOwner || isAdmin) perfilFiltrado.ubicacion_estado = socio.latitud != null && socio.longitud != null ? 'municipio' : (geocodingService.getProvinciaCoords(socio.provincia) ? 'provincia' : 'pendiente');
 
       // Auditar visualización de perfil
       await auditAction(req.socioId, req.adminId, 'VIEW_PROFILE', 'socios', null, { 
@@ -420,14 +439,16 @@ class SociosController {
         if (direccion_completa !== undefined) socioUpdate.direccion_completa = direccion_completa;
         if (ambito !== undefined) socioUpdate.ambito = ambito;
         if (cargo_actual !== undefined) socioUpdate.cargo_actual = cargo_actual;
-        if (anos_experiencia !== undefined) socioUpdate.anos_experiencia = parseInt(anos_experiencia);
+        if (anos_experiencia !== undefined) socioUpdate.anos_experiencia = anos_experiencia == null ? null : parseInt(anos_experiencia);
         if (sexo !== undefined) {
           // Sólo aceptamos los valores del catálogo (evita inyección de cualquier string).
           socioUpdate.sexo = ['femenino','masculino'].includes(sexo) ? sexo : null;
         }
 
         // v2: nuevos campos del perfil
-        if (tipo_socio !== undefined) socioUpdate.tipo_socio = tipo_socio;
+        if (tipo_socio !== undefined && tipo_socio !== datosAnteriores.tipo_socio) {
+          const error = new Error('Solicita a administración el cambio de tipo de socio'); error.status=403; throw error;
+        }
         if (email_personal !== undefined) socioUpdate.email_personal = email_personal;
         if (email_preferido !== undefined) socioUpdate.email_preferido = email_preferido;
         if (nombre_organizacion !== undefined) socioUpdate.nombre_organizacion = nombre_organizacion;
@@ -444,7 +465,9 @@ class SociosController {
         const cambioUbicacion =
           (localidad !== undefined && localidad !== datosAnteriores.localidad) ||
           (provincia !== undefined && provincia !== datosAnteriores.provincia);
-        if (cambioUbicacion && nuevaLocalidad && nuevaProvincia) {
+        if (cambioUbicacion) { socioUpdate.latitud = null; socioUpdate.longitud = null; }
+        const faltanCoords = datosAnteriores.latitud == null || datosAnteriores.longitud == null;
+        if ((cambioUbicacion || faltanCoords) && nuevaLocalidad && nuevaProvincia) {
           try {
             const coords = await geocodingService.geocode(
               `${nuevaLocalidad}, ${nuevaProvincia}, España`
@@ -466,10 +489,11 @@ class SociosController {
         }
 
         // Preserve the secondary role and B2B choices on partial updates.
-        if (rol_cluster !== undefined || req.body.rol_secundario !== undefined) {
+        if (rol_cluster !== undefined || req.body.rol_secundario !== undefined || b2b_ofrece !== undefined || b2b_busca !== undefined || b2b_licita !== undefined) {
           const previous = (await client.query('SELECT * FROM rol_cluster WHERE socio_id=$1', [socioId])).rows[0] || {};
           const primary = rol_cluster === undefined ? previous.rol : rol_cluster;
           const secondary = req.body.rol_secundario === undefined ? previous.rol_secundario : req.body.rol_secundario;
+          if (!primary && (b2b_ofrece || b2b_busca || b2b_licita)) { const error=new Error('Selecciona un rol principal para guardar intereses B2B'); error.status=400; throw error; }
           if (secondary && (!primary || primary === secondary)) {
             const error = new Error('Selecciona dos roles distintos y un rol principal'); error.status = 400; throw error;
           }
@@ -567,7 +591,7 @@ class SociosController {
       });
 
     } catch (error) {
-      if (error.status === 400) return res.status(400).json({ error: error.message });
+      if ([400,403].includes(error.status)) return res.status(error.status).json({ error: error.message });
       console.error('Error actualizando perfil:', error);
       res.status(500).json({ error: 'Error actualizando perfil' });
     }

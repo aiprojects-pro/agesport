@@ -10,6 +10,13 @@ const { uploadLandingImage } = require('../services/uploadService');
 // `wrapMulter` se declara más abajo (era el existente para uploads de
 // logo/CSV); reutilizamos esa misma función para las rutas de landing.
 
+const mapTestController = require('../controllers/mapTestController');
+router.get('/mapa-prueba', authenticateAdmin, mapTestController.status);
+router.get('/mapa-diagnostico', authenticateAdmin, mapTestController.diagnostics);
+router.post('/mapa-diagnostico/:socioId/ubicacion', authenticateAdmin, mapTestController.relocate);
+router.put('/mapa-prueba', authenticateAdmin, validateInput, mapTestController.update);
+router.get('/mapa', authenticateAdmin, require('../controllers/sociosController').getMapaSocios);
+
 // ==================== GESTIÓN SOCIOS PENDIENTES ====================
 router.get('/socios/pendientes', 
   authenticateAdmin,
