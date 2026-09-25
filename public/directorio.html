@@ -59,7 +59,8 @@
             <select id="rol_cluster"></select>
           </div>
           <div class="field-full">
-            <label for="especialidad">Especialidad</label>
+            <label for="sector">Sector de actividad</label><select id="sector"><option value="">Todos los sectores</option><option value="publico">Sector público</option><option value="privado">Sector privado</option><option value="tercer_sector">Tercer sector</option></select>
+          </div><div class="field-full"><label for="especialidad">Especialidad</label>
             <select id="especialidad"></select>
           </div>
           <div class="field">
@@ -76,15 +77,7 @@
               <option value="Puntual">Puntual</option>
             </select>
           </div>
-          <div class="field">
-            <label for="ambito">Ámbito</label>
-            <select id="ambito">
-              <option value="">Cualquiera</option>
-              <option value="Público">Público</option>
-              <option value="Privado">Privado</option>
-              <option value="Mixto / Otros">Mixto / Otros</option>
-            </select>
-          </div>
+
           <div class="field">
             <label for="anos_experiencia_min">Experiencia mínima (años)</label>
             <input id="anos_experiencia_min" type="number" min="0" max="50" placeholder="0">

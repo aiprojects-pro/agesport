@@ -77,6 +77,7 @@
     if (search) params.set('search', search);
     if (provincia) params.set('provincia', provincia);
     if (rol) params.set('rol_cluster', rol);
+    if ($('sector').value) params.set('sector', $('sector').value);
     if (especialidad) params.set('especialidad', especialidad);
     // Filtros avanzados añadidos en esta versión
     const disponibilidad = ($('disponibilidad') || {}).value;
@@ -102,6 +103,8 @@
     if (rol) {
       chips += '<span class="rol-chip" data-rol="' + escapeHtml(rol.slug) + '">' + escapeHtml(rol.label) + '</span>';
     }
+    const secondary = cat.findRolBySlug(socio.rol_secundario);
+    if (secondary) chips += '<span class="rol-chip" data-rol="' + escapeHtml(secondary.slug) + '">' + escapeHtml(secondary.label) + '</span>';
     especialidades.slice(0, 3).forEach(function (espSlug) {
       const esp = cat.findEspecialidadBySlug(espSlug);
       const label = esp ? esp.label : espSlug;
@@ -165,6 +168,7 @@
     ccaaSelect.value = '';
     cat.fillProvincesSelect(provinciaSelect, { placeholder: 'Todas' });
     rolSelect.value = '';
+    $('sector').value = '';
     espSelect.value = '';
     // Filtros avanzados nuevos
     if ($('disponibilidad')) $('disponibilidad').value = '';

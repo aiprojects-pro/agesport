@@ -50,6 +50,7 @@
 
   // ===== Lista de roles del clúster (cards con radio) =====
   const rolList = $('rolList');
+  cat.fillRolesSelect($('rol_secundario'), { placeholder: 'Sin segundo rol' });
   rolList.innerHTML = cat.ROLES_CLUSTER.map(function (r) {
     return (
       '<label class="rol-card" style="--rol-color:' + r.color + '" data-slug="' + r.slug + '">' +
@@ -100,13 +101,15 @@
 
     // Etiquetas adaptadas
     if (esCorp) {
-      labelEntidad.textContent = 'Sector / categoría de la organización';
+      labelEntidad.textContent = 'Actividad / categoría de la organización';
       labelCargo.textContent = 'Persona de contacto: cargo';
-      labelExperiencia.textContent = 'Años de actividad';
+      labelExperiencia.textContent = 'Años de actividad de la organización';
+      $('experienceHelp').textContent = 'Indica cuánto tiempo lleva activa la organización.';
     } else {
       labelEntidad.textContent = 'Entidad / empresa';
       labelCargo.textContent = 'Cargo actual';
-      labelExperiencia.textContent = 'Años de experiencia';
+      labelExperiencia.textContent = 'Años de experiencia en el sector deportivo';
+      $('experienceHelp').textContent = 'Cuenta tu experiencia total en el sector, aunque hayas trabajado en distintas entidades.';
     }
   }
   typeCards.forEach(function (card) {
@@ -133,6 +136,8 @@
     event.preventDefault();
     button.disabled = true;
     button.textContent = 'Enviando...';
+    message.textContent = '';
+    message.className = 'message-box';
 
     try {
       // Validación pre-envío de los campos que CAMBIAN con el tipo de
@@ -157,6 +162,8 @@
         .map(function (cb) { return cb.value; });
       const rolElegido = (rolList.querySelector('input[name=rol_cluster]:checked') || {}).value || null;
 
+      if ($('rol_secundario').value && (!rolElegido || $('rol_secundario').value === rolElegido)) throw new Error('Selecciona un rol principal y un segundo rol distinto.');
+
       // Para corporativos, usamos los datos de la persona de contacto como nombre/apellidos
       // de la cuenta (la cuenta sigue siendo una persona que opera en nombre de la org).
       let payload;
@@ -179,6 +186,9 @@
         email: $('email').value.trim(),
         email_personal: $('email_personal').value.trim() || null,
         telefono: $('telefono').value.trim() || null,
+        telefono_personal: $('telefono_personal').value.trim() || null,
+        sector: $('sector').value || null,
+        rol_secundario: $('rol_secundario').value || null,
         password: $('password').value,
         entidad: $('entidad').value.trim() || ($('nombre_organizacion') ? $('nombre_organizacion').value.trim() : null),
         web_profesional: $('web_profesional').value.trim() || null,

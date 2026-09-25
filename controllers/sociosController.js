@@ -23,6 +23,7 @@ class SociosController {
         search = '',
         provincia = '',
         rol_cluster = '',
+        sector = '',
         especialidad = '',
         disponibilidad = '',
         anos_experiencia_min = '',
@@ -42,6 +43,7 @@ class SociosController {
         const filters = {
           provincia: provincia || undefined,
           rol_cluster: rol_cluster || undefined,
+          sector: sector || undefined,
           disponibilidad: disponibilidad || undefined,
           anos_experiencia_min: anos_experiencia_min ? parseInt(anos_experiencia_min) : undefined
         };
@@ -51,12 +53,12 @@ class SociosController {
           filters[key] === undefined && delete filters[key]
         );
 
-        socios = await sociosQueries.searchSocios(search, filters);
+        socios = await sociosQueries.searchSocios(search, filters, req.socioId);
       } else {
         // Construir query con filtros
-        let query = 'SELECT * FROM vista_socios_completos WHERE 1=1';
-        const params = [];
-        let paramIndex = 1;
+        let query = 'SELECT * FROM vista_socios_completos WHERE (acepta_visibilidad_datos=true OR id=$1)';
+        const params = [req.socioId];
+        let paramIndex = 2;
 
         if (provincia) {
           query += ` AND provincia = $${paramIndex}`;
@@ -64,8 +66,9 @@ class SociosController {
           paramIndex++;
         }
 
+        if (sector) { query += ` AND sector = $${paramIndex++}`; params.push(sector); }
         if (rol_cluster) {
-          query += ` AND rol_cluster = $${paramIndex}`;
+          query += ` AND (rol_cluster = $${paramIndex} OR rol_secundario = $${paramIndex})`;
           params.push(rol_cluster);
           paramIndex++;
         }
@@ -131,6 +134,7 @@ class SociosController {
         if (socio.telefono_encrypted) {
           socio.telefono = decryptData(socio.telefono_encrypted);
         }
+        if (socio.telefono_personal_encrypted) socio.telefono_personal = decryptData(socio.telefono_personal_encrypted);
         return filterSensitiveData(socio, isOwner, isAdmin);
       });
 
@@ -168,7 +172,7 @@ class SociosController {
                s.comunidad_autonoma, s.latitud, s.longitud,
                s.sexo, s.tipo_socio, s.ambito, s.anos_experiencia,
                s.fecha_registro, s.ultimo_acceso,
-               rc.rol AS rol_cluster,
+               rc.rol AS rol_cluster, rc.rol_secundario,
                rc.b2b_ofrece, rc.b2b_busca, rc.b2b_licita,
                d.nivel AS disponibilidad,
                d.tutor_mentor,
@@ -198,6 +202,7 @@ class SociosController {
           comunidad_autonoma: r.comunidad_autonoma,
           localidad: r.localidad,
           rol_cluster: r.rol_cluster,
+          rol_secundario: r.rol_secundario,
           lat: Number(r.latitud),
           lng: Number(r.longitud),
           disponibilidad: r.disponibilidad || null,
@@ -331,6 +336,7 @@ class SociosController {
         socio.telefono = decryptData(socio.telefono_encrypted);
       }
 
+      if (socio.telefono_personal_encrypted) socio.telefono_personal = decryptData(socio.telefono_personal_encrypted);
       const perfilFiltrado = filterSensitiveData(socio, isOwner, isAdmin);
 
       // Auditar visualización de perfil
@@ -397,6 +403,8 @@ class SociosController {
         if (linkedin_url !== undefined) socioUpdate.linkedin_url = linkedin_url;
         if (otras_redes !== undefined) socioUpdate.otras_redes = otras_redes;
         if (entidad !== undefined) socioUpdate.entidad = entidad;
+        if (req.body.sector !== undefined) socioUpdate.sector = req.body.sector || null;
+        if (req.body.telefono_personal !== undefined) socioUpdate.telefono_personal_encrypted = req.body.telefono_personal ? encryptData(req.body.telefono_personal) : null;
         if (web_profesional !== undefined) socioUpdate.web_profesional = web_profesional;
         if (provincia !== undefined) {
           socioUpdate.provincia = provincia;
@@ -457,21 +465,26 @@ class SociosController {
           `, [socioId, ...Object.values(socioUpdate)]);
         }
 
-        // 2. Actualizar rol cluster
-        if (rol_cluster !== undefined) {
-          await client.query('DELETE FROM rol_cluster WHERE socio_id = $1', [socioId]);
-          if (rol_cluster) {
-            await client.query(`
-              INSERT INTO rol_cluster (socio_id, rol, b2b_ofrece, b2b_busca, b2b_licita)
-              VALUES ($1, $2, $3, $4, $5)
-            `, [socioId, rol_cluster, !!b2b_ofrece, !!b2b_busca, !!b2b_licita]);
+        // Preserve the secondary role and B2B choices on partial updates.
+        if (rol_cluster !== undefined || req.body.rol_secundario !== undefined) {
+          const previous = (await client.query('SELECT * FROM rol_cluster WHERE socio_id=$1', [socioId])).rows[0] || {};
+          const primary = rol_cluster === undefined ? previous.rol : rol_cluster;
+          const secondary = req.body.rol_secundario === undefined ? previous.rol_secundario : req.body.rol_secundario;
+          if (secondary && (!primary || primary === secondary)) {
+            const error = new Error('Selecciona dos roles distintos y un rol principal'); error.status = 400; throw error;
           }
+          await client.query('DELETE FROM rol_cluster WHERE socio_id=$1', [socioId]);
+          if (primary) await client.query(`INSERT INTO rol_cluster (socio_id,rol,rol_secundario,b2b_ofrece,b2b_busca,b2b_licita)
+            VALUES ($1,$2,$3,$4,$5,$6)`, [socioId,primary,secondary || null,
+            b2b_ofrece === undefined ? !!previous.b2b_ofrece : !!b2b_ofrece,
+            b2b_busca === undefined ? !!previous.b2b_busca : !!b2b_busca,
+            b2b_licita === undefined ? !!previous.b2b_licita : !!b2b_licita]);
         }
 
         // 3. Actualizar especialidades
         if (especialidades && Array.isArray(especialidades)) {
           await client.query('DELETE FROM socio_especialidades WHERE socio_id = $1', [socioId]);
-          for (let i = 0; i < Math.min(especialidades.length, 3); i++) {
+          for (let i = 0; i < especialidades.length; i++) {
             await client.query(`
               INSERT INTO socio_especialidades (socio_id, especialidad, orden_prioridad)
               VALUES ($1, $2, $3)
@@ -508,9 +521,13 @@ class SociosController {
 
         // 6. Actualizar consentimientos
         const consentimientoUpdate = {};
+        for (const key of ['acepta_mapa_interactivo','acepta_visibilidad_datos']) {
+          if (req.body[key] !== undefined) consentimientoUpdate[key] = req.body[key];
+        }
         if (acepta_mensajeria !== undefined) consentimientoUpdate.acepta_mensajeria = acepta_mensajeria;
         if (acepta_notificaciones_email !== undefined) consentimientoUpdate.acepta_notificaciones_email = acepta_notificaciones_email;
         if (visible_telefono !== undefined) consentimientoUpdate.visible_telefono = visible_telefono;
+        if (req.body.visible_telefono_personal !== undefined) consentimientoUpdate.visible_telefono_personal = !!req.body.visible_telefono_personal;
         if (visible_email_directo !== undefined) consentimientoUpdate.visible_email_directo = visible_email_directo;
         if (visible_web_profesional !== undefined) consentimientoUpdate.visible_web_profesional = visible_web_profesional;
         if (visible_linkedin !== undefined) consentimientoUpdate.visible_linkedin = visible_linkedin;
@@ -538,7 +555,11 @@ class SociosController {
       );
 
       // Auditar actualización
-      await auditAction(socioId, null, 'UPDATE_PROFILE', 'socios', datosAnteriores, req.body, req);
+      const auditedChanges = { ...req.body };
+      for (const key of ['telefono','telefono_personal','dni_nie','password']) {
+        if (key in auditedChanges) auditedChanges[key] = '[dato privado actualizado]';
+      }
+      await auditAction(socioId, null, 'UPDATE_PROFILE', 'socios', datosAnteriores, auditedChanges, req);
 
       res.json({ 
         message: 'Perfil actualizado correctamente',
@@ -546,6 +567,7 @@ class SociosController {
       });
 
     } catch (error) {
+      if (error.status === 400) return res.status(400).json({ error: error.message });
       console.error('Error actualizando perfil:', error);
       res.status(500).json({ error: 'Error actualizando perfil' });
     }
@@ -584,6 +606,7 @@ class SociosController {
       const sociosFiltrados = socios.map(socio => {
         const isOwner = socio.id === req.socioId;
         const isAdmin = !!req.adminId;
+        if (socio.telefono_personal_encrypted) socio.telefono_personal = decryptData(socio.telefono_personal_encrypted);
         return filterSensitiveData(socio, isOwner, isAdmin);
       });
 
@@ -627,7 +650,7 @@ class SociosController {
       // Distribución por roles cluster
       const rolesDist = await db.query(`
         SELECT rol_cluster, COUNT(*) as total
-        FROM vista_socios_completos 
+        FROM (SELECT unnest(ARRAY[rol_cluster,rol_secundario]) AS rol_cluster FROM vista_socios_completos) roles
         WHERE rol_cluster IS NOT NULL
         GROUP BY rol_cluster 
         ORDER BY total DESC
@@ -732,6 +755,8 @@ class SociosController {
       // Higiene RGPD: nunca exponer el hash de la contraseña ni tokens
       // internos aunque estén cifrados/hasheados. El derecho de portabilidad
       // cubre los datos personales, no los credenciales técnicos.
+      if (datos.telefono_personal_encrypted) datos.telefono_personal = decryptData(datos.telefono_personal_encrypted);
+      delete datos.telefono_personal_encrypted;
       delete datos.password_hash;
       delete datos.notas_moderacion;
       delete datos.moderado_por;

@@ -356,31 +356,38 @@
     if (!ids.length) { setMessage($('pendientesMessage'), false, 'No has seleccionado ninguna solicitud.'); return; }
     if (!window.confirm('¿Aprobar ' + ids.length + ' solicitudes? Se notificará a cada socio por email.')) return;
 
-    let ok = 0, fail = 0;
+    let ok = 0, fail = 0, emailFailures = 0;
     for (const id of ids) {
       try {
-        await request('/api/admin/socios/' + id + '/aprobar', { method: 'POST', body: JSON.stringify({}) });
+        const result = await request('/api/admin/socios/' + id + '/aprobar', { method: 'POST', body: JSON.stringify({}) });
+        if (result.notification_sent === false) emailFailures++;
         ok++;
       } catch (err) {
         fail++;
         console.warn('Error aprobando ' + id, err);
       }
     }
-    setMessage($('pendientesMessage'), fail === 0, 'Aprobadas ' + ok + ' de ' + ids.length + (fail ? ' (' + fail + ' errores)' : ''));
+    setMessage($('pendientesMessage'), fail === 0 && emailFailures === 0, 'Aprobadas ' + ok + ' de ' + ids.length + (fail ? ' (' + fail + ' errores)' : '') + (emailFailures ? '. ' + emailFailures + ' correos no enviados; revisa Correo saliente.' : ''));
     await loadPendientes();
   });
 
   // =============================================================
   // ==================== ACCESOS GENERADOS ======================
   // =============================================================
+  let accessRequest = 0;
+  $('exportEstado').addEventListener('change', loadAccesos);
   async function loadAccesos() {
+    const requestId = ++accessRequest;
+    const estado = $('exportEstado').value;
     window._accLoaded = true;
     try {
-      const data = await request('/api/admin/socios/accesos', { method: 'GET', headers: {} });
+      const data = await request('/api/admin/socios/accesos?estado=' + encodeURIComponent(estado), { method: 'GET', headers: {} });
+      if (requestId !== accessRequest) return;
       const socios = data.socios || [];
+      $('accesosCount').textContent = socios.length + ' socios mostrados';
       $('accesosList').innerHTML = '<table class="table-list"><thead><tr>' +
           '<th>Nombre</th><th>Email</th><th>Entidad</th><th>Provincia</th><th>Tipo</th>' +
-          '<th>Último acceso</th><th style="text-align:right">Acciones</th>' +
+          '<th>Estado</th><th>Último acceso</th><th style="text-align:right">Acciones</th>' +
         '</tr></thead><tbody>' +
         socios.map(function (s) {
           return '<tr>' +
@@ -389,9 +396,10 @@
             '<td>' + escapeHtml(s.entidad || '') + '</td>' +
             '<td>' + escapeHtml(s.provincia || '') + '</td>' +
             '<td>' + escapeHtml(tipoSocioLabel(s.tipo_socio)) + '</td>' +
+            '<td>' + escapeHtml(s.estado || '') + '</td>' +
             '<td>' + escapeHtml(s.ultimo_acceso ? formatDate(s.ultimo_acceso) : '—') + '</td>' +
             '<td style="text-align:right;white-space:nowrap">' +
-              '<button class="btn-upload" type="button" data-suspend="' + s.id + '">Suspender</button> ' +
+              (s.estado === 'aprobado' ? '<button class="btn-upload" type="button" data-suspend="' + s.id + '">Suspender</button> ' : '') +
               '<button class="btn-upload" type="button" data-baja="' + s.id + '" style="color:#a33">Dar de baja</button>' +
             '</td>' +
           '</tr>';
@@ -432,6 +440,8 @@
         });
       });
     } catch (err) {
+      if (requestId !== accessRequest) return;
+      $('accesosCount').textContent = '';
       $('accesosList').innerHTML = '<div class="empty">' + escapeHtml(err.message) + '</div>';
     }
   }
@@ -601,7 +611,7 @@
           : '<span class="tag">' + escapeHtml(f.estado) + '</span>');
     const puedeEditar = f.estado === 'con_errores' || f.estado === 'duplicado';
     return '<tr data-fila-id="' + f.id + '" class="' + (f.estado === 'duplicado' ? 'selected' : '') + '">' +
-      '<td><input type="checkbox" class="csv-check" data-id="' + f.id + '" ' + checkboxDisabled + '></td>' +
+      '<td><input type="checkbox" aria-label="Seleccionar fila de importación" class="csv-check" data-id="' + f.id + '" ' + checkboxDisabled + '></td>' +
       '<td>' + escapeHtml(f.email || '') + '</td>' +
       '<td>' + escapeHtml((f.nombre || '') + ' ' + (f.apellidos || '')) + '</td>' +
       '<td>' + escapeHtml(f.entidad || '') + '</td>' +
@@ -633,6 +643,8 @@
       .concat(provinces.map(function (p) { return '<option value="' + escapeHtml(p) + '"' + ((f.provincia === p) ? ' selected' : '') + '>' + escapeHtml(p) + '</option>'; })).join('');
     const rolOpts = ['<option value="">— sin rol —</option>']
       .concat(cat.ROLES_CLUSTER.map(function (r) { return '<option value="' + r.slug + '"' + (f.rol_cluster === r.slug ? ' selected' : '') + '>' + escapeHtml(r.label) + '</option>'; })).join('');
+    const secondaryOpts = '<option value="">Sin segundo rol</option>' + cat.ROLES_CLUSTER.map(function(r) { return '<option value="' + r.slug + '"' + (f.rol_secundario === r.slug ? ' selected' : '') + '>' + escapeHtml(r.label) + '</option>'; }).join('');
+    const sectorOpts = [['','Sin especificar'],['publico','Sector público'],['privado','Sector privado'],['tercer_sector','Tercer sector']].map(function(s) { return '<option value="' + s[0] + '"' + (f.sector === s[0] ? ' selected' : '') + '>' + s[1] + '</option>'; }).join('');
     const tipoOpts = cat.TIPOS_SOCIO.map(function (t) { return '<option value="' + t.slug + '"' + ((f.tipo_socio || 'numero') === t.slug ? ' selected' : '') + '>' + escapeHtml(t.label) + '</option>'; }).join('');
 
     const editor = document.createElement('tr');
@@ -641,15 +653,17 @@
     editor.innerHTML =
       '<td colspan="8" style="background:var(--bg-soft);padding:14px">' +
         '<div class="form-grid" style="gap:10px">' +
-          '<div class="field"><label>Nombre</label><input class="ed-nombre" value="' + escapeHtml(f.nombre || '') + '"></div>' +
-          '<div class="field"><label>Apellidos</label><input class="ed-apellidos" value="' + escapeHtml(f.apellidos || '') + '"></div>' +
-          '<div class="field"><label>Email</label><input class="ed-email" type="email" value="' + escapeHtml(f.email || '') + '"></div>' +
-          '<div class="field"><label>Entidad</label><input class="ed-entidad" value="' + escapeHtml(f.entidad || '') + '"></div>' +
-          '<div class="field"><label>Cargo</label><input class="ed-cargo" value="' + escapeHtml(f.cargo_actual || '') + '"></div>' +
-          '<div class="field"><label>Provincia</label><select class="ed-provincia">' + provOpts + '</select></div>' +
-          '<div class="field"><label>Localidad</label><input class="ed-localidad" value="' + escapeHtml(f.localidad || '') + '"></div>' +
-          '<div class="field"><label>Rol clúster</label><select class="ed-rol">' + rolOpts + '</select></div>' +
-          '<div class="field"><label>Tipo de socio</label><select class="ed-tipo">' + tipoOpts + '</select></div>' +
+          '<div class="field"><label>Nombre</label><input aria-label="Nombre" class="ed-nombre" value="' + escapeHtml(f.nombre || '') + '"></div>' +
+          '<div class="field"><label>Apellidos</label><input aria-label="Apellidos" class="ed-apellidos" value="' + escapeHtml(f.apellidos || '') + '"></div>' +
+          '<div class="field"><label>Email</label><input aria-label="Email" class="ed-email" type="email" value="' + escapeHtml(f.email || '') + '"></div>' +
+          '<div class="field"><label>Entidad</label><input aria-label="Entidad" class="ed-entidad" value="' + escapeHtml(f.entidad || '') + '"></div>' +
+          '<div class="field"><label>Cargo</label><input aria-label="Cargo" class="ed-cargo" value="' + escapeHtml(f.cargo_actual || '') + '"></div>' +
+          '<div class="field"><label>Provincia</label><select aria-label="Provincia" class="ed-provincia">' + provOpts + '</select></div>' +
+          '<div class="field"><label>Localidad</label><input aria-label="Localidad" class="ed-localidad" value="' + escapeHtml(f.localidad || '') + '"></div>' +
+          '<div class="field"><label>Rol clúster</label><select aria-label="Rol principal" class="ed-rol">' + rolOpts + '</select></div>' +
+          '<div class="field"><label>Segundo rol</label><select aria-label="Segundo rol" class="ed-rol-sec">' + secondaryOpts + '</select></div>' +
+          '<div class="field"><label>Sector</label><select aria-label="Sector" class="ed-sector">' + sectorOpts + '</select></div>' +
+          '<div class="field"><label>Tipo de socio</label><select aria-label="Tipo de socio" class="ed-tipo">' + tipoOpts + '</select></div>' +
         '</div>' +
         '<div class="actions" style="margin-top:12px">' +
           '<button class="btn btn-secondary" data-action="csv-cancel">Cancelar</button> ' +
@@ -684,6 +698,8 @@
       provincia: editor.querySelector('.ed-provincia').value,
       localidad: editor.querySelector('.ed-localidad').value,
       rol_cluster: editor.querySelector('.ed-rol').value,
+      rol_secundario: editor.querySelector('.ed-rol-sec').value,
+      sector: editor.querySelector('.ed-sector').value,
       tipo_socio: editor.querySelector('.ed-tipo').value,
     };
     try {
@@ -720,8 +736,9 @@
     const errores = [];
     for (const id of ids) {
       try {
-        await request('/api/admin/socios/invitados/' + id + '/aprobar', { method: 'POST', body: JSON.stringify({}) });
+        const result = await request('/api/admin/socios/invitados/' + id + '/aprobar', { method: 'POST', body: JSON.stringify({}) });
         ok++;
+        if (result.notification_sent === false) errores.push('Fila ' + id + ': ' + result.message);
         window._csvFilas = window._csvFilas.map(function (f) {
           return String(f.id) === String(id) ? Object.assign({}, f, { estado: 'aprobado' }) : f;
         });
@@ -733,7 +750,7 @@
     }
     $('approveInvitedBtn').disabled = false;
     $('csvSelectAll').checked = false;
-    setMessage($('importMessage'), fail === 0, 'Procesados ' + ok + ' de ' + ids.length + (fail ? '. ' + errores.join('; ') : ''));
+    setMessage($('importMessage'), fail === 0 && errores.length === 0, 'Procesados ' + ok + ' de ' + ids.length + (errores.length ? '. ' + errores.join('; ') : ''));
     // Tras aprobar, refrescamos accesos
     window._accLoaded = false;
   });
@@ -741,7 +758,18 @@
   // =============================================================
   // ==================== CORREO SALIENTE (SMTP) =================
   // =============================================================
+  async function loadDeliveries() {
+    try {
+      const data = await request('/api/admin/config/smtp/deliveries', {method:'GET',headers:{}});
+      $('emailDeliveries').innerHTML = '<table class="table-list"><thead><tr><th>Fecha</th><th>Destinatario</th><th>Resultado</th></tr></thead><tbody>' + data.deliveries.map(function (d) {
+        const detail = ({smtp_authentication:'Credenciales rechazadas',smtp_unreachable:'Sin conexión con el servidor',email_not_configured:'Correo no configurado',recipient_rejected:'Destinatario rechazado'})[d.error_code] || 'Envío fallido';
+        return '<tr><td>' + escapeHtml(formatDate(d.created_at)) + '</td><td>' + escapeHtml(d.recipient) + '</td><td>' + (d.status === 'accepted' ? 'Aceptado por el servidor de correo' : escapeHtml(detail)) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+    } catch (e) { $('emailDeliveries').textContent = e.message; }
+  }
+  $('refreshDeliveries').addEventListener('click', loadDeliveries);
   async function loadSmtpConfig() {
+    loadDeliveries();
     try {
       const data = await request('/api/admin/config/smtp', { method: 'GET', headers: {} });
       const cfg = data.config || {};
@@ -811,6 +839,7 @@
         setMessage($('smtpMessage'), false, err.message);
       } finally {
         btn.disabled = false; btn.textContent = 'Enviar email de prueba';
+        loadDeliveries();
       }
     });
   }

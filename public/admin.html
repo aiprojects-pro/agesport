@@ -175,10 +175,10 @@
         <div class="toolbar">
           <div>
             <h2 style="margin:0">Accesos generados</h2>
-            <p class="muted" style="margin:6px 0 0">Listado de socios aprobados activos. Ordenado por último acceso.</p>
+            <p class="muted" style="margin:6px 0 0">Filtra el listado y descarga los contactos del estado seleccionado. Ordenado por último acceso.</p>
           </div>
           <div class="actions">
-            <select aria-label="Estado de los socios a exportar" id="exportEstado" style="padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;font:inherit">
+            <select aria-label="Estado de los socios en la tabla y el CSV" id="exportEstado" style="padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;font:inherit">
               <option value="">Todos los socios (activos)</option>
               <option value="aprobado">Solo aprobados</option>
               <option value="pendiente">Solo pendientes</option>
@@ -187,6 +187,7 @@
             <button class="btn btn-primary" id="exportCsvBtn" type="button">Descargar contactos (CSV)</button>
           </div>
         </div>
+        <p id="accesosCount" role="status" aria-live="polite"></p>
         <div id="accesosList" class="table-scroll" tabindex="0" role="region" aria-label="Accesos generados" style="margin-top:14px"></div>
         <div id="exportMessage" class="message-box"></div>
       </article>
@@ -334,6 +335,10 @@
           </div>
         </form>
         <div id="smtpMessage" class="message-box"></div>
+        <p class="muted">Gmail requiere un método de autenticación compatible. Si utilizas contraseña de aplicación, créala en la cuenta remitente con verificación en dos pasos. No uses aquí la contraseña de acceso al Mapa del Talento.</p>
+        <h3>Últimos envíos</h3><p>Aceptado significa que el servidor de correo lo ha admitido; confirma la recepción en el buzón del destinatario. Historial disponible durante 90 días.</p>
+        <button id="refreshDeliveries" type="button" class="btn btn-secondary">Actualizar envíos</button>
+        <div id="emailDeliveries" class="table-scroll" tabindex="0" role="region" aria-label="Historial de envíos"></div>
       </article>
     </section>
 

@@ -27,7 +27,7 @@ async function findNearby(lat, lng, radiusKm = 50, filters = {}) {
     paramIndex++;
   }
   if (filters.rol_cluster) {
-    query += ` AND rol_cluster = $${paramIndex}`;
+    query += ` AND (rol_cluster = $${paramIndex} OR rol_secundario = $${paramIndex})`;
     values.push(filters.rol_cluster);
     paramIndex++;
   }
@@ -52,6 +52,8 @@ const SEARCH_FILTERABLE_COLUMNS = new Set([
   'provincia',
   'comunidad_autonoma',
   'rol_cluster',
+  'sector',
+  'disponibilidad',
   'tipo_socio',
   'ambito',
   'estado',
@@ -59,7 +61,7 @@ const SEARCH_FILTERABLE_COLUMNS = new Set([
 ]);
 
 // Búsqueda full-text en español sobre nombre, apellidos y entidad.
-async function searchSocios(searchTerm, filters = {}) {
+async function searchSocios(searchTerm, filters = {}, viewerId = null) {
   let query = `
     SELECT *,
            ts_rank(to_tsvector('spanish', nombre || ' ' || apellidos || ' ' || COALESCE(entidad, '')),
@@ -67,22 +69,26 @@ async function searchSocios(searchTerm, filters = {}) {
     FROM vista_socios_completos
     WHERE to_tsvector('spanish', nombre || ' ' || apellidos || ' ' || COALESCE(entidad, ''))
           @@ plainto_tsquery('spanish', $1)
+      AND (acepta_visibilidad_datos=true OR id=$2)
   `;
 
-  const values = [searchTerm];
-  let paramIndex = 2;
+  const values = [searchTerm, viewerId];
+  let paramIndex = 3;
 
   Object.entries(filters).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
-      if (key === 'especialidad' && Array.isArray(value)) {
-        query += ` AND especialidades && ${paramIndex}`;
+      if (key === 'rol_cluster') {
+        query += ` AND (rol_cluster = $${paramIndex} OR rol_secundario = $${paramIndex})`;
+        values.push(value);
+      } else if (key === 'especialidad' && Array.isArray(value)) {
+        query += ` AND especialidades && $${paramIndex}`;
         values.push(value);
       } else if (key === 'anos_experiencia_min') {
-        query += ` AND anos_experiencia >= ${paramIndex}`;
+        query += ` AND anos_experiencia >= $${paramIndex}`;
         values.push(value);
       } else if (SEARCH_FILTERABLE_COLUMNS.has(key)) {
         // Sólo columnas en la whitelist se interpolan en SQL.
-        query += ` AND ${key} = ${paramIndex}`;
+        query += ` AND ${key} = $${paramIndex}`;
         values.push(value);
       } else {
         // Filtro no reconocido: ignoramos silenciosamente para que un

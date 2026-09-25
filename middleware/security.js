@@ -213,6 +213,25 @@ const validateSocioFields = (mode) => (req, res, next) => {
   const required = mode === 'registration';
   const errors = [];
 
+  const limits = { nombre:100, apellidos:150, email:255, email_personal:255, entidad:300,
+    nombre_organizacion:300, cargo_actual:200, localidad:100, codigo_postal:10 };
+  for (const [key, max] of Object.entries(limits)) {
+    if (b[key] != null && (typeof b[key] !== 'string' || b[key].length > max)) errors.push(key + ': máximo ' + max + ' caracteres');
+  }
+  for (const key of ['nombre','apellidos','provincia','localidad','cargo_actual','password','nombre_organizacion','telefono','telefono_personal','rol_cluster','rol_secundario','dni_nie']) {
+    if (b[key] != null && typeof b[key] !== 'string') errors.push(key + ': debe ser texto');
+  }
+  if (errors.length) return res.status(400).json({ error: 'Revisa los datos del formulario', details: errors });
+  for (const key of ['acepta_mapa_interactivo','acepta_visibilidad_datos','acepta_mensajeria','acepta_notificaciones_email','visible_telefono','visible_telefono_personal','visible_email_directo','visible_web_profesional','visible_linkedin']) {
+    if (b[key] !== undefined && typeof b[key] !== 'boolean') errors.push('La preferencia ' + key + ' debe ser sí o no');
+  }
+  if (b.email_personal && !validateEmail(b.email_personal)) errors.push('Email personal inválido');
+  if (b.telefono_personal && !validateSpanishPhone(b.telefono_personal)) errors.push('Teléfono personal inválido');
+  if (b.sector && !['publico','privado','tercer_sector'].includes(b.sector)) errors.push('Sector inválido');
+  if (b.rol_secundario && (!catalogos.isValidRolSlug(b.rol_secundario) || b.rol_secundario === b.rol_cluster || b.rol_cluster === null || b.rol_cluster === '')) errors.push('Selecciona dos roles distintos y un rol principal');
+  if (required && b.rol_secundario && !b.rol_cluster) errors.push('Selecciona primero el rol principal');
+  if (b.especialidades !== undefined && (!Array.isArray(b.especialidades) || b.especialidades.length > catalogos.ESPECIALIDADES.length || new Set(b.especialidades).size !== b.especialidades.length)) errors.push('Especialidades inválidas o repetidas');
+  if (b.anos_experiencia !== undefined && (!Number.isInteger(Number(b.anos_experiencia)) || Number(b.anos_experiencia)<0 || Number(b.anos_experiencia)>50)) errors.push('Los años deben ser un número entero entre 0 y 50');
   const isEmpty = (v) => v === undefined || v === null || v === '';
 
   const check = (val, formatOk, msg) => {
@@ -237,6 +256,7 @@ const validateSocioFields = (mode) => (req, res, next) => {
   // Persona jurídica (asociado_corporativo): cargo y años NO aplican
   // (la cuenta es de una organización; los datos de la persona de
   // contacto no equivalen a un cargo profesional del socio).
+  if (required && (b.acepta_mapa_interactivo !== true || b.acepta_visibilidad_datos !== true)) errors.push('Acepta los dos consentimientos obligatorios para solicitar el alta');
   const esCorporativo = b.tipo_socio === 'asociado_corporativo';
   if (!esCorporativo) {
     check(b.cargo_actual, (v) => v.trim().length >= 3, 'Cargo actual es requerido');

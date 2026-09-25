@@ -33,6 +33,8 @@ RUN npm ci --omit=dev && \
 # Copiar código fuente
 COPY --chown=:0 . .
 
+RUN node scripts/write-version.js
+
 # Crear directorios necesarios con permisos compatibles con UID aleatorio de OpenShift.
 RUN mkdir -p logs uploads backups && \
     chgrp -R 0 /app && \

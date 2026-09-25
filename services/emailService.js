@@ -33,6 +33,12 @@ const PLACEHOLDER_VALUES = new Set([
   'tu_password_email'
 ]);
 
+function mailFailure(error) {
+  if (error.code === 'EAUTH' || error.responseCode === 535) return {success:false, reason:'smtp_authentication', error:'El servidor de correo rechaza las credenciales. Para Gmail, utiliza una contraseña de aplicación válida y comprueba la cuenta remitente.'};
+  if (['ESOCKET','ECONNECTION','ECONNREFUSED','ETIMEDOUT'].includes(error.code)) return {success:false, reason:'smtp_unreachable', error:'No se pudo conectar con el servidor de correo. Revisa el host, puerto y conexión.'};
+  return {success:false, reason:'smtp_rejected', error:'El proveedor rechazó el envío. Revisa la configuración de correo y el destinatario.'};
+}
+
 class EmailService {
   constructor() {
     // Configurar transporter solo si hay configuración de email
@@ -46,6 +52,7 @@ class EmailService {
       !PLACEHOLDER_VALUES.has(config.email.auth.pass)
     ) {
       this.transporter = nodemailer.createTransport({
+        connectionTimeout:10000, greetingTimeout:10000, socketTimeout:15000,
         host: config.email.host,
         port: config.email.port,
         secure: config.email.secure,
@@ -54,7 +61,7 @@ class EmailService {
     }
     // Cargar override de BD si existe (permite que el admin cambie la
     // config sin tocar .env). Async, sin bloquear el arranque.
-    this.loadDbOverrideAsync();
+    this.ready = this.loadDbOverrideAsync();
   }
 
   async loadDbOverrideAsync() {
@@ -80,6 +87,7 @@ class EmailService {
   reloadFromConfig(cfg) {
     if (!cfg || !cfg.host || !cfg.user) return;
     this.transporter = nodemailer.createTransport({
+        connectionTimeout:10000, greetingTimeout:10000, socketTimeout:15000,
       host: cfg.host,
       port: cfg.port || 587,
       secure: !!cfg.secure,
@@ -100,10 +108,11 @@ class EmailService {
         return { success: false, error: 'Falta la contraseña. Introdúcela o guarda primero la configuración.' };
       }
       const t = nodemailer.createTransport({
+        connectionTimeout:10000, greetingTimeout:10000, socketTimeout:15000,
         host: cfg.host, port: cfg.port || 587, secure: !!cfg.secure,
         auth: { user: cfg.user, pass: cfg.pass },
       });
-      await t.sendMail({
+      const result = await t.sendMail({
         from: `"${cfg.fromName}" <${cfg.fromEmail}>`,
         to,
         replyTo: cfg.replyTo || undefined,
@@ -112,45 +121,45 @@ class EmailService {
               '<p>Host: <code>' + escapeHtml(cfg.host) + ':' + (cfg.port || 587) + '</code></p>' +
               '<p>Enviado desde el panel de administración.</p>',
       });
-      return { success: true };
+      const delivery = result.rejected?.length && !result.accepted?.length
+        ? {success:false,reason:'recipient_rejected',error:'El proveedor rechazó al destinatario.'}
+        : {success:true};
+      await this.recordDelivery(to, delivery);
+      return delivery;
     } catch (e) {
-      return { success: false, error: e.message };
+      const failure = mailFailure(e);
+      await this.recordDelivery(to, failure);
+      return failure;
     }
   }
 
-  async sendEmail(to, subject, html, text = null) {
-    if (!this.transporter) {
-      console.log('📧 Email no configurado, simulando envío:', { to, subject });
-      return { success: false, reason: 'email_not_configured' };
-    }
-
+  async recordDelivery(to, result) {
     try {
-      // Cabeceras: si el admin configuró una nueva `fromLabel`/`replyTo`
-      // desde el panel, tienen prioridad sobre las de .env.
-      const mailOptions = {
-        from: this.fromLabel || `"AGESPORT Mapa del Talento" <${config.email.auth.user}>`,
-        to,
-        subject,
-        html,
-        text: text || this.htmlToText(html)
-      };
-      if (this.replyTo) mailOptions.replyTo = this.replyTo;
+      await db.query('INSERT INTO email_delivery_log(recipient,status,error_code) VALUES($1,$2,$3)',
+        [String(to), result.success ? 'accepted' : 'failed', result.success ? null : (result.reason || 'smtp_error')]);
+      await db.query("DELETE FROM email_delivery_log WHERE created_at < NOW() - INTERVAL '90 days'");
+    } catch (e) { console.warn('[email] No se pudo guardar el resultado del envío:', e.code || 'log_error'); }
+  }
 
-      const result = await this.transporter.sendMail(mailOptions);
-      console.log('📧 Email enviado:', to, subject);
-      return { success: true, messageId: result.messageId };
-    } catch (error) {
-      // En dev sin SMTP real, el catch cae aquí (ECONNREFUSED / ESOCKET).
-      // Lo tratamos como "envío simulado" para que el flujo no se corte
-      // y quede trazable en logs.
-      const isUnreachable = ['ESOCKET', 'ECONNECTION', 'ECONNREFUSED', 'ETIMEDOUT'].includes(error.code);
-      if (isUnreachable) {
-        console.log('📧 SMTP no accesible — envío simulado:', { to, subject });
-        return { success: false, reason: 'smtp_unreachable', simulated: true };
-      }
-      console.error('❌ Error enviando email:', error);
-      return { success: false, error: error.message };
+  async sendEmail(to, subject, html, text = null) {
+    await this.ready;
+    let delivery;
+    if (!this.transporter) {
+      delivery = {success:false, reason:'email_not_configured', error:'No hay un servidor de correo configurado.'};
+    } else {
+      try {
+        const result = await this.transporter.sendMail({
+          from:this.fromLabel || `"AGESPORT Mapa del Talento" <${config.email.auth.user}>`,
+          to, subject, html, text:text || this.htmlToText(html),
+          ...(this.replyTo ? {replyTo:this.replyTo} : {})
+        });
+        delivery = result.rejected?.length && !result.accepted?.length
+          ? {success:false,reason:'recipient_rejected',error:'El proveedor rechazó al destinatario.'}
+          : {success:true,messageId:result.messageId};
+      } catch (e) { delivery = mailFailure(e); }
     }
+    await this.recordDelivery(to, delivery);
+    return delivery;
   }
 
   // Convertir HTML básico a texto plano

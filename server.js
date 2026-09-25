@@ -88,13 +88,17 @@ app.set('trust proxy', 1);
 
 // ==================== ROUTES ====================
 
+app.get('/login', (req, res) => res.redirect(302, '/acceso.html'));
+app.get('/admin/socios/pendientes', (req, res) => res.redirect(302, '/acceso-admin.html'));
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development',
-    version: '1.0.0',
+    version: require('./package.json').version,
+    sourceHash: (() => { try { return require('./public/version.json').sourceHash; } catch (_) { return null; } })(),
   });
 });
 
@@ -152,7 +156,8 @@ if (process.env.NODE_ENV === 'production') {
   app.get('/', (req, res) => {
     res.json({
       message: 'AGESPORT - Mapa del Talento API',
-      version: '1.0.0',
+      version: require('./package.json').version,
+    sourceHash: (() => { try { return require('./public/version.json').sourceHash; } catch (_) { return null; } })(),
       environment: 'development',
       endpoints: {
         health: '/health',
@@ -240,6 +245,7 @@ if (process.env.NODE_ENV !== 'test') {
 async function start() {
   try {
     await db.query('SELECT NOW()');
+    if (process.env.NODE_ENV === 'production') await require('./scripts/migrate-database')();
     httpServer = app.listen(port, host, () => {
       console.log('=====================================');
       console.log('AGESPORT - Mapa del Talento');

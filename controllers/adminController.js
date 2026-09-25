@@ -18,7 +18,7 @@ function buildSocioFilterWhere(f) {
   if (f.provincia)    { wh.push(`s.provincia = $${i++}`);          params.push(f.provincia); }
   if (f.comunidad)    { wh.push(`s.comunidad_autonoma = $${i++}`); params.push(f.comunidad); }
   if (f.tipo_socio)   { wh.push(`s.tipo_socio = $${i++}`);         params.push(f.tipo_socio); }
-  if (f.rol_cluster)  { wh.push(`rc.rol = $${i++}`);               params.push(f.rol_cluster); }
+  if (f.rol_cluster)  { wh.push(`(rc.rol = $${i} OR rc.rol_secundario = $${i++})`);               params.push(f.rol_cluster); }
   if (f.disponibilidad){wh.push(`d.nivel = $${i++}`);              params.push(f.disponibilidad); }
   if (f.ambito)       { wh.push(`s.ambito = $${i++}`);             params.push(f.ambito); }
   if (f.solo_mentores === true || f.solo_mentores === 'true') {
@@ -51,6 +51,13 @@ function geocodeSocioInBackground(socioId) {
 }
 
 class AdminController {
+  async getEmailDeliveries(req, res) {
+    try {
+      const result = await db.query('SELECT recipient,status,error_code,created_at FROM email_delivery_log ORDER BY created_at DESC,id DESC LIMIT 100');
+      res.json({deliveries:result.rows});
+    } catch (_) { res.status(500).json({error:'No se pudo consultar el historial de envíos'}); }
+  }
+
 
   // ==================== GESTIÓN DE SOCIOS PENDIENTES ====================
   
@@ -116,7 +123,7 @@ class AdminController {
       }, { id: socioId });
 
       // Enviar email de notificación
-      await emailService.notifySocioApproved({
+      const delivery = await emailService.notifySocioApproved({
         email: socio.email,
         nombre: socio.nombre,
         apellidos: socio.apellidos
@@ -130,7 +137,8 @@ class AdminController {
       geocodeSocioInBackground(socioId);
 
       res.json({
-        message: `Socio ${socio.nombre} ${socio.apellidos} aprobado correctamente`,
+        message: delivery?.success ? 'Socio aprobado; correo aceptado por el servidor de envío' : 'Socio aprobado, pero el correo no se ha enviado. Revisa Correo saliente y reenvía la bienvenida.',
+        notification_sent: !!delivery?.success,
         socio: {
           id: socioId,
           nombre: socio.nombre,
@@ -808,12 +816,12 @@ class AdminController {
     // crear el socio → el admin no podía aprobar nada importado.
     const header = [
       'nombre','apellidos','email','telefono','entidad','cargo_actual',
-      'provincia','comunidad_autonoma','localidad','rol_cluster','tipo_socio'
+      'provincia','comunidad_autonoma','localidad','rol_cluster','tipo_socio','sector','rol_secundario','telefono_personal'
     ];
     const ejemplo = [
       'María','García López','maria.garcia@ejemplo.com','+34 600 000 000',
       'Club Deportivo Demo','Directora deportiva',
-      'Sevilla','andalucia','Sevilla','operador_deportivo','numero'
+      'Sevilla','andalucia','Sevilla','operador_deportivo','numero','privado','formacion_talento_investigacion',''
     ];
     const body = header.join(',') + '\n' + ejemplo.map(csv.escape).join(',') + '\n';
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -853,6 +861,7 @@ class AdminController {
         // Provincia: aceptamos cualquier variante razonable (mayúsculas,
         // sin tilde, con espacios) y la normalizamos al nombre canónico del
         // catálogo. Sin esto, "ALMERÍA" se rechazaba como "Provincia no válida".
+        if (!r.provincia) errores.push('Falta la provincia');
         if (r.provincia) {
           const canon = catalogos.canonicalProvincia(r.provincia);
           if (canon) {
@@ -861,6 +870,8 @@ class AdminController {
             errores.push('Provincia "' + r.provincia + '" no está en el catálogo');
           }
         }
+        if (r.sector && !['publico','privado','tercer_sector'].includes(r.sector)) errores.push('Sector inválido');
+        if (r.rol_secundario && (!catalogos.isValidRolSlug(r.rol_secundario) || !r.rol_cluster || r.rol_secundario === r.rol_cluster)) errores.push('Segundo rol inválido o repetido');
         if (r.rol_cluster && !catalogos.isValidRolSlug(r.rol_cluster)) {
           errores.push('Rol "' + r.rol_cluster + '" no está en el catálogo');
         }
@@ -900,6 +911,9 @@ class AdminController {
           // 004 — el INSERT antiguo fallaba con "column does not exist".
           // Ahora ciframos al insertar (AES-256 via encryptData).
           telefono_encrypted: r.telefono ? encryptData(r.telefono) : null,
+          telefono_personal_encrypted: r.telefono_personal ? encryptData(r.telefono_personal) : null,
+          sector: r.sector,
+          rol_secundario: r.rol_secundario,
           entidad: r.entidad,
           cargo_actual: r.cargo_actual,
           provincia: r.provincia,
@@ -954,7 +968,7 @@ class AdminController {
 
       // Campos editables desde la UI de importación
       const editable = ['nombre','apellidos','email','entidad','cargo_actual',
-        'provincia','localidad','rol_cluster','tipo_socio'];
+        'provincia','localidad','rol_cluster','tipo_socio','sector','rol_secundario'];
       const patch = {};
       for (const k of editable) {
         if (k in (req.body || {})) patch[k] = (req.body[k] || '').trim() || null;
@@ -965,11 +979,14 @@ class AdminController {
       const merged = { ...invitado, ...patch };
       if (!merged.email) errores.push('Falta el email');
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(merged.email)) errores.push('Email no válido');
+      if (!merged.provincia) errores.push('Falta la provincia');
       if (merged.provincia) {
         const canon = catalogos.canonicalProvincia(merged.provincia);
         if (canon) patch.provincia = canon;
         else errores.push('Provincia "' + merged.provincia + '" no está en el catálogo');
       }
+      if (merged.sector && !['publico','privado','tercer_sector'].includes(merged.sector)) errores.push('Sector inválido');
+      if (merged.rol_secundario && (!catalogos.isValidRolSlug(merged.rol_secundario) || !merged.rol_cluster || merged.rol_secundario === merged.rol_cluster)) errores.push('Segundo rol inválido o repetido');
       if (merged.rol_cluster && !catalogos.isValidRolSlug(merged.rol_cluster)) {
         errores.push('Rol "' + merged.rol_cluster + '" no está en el catálogo');
       }
@@ -1019,111 +1036,52 @@ class AdminController {
     try {
       const { invitadoId } = req.params;
       const adminId = req.adminId;
-      const invitado = await db.findOne('accesos_invitados', { id: invitadoId });
-      if (!invitado) return res.status(404).json({ error: 'Invitado no encontrado' });
-      if (invitado.estado !== 'pendiente') return res.status(409).json({ error: 'El invitado ya ha sido procesado' });
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(invitado.email || '')) {
-        return res.status(400).json({ error: 'Email no válido; corrige la fila antes de aprobar' });
-      }
-
-      // Crear contraseña aleatoria temporal y socio aprobado
-      const tempPass = require('crypto').randomBytes(8).toString('base64').slice(0, 12) + 'A1!';
+      const tempPass = crypto.randomBytes(12).toString('hex') + 'Aa1!';
       const passwordHash = await hashPassword(tempPass);
-
-      // Si ya hay un socio con ese email PERO está borrado/rechazado, lo
-      // REACTIVAMOS con los nuevos datos en lugar de fallar por la unique
-      // constraint. Así una baja no bloquea el email para siempre.
-      // `localidad` es NOT NULL en la tabla `socios`; si el CSV no la trae,
-      // caemos a la provincia como respaldo razonable (ambos casos se
-      // pueden editar después desde el perfil).
-      const localidadFinal = invitado.localidad || invitado.provincia || 'Sin especificar';
-
-      const previo = await db.findOne('socios', { email: invitado.email });
-      let nuevoSocio;
-      if (previo && !previo.activo) {
-        const upd = await db.query(`
-          UPDATE socios SET
-            password_hash = $1, nombre = $2, apellidos = $3,
-            telefono_encrypted = $4, entidad = $5, cargo_actual = $6,
-            provincia = $7, comunidad_autonoma = $8, localidad = $9,
-            tipo_socio = $10,
-            estado = 'aprobado', activo = true, notas_moderacion = NULL
-          WHERE id = $11
-          RETURNING id, email, nombre
-        `, [
-          passwordHash,
-          invitado.nombre || 'Socio',
-          invitado.apellidos || '',
-          invitado.telefono_encrypted,
-          invitado.entidad,
-          invitado.cargo_actual,
-          invitado.provincia,
-          invitado.comunidad_autonoma,
-          localidadFinal,
-          invitado.tipo_socio || 'numero',
-          previo.id,
-        ]);
-        nuevoSocio = upd.rows[0];
-      } else {
-        const result = await db.query(`
-          INSERT INTO socios (
-            email, password_hash, nombre, apellidos, telefono_encrypted, entidad,
-            cargo_actual, provincia, comunidad_autonoma, localidad, tipo_socio, estado, activo
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'aprobado', true)
-          RETURNING id, email, nombre
-        `, [
-          invitado.email,
-          passwordHash,
-          invitado.nombre || 'Socio',
-          invitado.apellidos || '',
-          invitado.telefono_encrypted,
-          invitado.entidad,
-          invitado.cargo_actual,
-          invitado.provincia,
-          invitado.comunidad_autonoma,
-          localidadFinal,
-          invitado.tipo_socio || 'numero'
-        ]);
-        nuevoSocio = result.rows[0];
-      }
-
-      if (invitado.rol_cluster) {
-        // rol_cluster no tiene UNIQUE en socio_id, así que hacemos
-        // upsert manual: UPDATE primero, INSERT si no había fila. Así
-        // no falla al reactivar un socio que ya tenía rol.
-        const upd = await db.query(
-          'UPDATE rol_cluster SET rol = $2 WHERE socio_id = $1',
-          [nuevoSocio.id, invitado.rol_cluster]
-        );
-        if (upd.rowCount === 0) {
-          await db.query(
-            'INSERT INTO rol_cluster (socio_id, rol) VALUES ($1, $2)',
-            [nuevoSocio.id, invitado.rol_cluster]
-          );
-        }
-      }
-
-      await db.update('accesos_invitados', {
-        estado: 'aprobado',
-        socio_creado_id: nuevoSocio.id,
-        fecha_resolucion: new Date()
-      }, { id: invitadoId });
-
-      // Notificar al socio por email
-      try {
-        const adminRow = await db.findOne('administradores', { id: adminId });
-        await emailService.sendAccountApproved(
-          { email: nuevoSocio.email, nombre: nuevoSocio.nombre },
-          { passwordTemporal: tempPass, adminNombre: adminRow ? adminRow.nombre : 'AGESPORT' }
-        );
-      } catch (e) { console.warn('Email invitación falló:', e.message); }
-
-      await auditAction(null, adminId, 'APPROVE_INVITED', 'accesos_invitados', invitado, { socio_id: nuevoSocio.id }, req);
+      const nuevoSocio = await db.transaction(async client => {
+        const invitado = (await client.query('SELECT * FROM accesos_invitados WHERE id=$1 FOR UPDATE', [invitadoId])).rows[0];
+        const fail = (status, message) => { const e = new Error(message); e.status = status; throw e; };
+        if (!invitado) fail(404, 'Invitado no encontrado');
+        if (invitado.estado !== 'pendiente') fail(409, 'La fila ya se ha procesado o tiene errores');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(invitado.email || '')) fail(400, 'Email no válido; corrige la fila antes de aprobar');
+        if (!catalogos.isValidProvincia(invitado.provincia)) fail(400, 'Indica una provincia válida antes de aprobar');
+        if (invitado.rol_secundario && (!catalogos.isValidRolSlug(invitado.rol_secundario) || !invitado.rol_cluster || invitado.rol_secundario === invitado.rol_cluster)) fail(400, 'Corrige el segundo rol');
+        await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [invitado.email]);
+        const previo = (await client.query('SELECT * FROM socios WHERE email=$1 FOR UPDATE', [invitado.email])).rows[0];
+        if (previo && previo.activo && previo.estado !== 'rechazado') fail(409, 'Este email ya tiene una cuenta activa');
+        const values = {
+          email: invitado.email, password_hash: passwordHash, nombre: invitado.nombre || 'Socio', apellidos: invitado.apellidos || '',
+          telefono_encrypted: invitado.telefono_encrypted, telefono_personal_encrypted: invitado.telefono_personal_encrypted,
+          entidad: invitado.entidad, cargo_actual: invitado.cargo_actual, provincia: invitado.provincia,
+          comunidad_autonoma: invitado.comunidad_autonoma, localidad: invitado.localidad || invitado.provincia,
+          tipo_socio: invitado.tipo_socio || 'numero', sector: invitado.sector || null,
+          estado: 'aprobado', activo: true, notas_moderacion: null,
+        };
+        const keys = Object.keys(values);
+        const result = previo
+          ? await client.query(`UPDATE socios SET ${keys.map((k,i)=>k+'=$'+(i+1)).join(',')}, password_changed_at=NOW() WHERE id=$${keys.length+1} RETURNING id,email,nombre`, [...Object.values(values),previo.id])
+          : await client.query(`INSERT INTO socios (${keys.join(',')}) VALUES (${keys.map((_,i)=>'$'+(i+1)).join(',')}) RETURNING id,email,nombre`, Object.values(values));
+        const socio = result.rows[0];
+        await client.query('DELETE FROM rol_cluster WHERE socio_id=$1', [socio.id]);
+        if (invitado.rol_cluster) await client.query('INSERT INTO rol_cluster(socio_id,rol,rol_secundario) VALUES($1,$2,$3)', [socio.id,invitado.rol_cluster,invitado.rol_secundario || null]);
+        await client.query(`INSERT INTO consentimientos(socio_id,acepta_mapa_interactivo,acepta_visibilidad_datos,acepta_mensajeria,acepta_notificaciones_email)
+          VALUES($1,false,false,false,false) ON CONFLICT(socio_id) DO NOTHING`, [socio.id]);
+        await client.query("UPDATE accesos_invitados SET estado='aprobado',socio_creado_id=$2,fecha_resolucion=NOW() WHERE id=$1", [invitadoId,socio.id]);
+        return socio;
+      });
+      const adminRow = await db.findOne('administradores', { id: adminId });
+      let delivery;
+      try { delivery = await emailService.sendAccountApproved(nuevoSocio, {passwordTemporal:tempPass,adminNombre:adminRow ? adminRow.nombre : 'AGESPORT'}); }
+      catch (_) { delivery = {success:false}; }
+      await auditAction(null, adminId, 'APPROVE_INVITED', 'accesos_invitados', null, { socio_id:nuevoSocio.id, email_sent:!!delivery?.success }, req);
       geocodeSocioInBackground(nuevoSocio.id);
-      res.json({ message: 'Acceso aprobado y notificado', socio_id: nuevoSocio.id });
+      res.json({ message: delivery?.success ? 'Acceso creado; correo aceptado por el servidor de envío' : 'Acceso creado, pero el correo no se ha enviado. Revisa Correo saliente y envía una recuperación de contraseña.',
+        notification_sent:!!delivery?.success, socio_id:nuevoSocio.id });
     } catch (error) {
+      if (error.status) return res.status(error.status).json({error:error.message});
+      if (error.code === '23505') return res.status(409).json({error:'Este email ya tiene una cuenta; actualiza el listado'});
       console.error('Error aprobando invitado:', error);
-      res.status(500).json({ error: 'Error aprobando invitado' });
+      res.status(500).json({error:'No se pudo crear el acceso. La operación se ha revertido.'});
     }
   }
 
@@ -1133,15 +1091,16 @@ class AdminController {
 
   async getAccesosGenerados(req, res) {
     try {
+      const estado = req.query.estado || '';
+      if (estado && !['aprobado','pendiente','suspendido','rechazado'].includes(estado)) return res.status(400).json({ error: 'Estado inválido' });
       const result = await db.query(`
         SELECT s.id, s.email, s.nombre, s.apellidos, s.entidad, s.provincia,
                s.comunidad_autonoma, s.tipo_socio, s.estado, s.activo,
                s.ultimo_acceso, s.fecha_registro
         FROM socios s
-        WHERE s.estado = 'aprobado' AND s.activo = true
+        WHERE s.activo = true AND ($1::text = '' OR s.estado::text = $1)
         ORDER BY s.ultimo_acceso DESC NULLS LAST, s.fecha_registro DESC
-        LIMIT 500
-      `);
+      `, [estado]);
       res.json({ socios: result.rows });
     } catch (error) {
       console.error('Error obteniendo accesos:', error);
@@ -1160,6 +1119,7 @@ class AdminController {
     try {
       const adminId = req.adminId;
       const { estado, incluirInactivos } = req.query;
+      if (estado && !['aprobado','pendiente','suspendido','rechazado'].includes(estado)) return res.status(400).json({ error: 'Estado inválido' });
 
       // Filtros opcionales
       const conditions = [];
@@ -1188,7 +1148,7 @@ class AdminController {
           s.entidad,
           s.cargo_actual,
           s.anos_experiencia,
-          s.telefono_encrypted,
+          s.telefono_encrypted, s.telefono_personal_encrypted, s.sector,
           s.web_profesional,
           s.linkedin_url,
           s.provincia,
@@ -1200,7 +1160,7 @@ class AdminController {
           s.activo,
           s.fecha_registro,
           s.ultimo_acceso,
-          rc.rol AS rol_cluster,
+          rc.rol AS rol_cluster, rc.rol_secundario,
           rc.b2b_ofrece,
           rc.b2b_busca,
           rc.b2b_licita,
@@ -1264,7 +1224,7 @@ class AdminController {
         'Rol del clúster', 'B2B ofrece', 'B2B busca', 'B2B licita',
         'Disponibilidad', 'Especialidades',
         'Acepta mensajería', 'Acepta notificaciones email',
-        'Visible teléfono', 'Visible email directo'
+        'Visible teléfono', 'Visible email directo', 'Teléfono personal', 'Sector', 'Segundo rol'
       ];
 
       const rows = result.rows.map(function (r) {
@@ -1301,7 +1261,10 @@ class AdminController {
           fmtBool(r.acepta_mensajeria),
           fmtBool(r.acepta_notificaciones_email),
           fmtBool(r.visible_telefono),
-          fmtBool(r.visible_email_directo)
+          fmtBool(r.visible_email_directo),
+          r.telefono_personal_encrypted ? decryptData(r.telefono_personal_encrypted) : '',
+          ({publico:'Sector público',privado:'Sector privado',tercer_sector:'Tercer sector'})[r.sector] || '',
+          labelRol(r.rol_secundario)
         ].map(escapeCSV).join(',');
       });
 
@@ -1551,18 +1514,19 @@ class AdminController {
          VALUES ($1, $2, NOW() + INTERVAL '1 hour')`,
         [id, hash]
       );
-      const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+      const base = require('../config/config').app.publicBaseUrl.replace(/\/$/, '');
       const resetUrl = `${base || 'http://localhost:3001'}/restablecer.html?type=admin&token=${raw}`;
       try {
         const emailService = require('../services/emailService');
-        await emailService.sendPasswordReset(
+        const delivery = await emailService.sendPasswordReset(
           { email: target.email, nombre: target.nombre },
           { resetUrl, expiresAt: new Date(Date.now() + 60 * 60 * 1000) }
         );
-      } catch (e) { console.warn('[email] reset admin failed:', e.message); }
+        if (!delivery?.success) return res.status(502).json({error:delivery?.error || 'No se pudo enviar el correo de recuperación'});
+      } catch (_) { return res.status(502).json({error:'No se pudo enviar el correo de recuperación'}); }
       await auditAction(null, req.adminId, 'ADMIN_RESET_PASSWORD_REQUEST',
         'administradores', null, { target_id: id, target_email: target.email }, req);
-      res.json({ message: 'Enviado email de restablecimiento a ' + target.email });
+      res.json({ message: 'Correo de recuperación aceptado por el servidor de envío para ' + target.email });
     } catch (error) {
       console.error('Error reset admin password:', error);
       res.status(500).json({ error: 'No se pudo iniciar el reseteo' });
@@ -1638,12 +1602,12 @@ class AdminController {
       });
       await auditAction(null, req.adminId, 'RESEND_WELCOME_EMAIL', 'socios',
         null, { target_id: id, target_email: socio.email }, req);
-      if (result && result.success === false && result.reason !== 'smtp_unreachable') {
+      if (!result || result.success !== true) {
         return res.status(502).json({
-          error: 'No se pudo enviar: ' + (result.error || result.reason || 'SMTP no disponible'),
+          error: 'No se pudo enviar: ' + (result?.error || 'SMTP no disponible'),
         });
       }
-      res.json({ message: 'Email de bienvenida reenviado a ' + socio.email });
+      res.json({ message: 'Correo de bienvenida aceptado por el servidor de envío para ' + socio.email });
     } catch (error) {
       console.error('Error reenviando bienvenida:', error);
       res.status(500).json({ error: 'No se pudo reenviar el email' });
@@ -1840,18 +1804,19 @@ class AdminController {
          VALUES ($1, $2, NOW() + INTERVAL '1 hour')`,
         [id, hash]
       );
-      const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+      const base = require('../config/config').app.publicBaseUrl.replace(/\/$/, '');
       const resetUrl = `${base || 'http://localhost:3001'}/restablecer.html?token=${raw}`;
       try {
         const emailService = require('../services/emailService');
-        await emailService.sendPasswordReset(
+        const delivery = await emailService.sendPasswordReset(
           { email: target.email, nombre: target.nombre },
           { resetUrl, expiresAt: new Date(Date.now() + 60 * 60 * 1000) }
         );
-      } catch (e) { console.warn('[email] reset socio failed:', e.message); }
+        if (!delivery?.success) return res.status(502).json({error:delivery?.error || 'No se pudo enviar el correo de recuperación'});
+      } catch (_) { return res.status(502).json({error:'No se pudo enviar el correo de recuperación'}); }
       await auditAction(null, req.adminId, 'ADMIN_RESET_SOCIO_PASSWORD_REQUEST',
         'socios', null, { target_id: id, target_email: target.email }, req);
-      res.json({ message: 'Enviado email de restablecimiento a ' + target.email });
+      res.json({ message: 'Correo de recuperación aceptado por el servidor de envío para ' + target.email });
     } catch (error) {
       console.error('Error reset socio password:', error);
       res.status(500).json({ error: 'No se pudo iniciar el reseteo' });
