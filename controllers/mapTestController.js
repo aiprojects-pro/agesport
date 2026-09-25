@@ -3,22 +3,15 @@ const { auditAction } = require('../middleware/auth');
 exports.status = async (req, res, next) => {
   try { res.set('Cache-Control', 'no-store'); res.json(await mode.getStatus()); } catch (err) { next(err); }
 };
-exports.update = async (req, res, next) => {
-  if (typeof req.body.enabled !== 'boolean') return res.status(400).json({ error: 'Indica enabled como booleano' });
-  try {
-    const status = await mode.setEnabled(req.body.enabled, req.adminId);
-    await auditAction(null, req.adminId, 'UPDATE_MAP_TEST_MODE', 'configuracion', null, status, req);
-    res.json(status);
-  } catch (err) { next(err); }
-};
+exports.update = (req,res) => res.status(410).json({error:'El modo temporal se ha retirado. Cada socio controla ahora su aparición en el mapa.'});
 
 exports.diagnostics = async (req,res,next) => {
   try {
-    const rows=(await require('../config/database').query(`SELECT s.id,s.nombre,s.apellidos,s.provincia,s.latitud,s.longitud,c.acepta_mapa_interactivo,c.acepta_visibilidad_datos FROM socios s LEFT JOIN consentimientos c ON c.socio_id=s.id WHERE s.activo=true AND s.estado='aprobado' ORDER BY s.provincia,s.nombre`)).rows;
+    const rows=(await require('../config/database').query(`SELECT s.id,s.nombre,s.apellidos,s.provincia,s.latitud,s.longitud,c.acepta_mapa_interactivo,c.acepta_visibilidad_datos,c.mapa_visible FROM socios s LEFT JOIN consentimientos c ON c.socio_id=s.id WHERE s.activo=true AND s.estado='aprobado' ORDER BY s.provincia,s.nombre`)).rows;
     res.set('Cache-Control','no-store');
     res.json({socios:rows.map(s=>({id:s.id,nombre:[s.nombre,s.apellidos].filter(Boolean).join(' '),provincia:s.provincia,
       ubicacion:s.latitud != null && s.longitud != null ? 'Municipio disponible' : require('../services/geocodingService').getProvinciaCoords(s.provincia) ? 'Referencia provincial aproximada; municipio pendiente' : 'Sin ubicación: revisar provincia',
-      visibilidad:s.acepta_mapa_interactivo && s.acepta_visibilidad_datos ? 'Mapa autorizado' : 'Oculto por preferencias habituales',
+      visibilidad:(s.mapa_visible ?? s.acepta_mapa_interactivo) ? 'Visible en el mapa' : 'Oculto por elección del socio',
       revisar_nombre:!s.nombre || s.nombre.trim().length<3 || !s.apellidos || /prueba|demo|test|qa/i.test(s.nombre+' '+s.apellidos)
     }))});
   } catch(err) {next(err);}

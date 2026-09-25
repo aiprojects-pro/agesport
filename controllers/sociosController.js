@@ -167,8 +167,8 @@ class SociosController {
   // ==================== MAPA INTRANET ====================
   // Devuelve un array de socios con coordenadas + identidad, filtrado
   // por consentimientos. Solo socios autenticados; se sirve desde
-  // /api/socios/mapa. El modo temporal incluye todas las cuentas aprobadas
-  // y activas, sin modificar sus consentimientos guardados.
+  // /api/socios/mapa. Visibilidad individual independiente del directorio.
+  // Administración conserva la vista de gestión de todas las cuentas activas.
   async getMapaSocios(req, res) {
     try {
       const viewerId = req.socioId || null;
@@ -193,9 +193,8 @@ class SociosController {
         LEFT JOIN consentimientos c ON c.socio_id = s.id
         WHERE s.estado = 'aprobado'
           AND s.activo = true
-          AND ($2::boolean OR (c.acepta_mapa_interactivo = true
-            AND (c.acepta_visibilidad_datos = true OR s.id = $1)))
-      `, [viewerId, testMode.enabled || !!req.adminId]);
+          AND ($1::boolean OR COALESCE(c.mapa_visible,c.acepta_mapa_interactivo,false))
+      `, [!!req.adminId]);
       const located = result.rows.map(r => {
         const hasCoords = r.latitud != null && r.longitud != null && Number.isFinite(Number(r.latitud)) && Number.isFinite(Number(r.longitud));
         const coords = hasCoords ? {lat: Number(r.latitud), lng: Number(r.longitud)} : geocodingService.getProvinciaCoords(r.provincia);
@@ -340,6 +339,7 @@ class SociosController {
       // el propietario evita que la UI desmarque y sobrescriba su elección.
       if (isOwner || isAdmin) {
         const consentimientos = await db.findOne('consentimientos', { socio_id: socio.id });
+        socio.acepta_mapa_interactivo = !!(consentimientos && (consentimientos.mapa_visible ?? consentimientos.acepta_mapa_interactivo));
         socio.acepta_notificaciones_email = !!(consentimientos && consentimientos.acepta_notificaciones_email);
       }
 
@@ -547,6 +547,10 @@ class SociosController {
         const consentimientoUpdate = {};
         for (const key of ['acepta_mapa_interactivo','acepta_visibilidad_datos']) {
           if (req.body[key] !== undefined) consentimientoUpdate[key] = req.body[key];
+        }
+        if (req.body.acepta_mapa_interactivo !== undefined) {
+          if (typeof req.body.acepta_mapa_interactivo !== 'boolean') {const error=new Error('La visibilidad del mapa debe ser verdadera o falsa');error.status=400;throw error;}
+          consentimientoUpdate.mapa_visible = req.body.acepta_mapa_interactivo;
         }
         if (acepta_mensajeria !== undefined) consentimientoUpdate.acepta_mensajeria = acepta_mensajeria;
         if (acepta_notificaciones_email !== undefined) consentimientoUpdate.acepta_notificaciones_email = acepta_notificaciones_email;

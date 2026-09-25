@@ -132,8 +132,7 @@
       const data = await request(adminView ? '/api/admin/mapa' : '/api/socios/mapa', { method: 'GET', headers: {} });
       mapaInfo = data; mapLoaded = true;
       sociosMapa = (data.socios || []).filter(s => Number.isFinite(s.lat) && Number.isFinite(s.lng));
-      const mode = data.modo_prueba || {};
-      $('mapModeNotice').textContent = mode.enabled ? 'MODO DE PRUEBA · Todas las cuentas aprobadas y activas, incluidas cuentas de prueba. Visible para socios hasta ' + new Date(mode.expiresAt).toLocaleString('es-ES') + '. Las preferencias habituales se aplican al finalizar la prueba.' : (adminView ? 'Mapa de gestión: todas las cuentas aprobadas y activas. Los socios solo ven los perfiles autorizados fuera del modo de prueba.' : 'Mapa privado: perfiles aprobados y activos según sus preferencias de visibilidad.');
+      $('mapModeNotice').textContent = adminView ? 'Mapa de gestión: todas las cuentas aprobadas y activas. Los socios pueden ocultarse del mapa compartido desde Mi perfil.' : 'Mapa privado sin caducidad. Puedes activar o desactivar tu aparición desde Mi perfil. Los indicadores corresponden a los perfiles que aparecen con estos filtros.';
       $('mapUpdated').textContent = 'Datos consultados: ' + new Date().toLocaleString('es-ES') + (data.sin_ubicacion ? '. Sin referencia geográfica: ' + data.sin_ubicacion : '');
       applyFilters();
     } catch (err) {
@@ -410,7 +409,7 @@
 
   $('refreshMap').addEventListener('click', loadMap);
   requireSession(adminView ? 'admin' : 'socio').then(async function (session) {
-    welcomeTitle.textContent = adminView ? 'Mapa de gestión y prueba' : 'Bienvenida, ' + session.user.nombre;
+    welcomeTitle.textContent = adminView ? 'Mapa de gestión' : 'Bienvenida, ' + session.user.nombre;
     welcomeText.textContent = 'Mapa e indicadores calculados sobre los mismos perfiles y filtros. Actualiza los datos después de modificar un perfil.';
     if (adminView) {
       document.querySelector('.sidebar nav').innerHTML='<a class="nav-link" href="/admin.html">Volver a administración</a>';

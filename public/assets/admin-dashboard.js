@@ -24,14 +24,10 @@
 
   document.getElementById('logoutBtn').addEventListener('click', logout);
 
-  let mapTestEnabled=false;
   async function loadMapManagement() {
-    const button=$('mapModeToggle'); button.disabled=true;
     try {
-      const [mode,diagnostics]=await Promise.all([request('/api/admin/mapa-prueba',{method:'GET'}),request('/api/admin/mapa-diagnostico',{method:'GET'})]);
-      mapTestEnabled=mode.enabled;
-      $('adminMapMode').textContent=mode.enabled ? 'Prueba activa hasta '+formatDate(mode.expiresAt) : 'Prueba desactivada: se aplican las preferencias de los socios.';
-      button.textContent=mode.enabled ? 'Desactivar mapa de prueba' : 'Activar prueba durante 7 días'; button.disabled=false;
+      const diagnostics=await request('/api/admin/mapa-diagnostico',{method:'GET'});
+      $('adminMapMode').textContent='Mapa permanente: las elecciones individuales se aplican al guardar el perfil.';
       $('mapDiagnostics').textContent=diagnostics.socios.length+' cuentas aprobadas y activas. Revisa las referencias provinciales, las ubicaciones pendientes y los nombres incompletos antes de presentar.';
       $('mapDiagnosticsList').innerHTML='<div class="table-scroll"><table class="table-list"><thead><tr><th>Socio</th><th>Provincia</th><th>Ubicación</th><th>Visibilidad habitual</th><th>Revisar datos</th></tr></thead><tbody>'+diagnostics.socios.map(s=>'<tr><td>'+escapeHtml(s.nombre)+'</td><td>'+escapeHtml(s.provincia || 'Sin provincia')+'</td><td>'+escapeHtml(s.ubicacion)+(s.ubicacion.includes('pendiente') ? '<br><button type="button" class="btn-upload" data-geocode="'+s.id+'">Recuperar municipio</button>' : '')+'</td><td>'+escapeHtml(s.visibilidad)+'</td><td>'+escapeHtml(s.revisar_nombre ? 'Nombre incompleto o cuenta de prueba' : '—')+'</td></tr>').join('')+'</tbody></table></div>';
     } catch(err) { $('adminMapMode').textContent=err.message; }
@@ -40,11 +36,6 @@
     const btn=event.target.closest('[data-geocode]'); if(!btn) return; btn.disabled=true;
     try {const result=await request('/api/admin/mapa-diagnostico/'+encodeURIComponent(btn.dataset.geocode)+'/ubicacion',{method:'POST'});await loadMapManagement();$('mapDiagnostics').textContent=result.message;}
     catch(err){$('mapDiagnostics').textContent=err.message;btn.disabled=false;}
-  });
-  $('mapModeToggle').addEventListener('click',async()=>{
-    $('mapModeToggle').disabled=true;
-    try { await request('/api/admin/mapa-prueba',{method:'PUT',body:JSON.stringify({enabled:!mapTestEnabled})}); await loadMapManagement(); }
-    catch(err) { $('adminMapMode').textContent=err.message; $('mapModeToggle').disabled=false; }
   });
 
   function stateBadge(state) {
