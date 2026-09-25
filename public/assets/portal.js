@@ -108,6 +108,12 @@
     window.location.href = '/';
   }
 
+  document.querySelectorAll('.message-box').forEach(function (node) {
+    node.setAttribute('role', 'status');
+    node.setAttribute('aria-live', 'polite');
+    node.setAttribute('aria-atomic', 'true');
+  });
+
   function setMessage(node, ok, text) {
     if (!node) return;
     node.className = 'message-box ' + (ok ? 'ok' : 'error');

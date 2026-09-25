@@ -158,6 +158,8 @@ class AuthController {
         ]);
 
         const socio = socioResult.rows[0];
+        await client.query('UPDATE socios SET telefono_personal_encrypted=$2, sector=$3 WHERE id=$1',
+          [socio.id, req.body.telefono_personal ? encryptData(req.body.telefono_personal) : null, req.body.sector || null]);
 
         // 2. Crear rol en el clúster
         if (rol_cluster) {
@@ -165,6 +167,7 @@ class AuthController {
             INSERT INTO rol_cluster (socio_id, rol, b2b_ofrece, b2b_busca, b2b_licita)
             VALUES ($1, $2, $3, $4, $5)
           `, [socio.id, rol_cluster, !!b2b_ofrece, !!b2b_busca, !!b2b_licita]);
+          if (req.body.rol_secundario) await client.query('UPDATE rol_cluster SET rol_secundario=$2 WHERE socio_id=$1', [socio.id, req.body.rol_secundario]);
         }
 
         // 3. Crear especialidades
@@ -173,7 +176,7 @@ class AuthController {
             await client.query(`
               INSERT INTO socio_especialidades (socio_id, especialidad, orden_prioridad)
               VALUES ($1, $2, $3)
-            `, [socio.id, especialidades[i], (i % 3) + 1]); // orden_prioridad cíclico 1-3
+            `, [socio.id, especialidades[i], i + 1]); // Una posición distinta para cada especialidad
           }
         }
 
@@ -234,10 +237,12 @@ class AuthController {
       });
 
     } catch (error) {
-      console.error('Error en registro:', error);
-      res.status(500).json({
-        error: 'Error interno del servidor durante el registro'
-      });
+      if (error.code === '23505' && error.constraint === 'socios_email_key') {
+        return res.status(409).json({ error: 'Este email ya tiene una cuenta. Recupera tu contraseña o contacta con administración para reactivarla.' });
+      }
+      const reference = require('crypto').randomUUID();
+      console.error('[registro]', { reference, code: error.code, constraint: error.constraint, message: error.message });
+      res.status(500).json({ error: 'No hemos podido completar el registro. Contacta con administración indicando la referencia ' + reference, reference });
     }
   }
 
@@ -306,6 +311,7 @@ class AuthController {
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 días
       };
 
+      res.clearCookie('adminToken');
       res.cookie('token', token, cookieOptions);
       res.cookie('refreshToken', refreshToken, { 
         ...cookieOptions, 
@@ -385,6 +391,8 @@ class AuthController {
         maxAge: 8 * 60 * 60 * 1000 // 8 horas (más corto que socios)
       };
 
+      res.clearCookie('token');
+      res.clearCookie('refreshToken');
       res.cookie('adminToken', token, cookieOptions);
 
       // Auditar login exitoso

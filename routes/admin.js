@@ -196,6 +196,8 @@ router.post('/landing/:clave/imagen',
 
 // ==================== CONFIGURACIÓN DE CORREO SALIENTE (SMTP) ====================
 // Reservada a superadmin: contiene credenciales del proveedor de correo.
+router.get('/config/smtp/deliveries', authenticateAdmin, adminController.getEmailDeliveries);
+
 router.get('/config/smtp',
   authenticateAdmin, requireSuperadmin,
   adminController.getSmtpConfig

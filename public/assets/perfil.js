@@ -38,7 +38,8 @@
 
   // ===== Inicialización de selects desde el catálogo =====
   cat.fillTiposSocioSelect($('tipo_socio'), { placeholder: 'Selecciona tipo de socio' });
-  cat.fillRolesSelect($('rol_cluster'), { placeholder: 'Selecciona rol del clúster' });
+  cat.fillRolesSelect($('rol_cluster'), { placeholder: 'Selecciona rol principal' });
+  cat.fillRolesSelect($('rol_secundario'), { placeholder: 'Sin segundo rol' });
   // CCAA
   const ccaaSelect = $('comunidad_autonoma');
   cat.COMUNIDADES_AUTONOMAS.forEach(function (ca) {
@@ -94,6 +95,7 @@
   // Tipo socio: mostrar campo de organización si es corporativo
   $('tipo_socio').addEventListener('change', function () {
     orgField.style.display = $('tipo_socio').value === 'asociado_corporativo' ? '' : 'none';
+    document.querySelector('label[for=anos_experiencia]').textContent = $('tipo_socio').value === 'asociado_corporativo' ? 'Años de actividad de la organización' : 'Años de experiencia en el sector deportivo';
   });
 
   // Descripción del rol seleccionado
@@ -124,13 +126,14 @@
   function fillForm(socio) {
     ['nombre', 'apellidos', 'email', 'email_personal', 'telefono', 'entidad', 'cargo_actual',
      'anos_experiencia', 'localidad', 'linkedin_url', 'web_profesional', 'direccion_completa',
-     'nombre_organizacion', 'ambito', 'sexo'].forEach(function (id) {
+     'nombre_organizacion', 'ambito', 'sexo', 'sector', 'telefono_personal', 'rol_secundario'].forEach(function (id) {
       const el = $(id);
       if (el) el.value = socio[id] || '';
     });
 
     $('tipo_socio').value = socio.tipo_socio || 'numero';
     orgField.style.display = socio.tipo_socio === 'asociado_corporativo' ? '' : 'none';
+    document.querySelector('label[for=anos_experiencia]').textContent = socio.tipo_socio === 'asociado_corporativo' ? 'Años de actividad de la organización' : 'Años de experiencia en el sector deportivo';
 
     // CCAA + provincia (rellena la cascada)
     if (socio.comunidad_autonoma) {
@@ -176,7 +179,7 @@
       cvDeleteBtn.style.display = '';
     }
 
-    ['acepta_mensajeria','acepta_notificaciones_email','visible_telefono','visible_email_directo','visible_web_profesional','visible_linkedin',
+    ['acepta_mapa_interactivo','acepta_visibilidad_datos','acepta_mensajeria','acepta_notificaciones_email','visible_telefono','visible_telefono_personal','visible_email_directo','visible_web_profesional','visible_linkedin',
      'tutor_mentor','ponente','asistente','representacion','captacion_patrocinio','congreso_almeria'].forEach(function (key) {
       const el = $(key);
       if (el) el.checked = !!socio[key];
@@ -253,7 +256,7 @@
   // ===== Inicialización de sesión =====
   requireSession('socio').then(async function (session) {
     currentSession = session;
-    profileId = queryParam('id') || session.user.id;
+    profileId = queryParam('id') || queryParam('socioId') || session.user.id;
     isOwnProfile = String(profileId) === String(session.user.id);
 
     const data = await request('/api/socios/perfil/' + profileId, { method: 'GET', headers: {} });
@@ -287,6 +290,7 @@
       .map(function (cb) { return cb.value; });
 
     try {
+      if ($('rol_secundario').value && (!$('rol_cluster').value || $('rol_cluster').value === $('rol_secundario').value)) throw new Error('Selecciona un rol principal y un segundo rol distinto.');
       await request('/api/socios/perfil', {
         method: 'PUT',
         body: JSON.stringify({
@@ -297,19 +301,24 @@
           email_personal: $('email_personal').value.trim() || null,
           email_preferido: getEmailPreferido(),
           telefono: $('telefono').value.trim() || null,
+          telefono_personal: $('telefono_personal').value.trim() || null,
+          sector: $('sector').value || null,
+          rol_secundario: $('rol_secundario').value || null,
+          visible_telefono_personal: $('visible_telefono_personal').checked,
           entidad: $('entidad').value.trim(),
           cargo_actual: $('cargo_actual').value.trim(),
           anos_experiencia: Number($('anos_experiencia').value || 0),
           comunidad_autonoma: ccaaSelect.value || null,
           provincia: $('provincia').value,
           localidad: $('localidad').value.trim(),
-          ambito: $('ambito').value || null,
           rol_cluster: $('rol_cluster').value || null,
           especialidades: especialidades,
           linkedin_url: $('linkedin_url').value.trim(),
           web_profesional: $('web_profesional').value.trim(),
           direccion_completa: $('direccion_completa').value.trim(),
           acepta_mensajeria: $('acepta_mensajeria').checked,
+          acepta_mapa_interactivo: $('acepta_mapa_interactivo').checked,
+          acepta_visibilidad_datos: $('acepta_visibilidad_datos').checked,
           acepta_notificaciones_email: $('acepta_notificaciones_email').checked,
           visible_telefono: $('visible_telefono').checked,
           visible_email_directo: $('visible_email_directo').checked,

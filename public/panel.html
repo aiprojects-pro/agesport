@@ -107,6 +107,7 @@
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
   <header class="site-topbar">
     <div class="shell inner">
       <a class="site-brand" href="/">
@@ -118,7 +119,7 @@
     </div>
   </header>
 
-  <main class="page shell private-layout">
+  <main id="contenido" tabindex="-1" class="page shell private-layout">
     <aside class="sidebar panel">
       <h3>Navegación</h3>
       <nav class="nav-list">
@@ -161,7 +162,7 @@
             <h3 style="margin:0;color:var(--navy-deep)">Visor del talento</h3>
             <p class="muted" style="margin:6px 0 0;font-size:.92rem">Cada punto representa un socio. Clica para ver su ficha.</p>
           </div>
-          <div class="segmented" id="labelMode" role="tablist" aria-label="Etiqueta del marcador">
+          <div class="segmented" id="labelMode" role="group" aria-label="Etiqueta del marcador">
             <button type="button" data-label="nombre" class="active">Ver por nombre</button>
             <button type="button" data-label="rol">Ver por rol</button>
           </div>
@@ -170,13 +171,13 @@
              marcadores visibles y recalculan los KPIs. -->
         <div style="padding:12px 20px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px;align-items:center">
           <label class="muted" style="font-size:.86rem;font-weight:600;color:var(--navy-deep);margin:0">Filtrar mapa:</label>
-          <select id="filtroRol" style="min-width:200px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:#fff">
+          <select aria-label="Filtrar mapa por rol" id="filtroRol" style="min-width:200px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:#fff">
             <option value="">Todos los roles</option>
           </select>
-          <select id="filtroEspecialidad" style="min-width:200px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:#fff">
+          <select aria-label="Filtrar mapa por especialidad" id="filtroEspecialidad" style="min-width:200px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:#fff">
             <option value="">Todas las especialidades</option>
           </select>
-          <select id="filtroProvincia" style="min-width:160px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:#fff">
+          <select aria-label="Filtrar mapa por provincia" id="filtroProvincia" style="min-width:160px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:#fff">
             <option value="">Todas las provincias</option>
           </select>
           <button type="button" id="filtroReset" class="btn btn-secondary" style="padding:6px 12px;font-size:.85rem;border-radius:8px">Limpiar filtros</button>

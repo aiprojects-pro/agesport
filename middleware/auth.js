@@ -319,8 +319,7 @@ const canViewSocio = async (viewerId, targetSocioId) => {
     socio_id: targetSocioId 
   });
   
-  return targetConsents && targetConsents.acepta_mapa_interactivo && 
-         targetConsents.acepta_visibilidad_datos;
+  return targetConsents && targetConsents.acepta_visibilidad_datos;
 };
 
 // Filtrar datos sensibles según consentimientos
@@ -332,12 +331,16 @@ const filterSensitiveData = (socioData, viewerIsOwner = false, viewerIsAdmin = f
   // descifrados como propiedades separadas cuando procede; el blob
   // cifrado no aporta nada al cliente y simplemente expone storage.
   delete filtered.telefono_encrypted;
+  delete filtered.telefono_personal_encrypted;
   delete filtered.dni_nie_encrypted;
 
   if (viewerIsAdmin || viewerIsOwner) return filtered;
 
   // Datos que siempre se ocultan de otros socios
   delete filtered.email;
+
+  delete filtered.email_personal;
+  if (!socioData.visible_telefono_personal) delete filtered.telefono_personal;
 
   // Datos condicionados por consentimientos
   if (!socioData.visible_telefono) {

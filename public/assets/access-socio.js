@@ -74,6 +74,7 @@
   });
   forgotCancel.addEventListener('click', function () {
     forgotForm.style.display = 'none';
+    forgotLink.focus();
     forgotMessage.textContent = '';
     forgotMessage.className = 'message-box';
   });

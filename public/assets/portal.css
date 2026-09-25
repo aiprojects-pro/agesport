@@ -154,7 +154,7 @@ img { display: block; max-width: 100%; }
 .btn:disabled { opacity: .65; cursor: wait; transform: none; }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--green) 0%, var(--green-deep) 60%, var(--navy) 100%);
+  background: linear-gradient(135deg, var(--green-deep) 0%, var(--navy) 100%);
   color: white;
   box-shadow: var(--shadow-green);
 }
@@ -711,7 +711,7 @@ textarea:focus {
   margin: 6px 0 0;
   padding: 0;
   cursor: pointer;
-  white-space: nowrap;
+  white-space: normal;
 }
 .visibility-panel input[type="checkbox"] {
   width: auto;
@@ -991,3 +991,33 @@ textarea:focus {
 }
 .pw-toggle:hover { background: rgba(15,137,91,.1); color: var(--green-deep, #0f895b); }
 .pw-toggle:focus-visible { outline: 2px solid rgba(168,207,47,.55); outline-offset: 2px; }
+
+/* Accesibilidad y ajuste a pantallas estrechas. */
+a:focus-visible, button:focus-visible, input:focus-visible,
+select:focus-visible, textarea:focus-visible {
+  outline: 3px solid var(--navy);
+  outline-offset: 3px;
+}
+.private-layout > *, .stack > *, .form-grid > *, .conversation-layout > * { min-width: 0; }
+input, select, textarea { min-width: 0; max-width: 100%; }
+.message, .conv-body, .hero-block, .form-card { overflow-wrap: anywhere; }
+button.conversation-item { width: 100%; text-align: left; font: inherit; color: inherit; }
+.pw-toggle { min-width: 44px; min-height: 44px; right: 2px; }
+.message-box.info { display: block; }
+.skip-link { position: fixed; top: 8px; left: 8px; z-index: 1000; padding: 12px; background: white; color: var(--navy); transform: translateY(-200%); }
+.skip-link:focus { transform: translateY(0); }
+@media (max-width: 1080px) {
+  .private-layout, .conversation-layout, .hero-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .grid-4, .grid-3, .grid-2, .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .btn { white-space: normal; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+}
+
+.table-scroll { max-width: 100%; overflow-x: auto; }
+.table-scroll:focus-visible { outline: 3px solid var(--navy); outline-offset: 3px; }
+.table-scroll .table-list { min-width: 640px; }

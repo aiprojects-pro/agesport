@@ -149,7 +149,7 @@
   function matchesFilters(s) {
     if (!inScope(s.provincia)) return false;
     if (currentProvFilter && s.provincia !== currentProvFilter) return false;
-    if (currentRolFilter && s.rol_cluster !== currentRolFilter) return false;
+    if (currentRolFilter && s.rol_cluster !== currentRolFilter && s.rol_secundario !== currentRolFilter) return false;
     if (currentEspFilter) {
       const esp = Array.isArray(s.especialidades) ? s.especialidades : [];
       if (esp.indexOf(currentEspFilter) === -1) return false;
@@ -173,8 +173,7 @@
       });
       const nombreCorto = ((s.nombre || '') + ' ' + ((s.apellidos || '').split(' ')[0] || '')).trim();
       const rolLabelText = (function () {
-        const r = cat.ROLES_CLUSTER.find(function (x) { return x.slug === s.rol_cluster; });
-        return r ? r.label : '';
+        return [s.rol_cluster,s.rol_secundario].map(function(slug) { const r = cat.ROLES_CLUSTER.find(function(x) { return x.slug === slug; }); return r ? r.label : ''; }).filter(Boolean).join(' / ');
       })();
       const label = currentLabelMode === 'rol'
         ? (rolLabelText || '—')
@@ -186,8 +185,7 @@
         className: 'socio-tooltip',
       });
       const rolLabel = (function () {
-        const r = cat.ROLES_CLUSTER.find(function (x) { return x.slug === s.rol_cluster; });
-        return r ? r.label : '';
+        return [s.rol_cluster,s.rol_secundario].map(function(slug) { const r = cat.ROLES_CLUSTER.find(function(x) { return x.slug === slug; }); return r ? r.label : ''; }).filter(Boolean).join(' / ');
       })();
       const nombreCompleto = escapeHtml((s.nombre || '') + ' ' + (s.apellidos || '')).trim();
       marker.bindPopup(
@@ -351,8 +349,7 @@
 
   function socioItem(s) {
     const rolLabel = (function () {
-      const r = cat.ROLES_CLUSTER.find(function (x) { return x.slug === s.rol_cluster; });
-      return r ? r.label : '—';
+      return [s.rol_cluster,s.rol_secundario].map(function(slug) { const r = cat.ROLES_CLUSTER.find(function(x) { return x.slug === slug; }); return r ? r.label : ''; }).filter(Boolean).join(' / ') || '—';
     })();
     return '<div class="kpi-item">' +
       '<span class="name">' + escapeHtml(((s.nombre || '') + ' ' + (s.apellidos || '')).trim() || '(sin nombre)') + '</span>' +
@@ -483,7 +480,7 @@
         return '<div style="display:flex;flex-direction:column;gap:8px">' +
           list.map(function (s) {
             const nom = (s.nombre || '') + ' ' + (s.apellidos || '');
-            const meta = [s.entidad, rolLabel(s.rol_cluster), s.provincia].filter(Boolean).join(' · ');
+            const meta = [s.entidad, [rolLabel(s.rol_cluster),rolLabel(s.rol_secundario)].filter(Boolean).join(' / '), s.provincia].filter(Boolean).join(' · ');
             const avatar = window.AgesportAvatar
               ? window.AgesportAvatar.renderAvatar({
                   nombre: s.nombre, apellidos: s.apellidos, email: s.email,

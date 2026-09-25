@@ -22,6 +22,7 @@
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
   <header class="site-topbar">
     <div class="shell inner">
       <a class="site-brand" href="/">
@@ -34,7 +35,7 @@
     </div>
   </header>
 
-  <main class="page shell">
+  <main id="contenido" tabindex="-1" class="page shell">
     <section class="hero-block">
       <div class="eyebrow">Panel de administración</div>
       <h1 id="adminWelcome">Gerencia AGESPORT</h1>
@@ -162,7 +163,7 @@
             <button class="btn btn-primary" id="approveSelectedBtn" type="button">Aprobar seleccionados</button>
           </div>
         </div>
-        <div id="pendientesList" style="margin-top:14px"></div>
+        <div id="pendientesList" class="table-scroll" tabindex="0" role="region" aria-label="Solicitudes pendientes" style="margin-top:14px"></div>
         <div id="pendientesEmpty" class="empty" style="display:none">No hay solicitudes pendientes.</div>
         <div id="pendientesMessage" class="message-box"></div>
       </article>
@@ -174,10 +175,10 @@
         <div class="toolbar">
           <div>
             <h2 style="margin:0">Accesos generados</h2>
-            <p class="muted" style="margin:6px 0 0">Listado de socios aprobados activos. Ordenado por último acceso.</p>
+            <p class="muted" style="margin:6px 0 0">Filtra el listado y descarga los contactos del estado seleccionado. Ordenado por último acceso.</p>
           </div>
           <div class="actions">
-            <select id="exportEstado" style="padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;font:inherit">
+            <select aria-label="Estado de los socios en la tabla y el CSV" id="exportEstado" style="padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;font:inherit">
               <option value="">Todos los socios (activos)</option>
               <option value="aprobado">Solo aprobados</option>
               <option value="pendiente">Solo pendientes</option>
@@ -186,7 +187,8 @@
             <button class="btn btn-primary" id="exportCsvBtn" type="button">Descargar contactos (CSV)</button>
           </div>
         </div>
-        <div id="accesosList" style="margin-top:14px"></div>
+        <p id="accesosCount" role="status" aria-live="polite"></p>
+        <div id="accesosList" class="table-scroll" tabindex="0" role="region" aria-label="Accesos generados" style="margin-top:14px"></div>
         <div id="exportMessage" class="message-box"></div>
       </article>
     </section>
@@ -221,7 +223,7 @@
         <div id="csvPreviewArea" style="margin-top:18px;display:none">
           <h3>Vista previa del lote</h3>
           <div class="csv-preview">
-            <table class="table-list" id="csvTable">
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Tabla de administración"><table class="table-list" id="csvTable">
               <thead>
                 <tr>
                   <th style="width:36px"><input type="checkbox" id="csvSelectAll"></th>
@@ -229,7 +231,7 @@
                 </tr>
               </thead>
               <tbody></tbody>
-            </table>
+            </table></div>
           </div>
           <div class="toolbar" style="margin-top:14px">
             <div class="muted" id="csvStats"></div>
@@ -333,6 +335,10 @@
           </div>
         </form>
         <div id="smtpMessage" class="message-box"></div>
+        <p class="muted">Gmail requiere un método de autenticación compatible. Si utilizas contraseña de aplicación, créala en la cuenta remitente con verificación en dos pasos. No uses aquí la contraseña de acceso al Mapa del Talento.</p>
+        <h3>Últimos envíos</h3><p>Aceptado significa que el servidor de correo lo ha admitido; confirma la recepción en el buzón del destinatario. Historial disponible durante 90 días.</p>
+        <button id="refreshDeliveries" type="button" class="btn btn-secondary">Actualizar envíos</button>
+        <div id="emailDeliveries" class="table-scroll" tabindex="0" role="region" aria-label="Historial de envíos"></div>
       </article>
     </section>
 
@@ -443,14 +449,14 @@
             <button type="button" class="btn btn-secondary" id="auditResetBtn" style="margin-left:6px">Limpiar</button>
           </div>
         </div>
-        <table class="table-list" id="auditTable">
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Tabla de administración"><table class="table-list" id="auditTable">
           <thead>
             <tr>
               <th>Fecha</th><th>Acción</th><th>Recurso</th><th>Quién</th><th>IP</th>
             </tr>
           </thead>
           <tbody></tbody>
-        </table>
+        </table></div>
         <div id="auditPagination" class="muted" style="margin-top:10px"></div>
         <div id="auditMessage" class="message-box"></div>
       </article>
@@ -499,7 +505,7 @@
           </div>
         </div>
 
-        <table class="table-list" id="adminsTable">
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Tabla de administración"><table class="table-list" id="adminsTable">
           <thead>
             <tr>
               <th>Nombre</th>
@@ -511,7 +517,7 @@
             </tr>
           </thead>
           <tbody></tbody>
-        </table>
+        </table></div>
         <div id="adminsMessage" class="message-box"></div>
       </article>
 
@@ -522,7 +528,7 @@
         <div class="toolbar" style="margin-bottom:12px">
           <input id="sociosBusqueda" placeholder="Buscar por nombre o email…" style="min-width:280px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:#fff">
         </div>
-        <table class="table-list" id="sociosAdvTable">
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Tabla de administración"><table class="table-list" id="sociosAdvTable">
           <thead>
             <tr>
               <th>Nombre</th>
@@ -533,7 +539,7 @@
             </tr>
           </thead>
           <tbody></tbody>
-        </table>
+        </table></div>
         <div id="sociosAdvMessage" class="message-box"></div>
       </article>
     </section>

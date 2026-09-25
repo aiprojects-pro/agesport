@@ -108,6 +108,7 @@ async function migrate() {
   console.log(`[migrate] conectado a ${config.database.database}`);
 
   try {
+    await client.query("SELECT pg_advisory_lock(hashtext('agesport-schema-migrations'))");
     await ensureMigrationsTable(client);
     const applied = await getAppliedMigrations(client);
     const files = listMigrationFiles();
@@ -139,7 +140,7 @@ async function migrate() {
     }
     console.log('[migrate] todas las migraciones aplicadas');
   } finally {
-    await client.end();
+    try { await client.query("SELECT pg_advisory_unlock(hashtext('agesport-schema-migrations'))"); } finally { await client.end(); }
   }
 }
 

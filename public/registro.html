@@ -24,6 +24,8 @@
       transition: all .18s;
       background: #fff;
     }
+    .type-toggle input[type=radio] { width: 20px; height: 20px; margin: 0 8px 0 0; accent-color: var(--green-deep); }
+    .type-toggle .type-card:focus-within { outline: 3px solid var(--navy); outline-offset: 3px; }
     .type-toggle .type-card:hover { border-color: rgba(15,137,91,.4); }
     .type-toggle .type-card.active {
       border-color: var(--green-deep);
@@ -135,6 +137,7 @@
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
   <header class="site-topbar">
     <div class="shell inner">
       <a class="site-brand" href="/">
@@ -147,7 +150,7 @@
     </div>
   </header>
 
-  <main class="page shell">
+  <main id="contenido" tabindex="-1" class="page shell">
     <section class="hero-block">
       <div class="eyebrow">Solicitud de alta</div>
       <h1>Incorporación al Mapa del Talento</h1>
@@ -158,15 +161,15 @@
       <h2>¿Cómo te das de alta?</h2>
       <p class="muted" style="margin-top:6px">AGESPORT distingue entre socios de número (personas físicas) y socios asociados corporativos (personas jurídicas). Elige el tipo que corresponde a tu solicitud.</p>
 
-      <div class="type-toggle" style="margin-top:18px">
+      <div class="type-toggle" role="radiogroup" aria-label="Tipo de socio" style="margin-top:18px">
         <label class="type-card active" data-tipo="numero">
-          <input type="radio" name="tipo" value="numero" checked style="display:none">
+          <input type="radio" name="tipo" value="numero" checked>
           <span class="tag">Persona física</span>
           <h3>Socio/a de número</h3>
           <p>Profesional individual que se incorpora a la asociación con plenitud de derechos.</p>
         </label>
         <label class="type-card" data-tipo="asociado_corporativo">
-          <input type="radio" name="tipo" value="asociado_corporativo" style="display:none">
+          <input type="radio" name="tipo" value="asociado_corporativo">
           <span class="tag">Persona jurídica</span>
           <h3>Socio/a asociado corporativo</h3>
           <p>Empresa, club, federación o entidad que coadyuva en los fines de AGESPORT.</p>
@@ -223,12 +226,18 @@
           <input id="email_personal" type="email">
         </div>
         <div class="field">
-          <label for="telefono">Teléfono</label>
-          <input id="telefono" placeholder="+34 600 00 00 00">
+          <label for="telefono">Teléfono profesional (opcional)</label>
+          <input id="telefono" type="tel" autocomplete="tel" placeholder="+34 600 00 00 00">
         </div>
         <div class="field">
-          <label for="password">Contraseña</label>
-          <input id="password" type="password" required placeholder="Mín. 8 caracteres, mayúscula y número">
+          <label for="telefono_personal">Teléfono personal (opcional)</label>
+          <input id="telefono_personal" type="tel" autocomplete="tel" placeholder="+34 600 00 00 00">
+          <p class="muted">No se mostrará a otros socios salvo que lo autorices desde tu perfil.</p>
+        </div>
+        <div class="field-full">
+          <label for="password">Contraseña para acceder al Mapa del Talento</label>
+          <input id="password" type="password" required minlength="8" autocomplete="new-password" aria-describedby="passwordHelp">
+          <p id="passwordHelp" class="muted">Mínimo 8 caracteres, con mayúscula, minúscula y número. Símbolos permitidos: @ $ ! % * ? &amp;.</p>
         </div>
 
         <!-- ====== Datos profesionales ====== -->
@@ -236,7 +245,11 @@
           <h3>Datos profesionales</h3>
         </div>
         <div class="field">
-          <label for="entidad" id="labelEntidad">Entidad / empresa</label>
+          <label for="sector">Sector de actividad</label>
+          <select id="sector"><option value="">Selecciona sector (opcional)</option><option value="publico">Sector público</option><option value="privado">Sector privado</option><option value="tercer_sector">Tercer sector</option></select>
+        </div>
+        <div class="field">
+        <label for="entidad" id="labelEntidad">Entidad / empresa</label>
           <input id="entidad">
         </div>
         <div class="field">
@@ -244,8 +257,9 @@
           <input id="cargo_actual" required>
         </div>
         <div class="field">
-          <label for="anos_experiencia" id="labelExperiencia">Años de experiencia</label>
-          <input id="anos_experiencia" type="number" min="0" max="50" required>
+          <label for="anos_experiencia" id="labelExperiencia">Años de experiencia en el sector deportivo</label>
+          <input id="anos_experiencia" type="number" min="0" max="50" required aria-describedby="experienceHelp">
+          <p class="muted" id="experienceHelp">Cuenta tu experiencia total en el sector, aunque hayas trabajado en distintas entidades.</p>
         </div>
         <div class="field">
           <label for="web_profesional">Web profesional (opcional)</label>
@@ -278,8 +292,10 @@
         <!-- ====== Rol en el clúster ====== -->
         <div class="field-full form-section">
           <h3>Rol en el clúster del deporte</h3>
-          <p class="muted" style="margin:0 0 12px;font-size:.92rem">¿Cuál de estos perfiles describe mejor tu actividad? Elige uno.</p>
+          <p class="muted" style="margin:0 0 12px;font-size:.92rem">Selecciona tu rol principal. Si desarrollas otra actividad, puedes añadir un segundo rol distinto.</p>
           <div class="rol-list" id="rolList"></div>
+          <label for="rol_secundario">Segundo rol (opcional)</label>
+          <select id="rol_secundario"></select>
         </div>
 
         <!-- ====== Especialidades ====== -->
