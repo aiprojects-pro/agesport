@@ -282,7 +282,7 @@
     fillForm(socio);
     if (isOwnProfile) {
       $('locationStatus').textContent = socio.ubicacion_estado === 'municipio' ? 'Ubicación disponible a nivel de municipio.' : socio.ubicacion_estado === 'provincia' ? 'El mapa utiliza una referencia aproximada de tu provincia. Guarda tu localidad para intentar precisar el municipio.' : 'Ubicación pendiente: revisa provincia y localidad.';
-      request('/api/socios/mapa-prueba', {method:'GET'}).then(mode => { if(mode.enabled) $('profileMapMode').textContent='Modo de prueba activo hasta '+new Date(mode.expiresAt).toLocaleString('es-ES')+': se muestran todas las cuentas aprobadas y activas. Tus preferencias guardadas se aplican al finalizar la prueba.'; }).catch(() => {});
+      $('profileMapMode').textContent='El mapa no caduca. Desmarca la opción de aparecer y guarda los cambios para dejar de mostrarse a otros socios. Puedes volver a activarla cuando quieras; administración conserva su vista de gestión.';
     }
 
     if (!isOwnProfile) {

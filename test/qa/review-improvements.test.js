@@ -26,33 +26,48 @@ before(async()=>{
  for(let i=0;i<3;i++)tokens[i]=(await call('/api/auth/login/socio',null,{email:'review'+i+'@example.invalid',password})).body.token;
 });
 after(async()=>{if(server)await new Promise(r=>server.close(r));await db.close();fs.rmSync(process.env.UPLOADS_PATH,{recursive:true,force:true});});
-test('temporary map includes all eight provinces, excludes inactive and restores original consents',async()=>{
- const original=(await db.query('SELECT * FROM consentimientos ORDER BY socio_id')).rows;
+test('permanent initial inclusion preserves consents and subsequent opt-out survives migration and unrelated saves',async()=>{
+ const original=(await db.query('SELECT socio_id,acepta_mapa_interactivo,acepta_visibilidad_datos FROM consentimientos ORDER BY socio_id')).rows;
  assert.equal((await call('/api/socios/mapa')).status,401);
  assert.equal((await call('/api/admin/mapa-prueba',tokens[0],{enabled:true},'PUT')).status,403);
  assert.equal((await call('/api/socios/mapa',tokens[0])).body.socios.length,1);
- assert.equal((await call('/api/admin/mapa-prueba',admin,{enabled:'true'},'PUT')).status,400);
- assert.equal((await call('/api/admin/mapa-prueba',admin,{enabled:true},'PUT')).status,200);
+ const migration=fs.readFileSync(path.resolve(__dirname,'../../database/migrations/021_permanent_map_choice.sql'),'utf8');
+ // Simulate upgrading a populated database. A newly installed empty database
+ // has already recorded the migration and must not enroll future accounts.
+ await db.query("DELETE FROM configuracion WHERE clave='mapa_inclusion_inicial_20260925'");
+ await db.query(migration);
  for(const token of tokens.slice(0,2)){
-  const m=await call('/api/socios/mapa',token);assert.equal(m.body.socios.length,8);assert.equal(new Set(m.body.socios.map(s=>s.provincia)).size,8);assert.ok(m.body.socios.every(s=>s.precision==='provincia'));assert.equal(m.body.modo_prueba.enabled,true);
+  const m=await call('/api/socios/mapa',token);assert.equal(m.body.socios.length,8);assert.equal(new Set(m.body.socios.map(s=>s.provincia)).size,8);assert.equal(m.body.modo_prueba.expiresAt,null);assert.equal(m.body.modo_prueba.permanent,true);
  }
+ assert.deepEqual((await db.query('SELECT socio_id,acepta_mapa_interactivo,acepta_visibilidad_datos FROM consentimientos ORDER BY socio_id')).rows,original);
+ assert.equal((await call('/api/socios/perfil/'+ids[1],tokens[1])).body.socio.acepta_mapa_interactivo,true);
+ await call('/api/socios/perfil',tokens[1],{acepta_mapa_interactivo:false},'PUT');
+ assert.ok(!(await call('/api/socios/mapa',tokens[0])).body.socios.some(s=>s.id===ids[1]));
+ assert.ok(!(await call('/api/socios/mapa',tokens[1])).body.socios.some(s=>s.id===ids[1]));
+ assert.equal((await call('/api/admin/mapa',admin)).body.socios.length,8);
+ await db.query(migration);
+ await call('/api/socios/perfil',tokens[1],{nombre:'Empresa ejemplo'},'PUT');
+ assert.equal((await call('/api/socios/perfil/'+ids[1],tokens[1])).body.socio.acepta_mapa_interactivo,false);
+ assert.ok(!(await call('/api/socios/mapa',tokens[0])).body.socios.some(s=>s.id===ids[1]));
+ assert.equal((await call('/api/admin/mapa-prueba',admin,{enabled:true},'PUT')).status,410);
+ await call('/api/socios/perfil',tokens[1],{acepta_mapa_interactivo:true,acepta_visibilidad_datos:false},'PUT');
+ assert.ok((await call('/api/socios/mapa',tokens[0])).body.socios.some(s=>s.id===ids[1]));
+ assert.equal((await call('/api/socios/perfil/'+ids[1],tokens[0])).status,403);
+ await call('/api/socios/perfil',tokens[1],{acepta_visibilidad_datos:true},'PUT');
  await db.query('UPDATE socios SET activo=false WHERE id=$1',[ids[7]]);assert.equal((await call('/api/socios/mapa',tokens[0])).body.socios.length,7);await db.query('UPDATE socios SET activo=true WHERE id=$1',[ids[7]]);
- await call('/api/admin/mapa-prueba',admin,{enabled:false},'PUT');assert.equal((await call('/api/socios/mapa',tokens[0])).body.socios.length,1);
- assert.deepEqual((await db.query('SELECT * FROM consentimientos ORDER BY socio_id')).rows,original);
- await db.query(`UPDATE configuracion SET valor=$1 WHERE clave='mapa_prueba_temporal'`,[JSON.stringify({enabled:true,expiresAt:'2020-01-01T00:00:00Z'})]);assert.equal((await call('/api/socios/mapa',tokens[0])).body.modo_prueba.enabled,false);
 });
 test('missing coordinates retry on unchanged location; failed new location clears old coordinates',async()=>{
- geo.geocode=async()=>{geoCalls++;return {lat:37.389,lng:-5.984}};
+ geoCalls=0;geo.geocode=async()=>{geoCalls++;return {lat:37.389,lng:-5.984}};
  let r=await call('/api/socios/perfil',tokens[0],{localidad:'Sevilla',provincia:'Sevilla'},'PUT');assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(geoCalls,1);
- assert.equal((await call('/api/socios/mapa',tokens[0])).body.socios[0].precision,'municipio');
+ assert.equal((await call('/api/socios/mapa',tokens[0])).body.socios.find(s=>s.id===ids[0]).precision,'municipio');
  geo.geocode=async()=>null;
  r=await call('/api/socios/perfil',tokens[0],{localidad:'Carmona'},'PUT');assert.equal(r.status,200);
  const coords=(await db.query('SELECT latitud,longitud FROM socios WHERE id=$1',[ids[0]])).rows[0];assert.equal(coords.latitud,null);assert.equal(coords.longitud,null);
- assert.equal((await call('/api/socios/mapa',tokens[0])).body.socios[0].precision,'provincia');
+ assert.equal((await call('/api/socios/mapa',tokens[0])).body.socios.find(s=>s.id===ids[0]).precision,'provincia');
 });
 test('member can disable normal map and cannot self-assign privileged category',async()=>{
  assert.equal((await call('/api/socios/perfil',tokens[0],{acepta_mapa_interactivo:false},'PUT')).status,200);
- assert.equal((await call('/api/socios/mapa',tokens[0])).body.socios.length,0);
+ assert.equal((await call('/api/socios/mapa',tokens[0])).body.socios.length,7);
  assert.equal((await call('/api/socios/perfil',tokens[0],{tipo_socio:'honor'},'PUT')).status,403);
  assert.equal((await call('/api/socios/perfil',tokens[0],{acepta_mapa_interactivo:true},'PUT')).status,200);
 });
@@ -93,5 +108,5 @@ test('admin diagnoses and recovers location; member cannot invoke repair',async(
  assert.equal((await call('/api/admin/mapa-diagnostico/'+ids[0]+'/ubicacion',tokens[0],{})).status,403);
  geo.geocode=async()=>({lat:37.389,lng:-5.984});
  const r=await call('/api/admin/mapa-diagnostico/'+ids[0]+'/ubicacion',admin,{});assert.equal(r.status,200);assert.equal(r.body.actualizado,true);
- assert.equal((await call('/api/socios/mapa',tokens[0])).body.socios[0].precision,'municipio');
+ assert.equal((await call('/api/socios/mapa',tokens[0])).body.socios.find(s=>s.id===ids[0]).precision,'municipio');
 });
