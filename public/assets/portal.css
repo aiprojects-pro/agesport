@@ -1021,3 +1021,14 @@ button.conversation-item { width: 100%; text-align: left; font: inherit; color: 
 .table-scroll { max-width: 100%; overflow-x: auto; }
 .table-scroll:focus-visible { outline: 3px solid var(--navy); outline-offset: 3px; }
 .table-scroll .table-list { min-width: 640px; }
+
+/* Accessible status and compact screens: text always accompanies color. */
+.state-badge{display:inline-block;padding:4px 9px;border-radius:8px;font-weight:700;background:#e8edf1;color:#263645}
+.state-badge.ok{background:#dff3e7;color:#165630}.state-badge.pending{background:#fff0ca;color:#704500}.state-badge.blocked{background:#fce3e3;color:#8c2424}
+.table-scroll{overflow-x:auto;max-width:100%}
+fieldset{min-width:0;border:1px solid var(--line);border-radius:10px;padding:14px}
+.checkbox-row{min-width:0;overflow-wrap:anywhere}.checkbox-row input{flex:0 0 auto;width:auto}
+.leaflet-popup-content{overflow-wrap:anywhere}
+@media(max-width:600px){.leaflet-tooltip.socio-tooltip{max-width:160px;white-space:normal} .bar-row .bar-label{white-space:normal} .filters label{white-space:normal}}
+
+[hidden]{display:none !important}

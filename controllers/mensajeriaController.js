@@ -65,18 +65,21 @@ class MensajeriaController {
 
     await this._persistMessage(emisorId, rid, contenido);
 
+    let avisoEmail = 'no_solicitado';
     if (notifyEmail && consents.acepta_notificaciones_email) {
       try {
-        await emailService.notifyNewMessage(
-          { email: receptor.email, nombre: receptor.nombre, acepta_notificaciones_email: true },
+        const delivery = await emailService.notifyNewMessage(
+          { email: receptor.email_preferido === 'personal' && receptor.email_personal ? receptor.email_personal : receptor.email, nombre: receptor.nombre, acepta_notificaciones_email: true },
           { nombre: emisor.nombre, apellidos: emisor.apellidos },
           contenido
         );
+        avisoEmail = delivery?.success ? 'aceptado' : 'fallido';
       } catch (e) {
+        avisoEmail = 'fallido';
         console.warn('[email] notifyNewMessage failed:', e.message);
       }
     }
-    return { ok: true };
+    return { ok: true, aviso_email: avisoEmail };
   }
 
   // ==================== OBTENER CONVERSACIONES ====================
@@ -215,7 +218,7 @@ class MensajeriaController {
         try {
           // Notificación por email obligatoria (respeta el consent del receptor).
           const r = await this._sendOne(emisorId, emisor, rid, trimmed, true);
-          resultados.push({ id: rid, ok: r.ok, error: r.error });
+          resultados.push({ id: rid, ok: r.ok, error: r.error, aviso_email: r.aviso_email });
         } catch (err) {
           console.error('Error multi-mensaje a ' + rid, err);
           resultados.push({ id: rid, ok: false, error: err.message });
@@ -280,6 +283,7 @@ class MensajeriaController {
 
       res.status(201).json({
         message: 'Mensaje enviado correctamente',
+        aviso_email: r.aviso_email,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {

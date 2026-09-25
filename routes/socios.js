@@ -30,6 +30,8 @@ router.get('/mapa',
   sociosController.getMapaSocios
 );
 
+router.get('/mapa-prueba', authenticateSocio, require('../controllers/mapTestController').status);
+
 // ==================== PERFIL INDIVIDUAL ====================
 router.get('/perfil/:socioId', 
   authenticateSocio,

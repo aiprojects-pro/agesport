@@ -128,7 +128,7 @@
      'anos_experiencia', 'localidad', 'linkedin_url', 'web_profesional', 'direccion_completa',
      'nombre_organizacion', 'ambito', 'sexo', 'sector', 'telefono_personal', 'rol_secundario'].forEach(function (id) {
       const el = $(id);
-      if (el) el.value = socio[id] || '';
+      if (el) el.value = socio[id] == null ? '' : socio[id];
     });
 
     $('tipo_socio').value = socio.tipo_socio || 'numero';
@@ -175,12 +175,12 @@
     if (socio.cv_url) {
       cvStatus.textContent = 'CV subido correctamente.';
       cvViewBtn.style.display = '';
-      cvViewBtn.href = socio.cv_url;
+      cvViewBtn.href = socio.cv_url + '?acceso=privado-v2';
       cvDeleteBtn.style.display = '';
     }
 
     ['acepta_mapa_interactivo','acepta_visibilidad_datos','acepta_mensajeria','acepta_notificaciones_email','visible_telefono','visible_telefono_personal','visible_email_directo','visible_web_profesional','visible_linkedin',
-     'tutor_mentor','ponente','asistente','representacion','captacion_patrocinio','congreso_almeria'].forEach(function (key) {
+     'b2b_ofrece','b2b_busca','b2b_licita','tutor_mentor','ponente','asistente','representacion','captacion_patrocinio','congreso_almeria'].forEach(function (key) {
       const el = $(key);
       if (el) el.checked = !!socio[key];
     });
@@ -189,12 +189,22 @@
     if (dispSel) dispSel.value = socio.disponibilidad || '';
   }
 
-  function lockForOtherProfile() {
-    Array.from(form.elements).forEach(function (el) { el.disabled = true; });
-    saveBtn.style.display = 'none';
-    mediaCard.querySelectorAll('input, button, label.btn-upload').forEach(function (el) { el.style.pointerEvents = 'none'; el.style.opacity = '.55'; });
-    passwordForm.style.display = 'none';
-    bajaCard.style.display = 'none';
+  function showPublicProfile(socio) {
+    form.closest('article').hidden = true;
+    mediaCard.hidden = true;
+    passwordForm.closest('article').hidden = true;
+    bajaCard.hidden = true;
+    $('portabilityCard').hidden = true;
+    const card = document.createElement('article'); card.className='form-card';
+    const labels = {entidad:'Entidad', nombre_organizacion:'Organización', cargo_actual:'Cargo', localidad:'Localidad', provincia:'Provincia', email:'Email profesional', telefono:'Teléfono profesional', telefono_personal:'Teléfono personal', web_profesional:'Web', linkedin_url:'LinkedIn'};
+    card.innerHTML='<h2>Ficha profesional</h2><dl>'+Object.keys(labels).filter(k => socio[k]).map(k => '<dt><strong>'+labels[k]+'</strong></dt><dd style="overflow-wrap:anywhere;margin:4px 0 16px">'+escapeHtml(socio[k])+'</dd>').join('')+'</dl>';
+    const roles = [socio.rol_cluster,socio.rol_secundario].filter(Boolean).map(slug => cat.findRolBySlug(slug)?.label || slug);
+    const specialties = (socio.especialidades || []).map(slug => cat.findEspecialidadBySlug(slug)?.label || slug);
+    card.innerHTML += '<p><strong>Roles:</strong> '+escapeHtml(roles.join(' · ') || 'Sin declarar')+'</p><p><strong>Especialidades:</strong> '+escapeHtml(specialties.join(' · ') || 'Sin declarar')+'</p>';
+    if (socio.cv_url) { const link=document.createElement('a'); link.href=socio.cv_url+'?acceso=privado-v2'; link.textContent='Descargar CV'; link.className='btn btn-secondary'; card.appendChild(link); }
+    form.closest('article').before(card);
+    contactBtn.hidden = !socio.acepta_mensajeria;
+    intro.textContent='Información profesional compartida en el entorno privado de AGESPORT.';
   }
 
   // ===== Subida de foto =====
@@ -270,12 +280,16 @@
       : 'Estás viendo la ficha pública de este socio. No puedes editar sus datos.';
 
     fillForm(socio);
+    if (isOwnProfile) {
+      $('locationStatus').textContent = socio.ubicacion_estado === 'municipio' ? 'Ubicación disponible a nivel de municipio.' : socio.ubicacion_estado === 'provincia' ? 'El mapa utiliza una referencia aproximada de tu provincia. Guarda tu localidad para intentar precisar el municipio.' : 'Ubicación pendiente: revisa provincia y localidad.';
+      request('/api/socios/mapa-prueba', {method:'GET'}).then(mode => { if(mode.enabled) $('profileMapMode').textContent='Modo de prueba activo hasta '+new Date(mode.expiresAt).toLocaleString('es-ES')+': se muestran todas las cuentas aprobadas y activas. Tus preferencias guardadas se aplican al finalizar la prueba.'; }).catch(() => {});
+    }
 
     if (!isOwnProfile) {
       profileActions.style.display = 'flex';
       contactBtn.href = '/mensajes.html?receptor=' + encodeURIComponent(profileId);
       contactBtn.textContent = 'Contactar con ' + (socio.nombre || '');
-      lockForOtherProfile();
+      showPublicProfile(socio);
     }
   }).catch(function () {});
 
@@ -290,11 +304,15 @@
       .map(function (cb) { return cb.value; });
 
     try {
+      if (!$('disponibilidad').value && ['tutor_mentor','ponente','asistente','representacion','captacion_patrocinio','congreso_almeria'].some(id => $(id).checked)) throw new Error('Selecciona un nivel de disponibilidad para guardar tus opciones de colaboración.');
+      if (['b2b_ofrece','b2b_busca','b2b_licita'].some(id => $(id).checked) && !$('rol_cluster').value) throw new Error('Selecciona tu rol principal para guardar los intereses de colaboración.');
       if ($('rol_secundario').value && (!$('rol_cluster').value || $('rol_cluster').value === $('rol_secundario').value)) throw new Error('Selecciona un rol principal y un segundo rol distinto.');
       await request('/api/socios/perfil', {
         method: 'PUT',
         body: JSON.stringify({
-          tipo_socio: $('tipo_socio').value || 'numero',
+          b2b_ofrece: $('b2b_ofrece').checked,
+          b2b_busca: $('b2b_busca').checked,
+          b2b_licita: $('b2b_licita').checked,
           nombre: $('nombre').value.trim(),
           apellidos: $('apellidos').value.trim(),
           nombre_organizacion: $('nombre_organizacion').value.trim() || null,
@@ -307,7 +325,7 @@
           visible_telefono_personal: $('visible_telefono_personal').checked,
           entidad: $('entidad').value.trim(),
           cargo_actual: $('cargo_actual').value.trim(),
-          anos_experiencia: Number($('anos_experiencia').value || 0),
+          anos_experiencia: $('anos_experiencia').value === '' ? null : Number($('anos_experiencia').value),
           comunidad_autonoma: ccaaSelect.value || null,
           provincia: $('provincia').value,
           localidad: $('localidad').value.trim(),

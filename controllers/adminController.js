@@ -358,6 +358,7 @@ class AdminController {
         return res.status(400).json({ error: 'Objeto configuración requerido' });
       }
 
+      if (Object.prototype.hasOwnProperty.call(configuracion, 'mapa_prueba_temporal')) return res.status(400).json({ error: 'Utiliza el control específico del mapa de prueba' });
       const updated = [];
 
       for (const [clave, valor] of Object.entries(configuracion)) {

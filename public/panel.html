@@ -30,7 +30,7 @@
     /* Grid de gráficos agregados */
     .charts-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
       gap: 18px;
     }
     .chart-card {
@@ -52,7 +52,7 @@
     }
     .bar-row {
       display: grid;
-      grid-template-columns: 140px 1fr 40px;
+      grid-template-columns: minmax(80px, 140px) minmax(20px, 1fr) 32px;
       gap: 8px;
       align-items: center;
       margin: 5px 0;
@@ -60,7 +60,7 @@
     }
     .bar-row .bar-label { color: var(--navy-deep); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .bar-row .bar-track { background: rgba(15,137,91,.1); border-radius: 4px; height: 10px; overflow: hidden; }
-    .bar-row .bar-fill  { background: var(--green-deep); height: 100%; transition: width .3s ease; }
+    .bar-row .bar-fill  { display:block; background: var(--green-deep); height: 100%; transition: width .3s ease; }
     .bar-row .bar-count { color: var(--muted); text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
     .bar-row .bar-fill.color-pink { background: #d4266e; }
     .bar-row .bar-fill.color-blue { background: #1a4e7a; }
@@ -160,7 +160,7 @@
         <div style="padding:18px 20px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between">
           <div>
             <h3 style="margin:0;color:var(--navy-deep)">Visor del talento</h3>
-            <p class="muted" style="margin:6px 0 0;font-size:.92rem">Cada punto representa un socio. Clica para ver su ficha.</p>
+            <p class="muted" style="margin:6px 0 0;font-size:.92rem">Los perfiles que comparten ubicación se agrupan. Abre un punto o consulta la lista inferior. Las referencias provinciales son aproximadas.</p>
           </div>
           <div class="segmented" id="labelMode" role="group" aria-label="Etiqueta del marcador">
             <button type="button" data-label="nombre" class="active">Ver por nombre</button>
@@ -182,7 +182,9 @@
           </select>
           <button type="button" id="filtroReset" class="btn btn-secondary" style="padding:6px 12px;font-size:.85rem;border-radius:8px">Limpiar filtros</button>
         </div>
-        <div id="mapContainer"></div>
+        <div style="padding:12px 20px"><p id="mapModeNotice" role="status"></p><p id="mapUpdated" aria-live="polite"></p><button class="btn btn-secondary" id="refreshMap" type="button">Actualizar mapa e indicadores</button></div>
+        <div id="mapContainer" role="region" aria-label="Mapa de socios; lista equivalente a continuación"></div>
+        <details style="padding:18px"><summary id="mapListCount">Lista de perfiles del mapa</summary><div id="mapList" class="kpi-list" style="margin-top:14px"></div></details>
         <div class="map-legend" id="rolLegend"></div>
       </article>
 

@@ -131,18 +131,8 @@ class GeocodingService {
 
   // Obtener coordenadas de provincias andaluzas (fallback)
   getProvinciaCoords(provincia) {
-    const coordenadas = {
-      'Almería': { lat: 36.8381, lng: -2.4597 },
-      'Cádiz': { lat: 36.5271, lng: -6.2886 },
-      'Córdoba': { lat: 37.8882, lng: -4.7794 },
-      'Granada': { lat: 37.1773, lng: -3.5986 },
-      'Huelva': { lat: 37.2571, lng: -6.9495 },
-      'Jaén': { lat: 37.7796, lng: -3.7849 },
-      'Málaga': { lat: 36.7213, lng: -4.4214 },
-      'Sevilla': { lat: 37.3891, lng: -5.9845 }
-    };
-    
-    return coordenadas[provincia] || null;
+    const coords = require('../config/provinceCoordinates')[provincia];
+    return coords ? {lat: coords[0], lng: coords[1]} : null;
   }
 
   // Calcular distancia entre dos puntos (fórmula de Haversine)

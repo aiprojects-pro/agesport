@@ -24,6 +24,34 @@
 
   document.getElementById('logoutBtn').addEventListener('click', logout);
 
+  let mapTestEnabled=false;
+  async function loadMapManagement() {
+    const button=$('mapModeToggle'); button.disabled=true;
+    try {
+      const [mode,diagnostics]=await Promise.all([request('/api/admin/mapa-prueba',{method:'GET'}),request('/api/admin/mapa-diagnostico',{method:'GET'})]);
+      mapTestEnabled=mode.enabled;
+      $('adminMapMode').textContent=mode.enabled ? 'Prueba activa hasta '+formatDate(mode.expiresAt) : 'Prueba desactivada: se aplican las preferencias de los socios.';
+      button.textContent=mode.enabled ? 'Desactivar mapa de prueba' : 'Activar prueba durante 7 días'; button.disabled=false;
+      $('mapDiagnostics').textContent=diagnostics.socios.length+' cuentas aprobadas y activas. Revisa las referencias provinciales, las ubicaciones pendientes y los nombres incompletos antes de presentar.';
+      $('mapDiagnosticsList').innerHTML='<div class="table-scroll"><table class="table-list"><thead><tr><th>Socio</th><th>Provincia</th><th>Ubicación</th><th>Visibilidad habitual</th><th>Revisar datos</th></tr></thead><tbody>'+diagnostics.socios.map(s=>'<tr><td>'+escapeHtml(s.nombre)+'</td><td>'+escapeHtml(s.provincia || 'Sin provincia')+'</td><td>'+escapeHtml(s.ubicacion)+(s.ubicacion.includes('pendiente') ? '<br><button type="button" class="btn-upload" data-geocode="'+s.id+'">Recuperar municipio</button>' : '')+'</td><td>'+escapeHtml(s.visibilidad)+'</td><td>'+escapeHtml(s.revisar_nombre ? 'Nombre incompleto o cuenta de prueba' : '—')+'</td></tr>').join('')+'</tbody></table></div>';
+    } catch(err) { $('adminMapMode').textContent=err.message; }
+  }
+  $('mapDiagnosticsList').addEventListener('click',async event=>{
+    const btn=event.target.closest('[data-geocode]'); if(!btn) return; btn.disabled=true;
+    try {const result=await request('/api/admin/mapa-diagnostico/'+encodeURIComponent(btn.dataset.geocode)+'/ubicacion',{method:'POST'});await loadMapManagement();$('mapDiagnostics').textContent=result.message;}
+    catch(err){$('mapDiagnostics').textContent=err.message;btn.disabled=false;}
+  });
+  $('mapModeToggle').addEventListener('click',async()=>{
+    $('mapModeToggle').disabled=true;
+    try { await request('/api/admin/mapa-prueba',{method:'PUT',body:JSON.stringify({enabled:!mapTestEnabled})}); await loadMapManagement(); }
+    catch(err) { $('adminMapMode').textContent=err.message; $('mapModeToggle').disabled=false; }
+  });
+
+  function stateBadge(state) {
+    const cls=({aprobado:'ok',pendiente:'pending',suspendido:'blocked',rechazado:'blocked'})[state] || 'neutral';
+    return '<span class="state-badge '+cls+'">'+escapeHtml(state || 'Sin estado')+'</span>';
+  }
+
   // ===== Tabs =====
   const tabsRoot = document.getElementById('adminTabs');
   tabsRoot.addEventListener('click', function (ev) {
@@ -61,6 +89,7 @@
   // ==================== DASHBOARD ==============================
   // =============================================================
   async function loadDashboard() {
+    loadMapManagement();
     try {
       const data = await request('/api/admin/estadisticas', { method: 'GET', headers: {} });
       // El backend devuelve la clave `stats` (no `estadisticas`).
@@ -396,7 +425,7 @@
             '<td>' + escapeHtml(s.entidad || '') + '</td>' +
             '<td>' + escapeHtml(s.provincia || '') + '</td>' +
             '<td>' + escapeHtml(tipoSocioLabel(s.tipo_socio)) + '</td>' +
-            '<td>' + escapeHtml(s.estado || '') + '</td>' +
+            '<td>' + stateBadge(s.estado) + '</td>' +
             '<td>' + escapeHtml(s.ultimo_acceso ? formatDate(s.ultimo_acceso) : '—') + '</td>' +
             '<td style="text-align:right;white-space:nowrap">' +
               (s.estado === 'aprobado' ? '<button class="btn-upload" type="button" data-suspend="' + s.id + '">Suspender</button> ' : '') +
@@ -1188,7 +1217,7 @@
         '<td>' + escapeHtml((s.nombre || '') + ' ' + (s.apellidos || '')) + '</td>' +
         '<td class="muted">' + escapeHtml(s.email || '') + '</td>' +
         '<td><select class="socio-tipo" data-id="' + s.id + '">' + options + '</select></td>' +
-        '<td><span class="tag">' + escapeHtml(s.estado || '') + '</span></td>' +
+        '<td>' + stateBadge(s.estado) + '</td>' +
         '<td>' +
           '<button class="btn btn-secondary btn-sm" data-action="socio-reset-pw" data-id="' + s.id + '" data-email="' + escapeHtml(s.email) + '">Reset password</button> ' +
           (s.estado === 'aprobado' && s.activo

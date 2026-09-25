@@ -135,7 +135,7 @@
     sendBtn.disabled = true;
     sendBtn.textContent = 'Enviando...';
     try {
-      await request('/api/mensajeria/mensajes', {
+      const delivery = await request('/api/mensajeria/mensajes', {
         method: 'POST',
         body: JSON.stringify({
           receptorId: current.otro_socio_id,
@@ -143,7 +143,7 @@
         })
       });
       messageText.value = '';
-      setMessage(messageStatus, true, 'Mensaje enviado correctamente.');
+      setMessage(messageStatus, delivery.aviso_email !== 'fallido', delivery.aviso_email === 'fallido' ? 'Mensaje guardado en la plataforma. No se pudo enviar el aviso por email; no necesitas repetir el mensaje.' : (delivery.aviso_email === 'aceptado' ? 'Mensaje enviado. Aviso aceptado por el servidor de correo; no confirma su lectura.' : 'Mensaje enviado dentro de la plataforma.'));
       await loadConversations();
       await loadMessages(activeConversation);
     } catch (error) {
@@ -264,7 +264,8 @@
           contenido: composeText.value.trim()
         })
       });
-      setMessage(composeMessage, true, 'Enviado a ' + res.enviados + ' de ' + res.total + ' destinatarios.');
+      const failedEmails = (res.resultados || []).filter(r => r.aviso_email === 'fallido').length;
+      setMessage(composeMessage, !failedEmails, 'Enviado a ' + res.enviados + ' de ' + res.total + ' destinatarios.' + (failedEmails ? ' Fallaron ' + failedEmails + ' avisos por email. Los mensajes internos están guardados; no repitas el envío.' : ''));
       composeText.value = '';
       composeReceptors = [];
       renderChips();
