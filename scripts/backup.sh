@@ -3,7 +3,7 @@
 # ===================================================================
 # BACKUP AUTOMÁTICO — MAPA DEL TALENTO AGESPORT
 # ===================================================================
-# Hace tres cosas:
+# Hace cuatro cosas:
 #   1) Dump de PostgreSQL comprimido (gzip)
 #   2) Tarball de la carpeta uploads/ (fotos + CVs)
 #   3) Rotación local por RETENTION_DAYS
@@ -16,7 +16,7 @@
 #
 # Instalación como systemd timer alternativa: ver DEPLOY.md.
 
-set -e
+set -euo pipefail
 
 # Cargar variables de entorno
 if [ -f .env ]; then
@@ -30,6 +30,7 @@ fi
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 DATE=$(date +%Y%m%d-%H%M%S)
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
+BACKUP_REMOTE="${BACKUP_REMOTE:-}"
 
 GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 log()   { echo -e "${BLUE}[$(date +%H:%M:%S)]${NC} $1"; }
@@ -57,7 +58,8 @@ if [ -d "$UPLOADS_PATH" ]; then
     tar -czf "$UPLOADS_FILE" "$UPLOADS_PATH" 2>/dev/null
     ok "Uploads: $UPLOADS_FILE ($(du -h "$UPLOADS_FILE" | cut -f1))"
 else
-    warn "Directorio uploads no encontrado (esperado en instalación limpia)"
+    err "Directorio uploads no encontrado; la copia está incompleta"
+    exit 1
 fi
 
 # 3) MANIFIESTO
@@ -81,17 +83,18 @@ ok "Rotación OK"
 
 # 5) SINCRONIZACIÓN OFF-SITE (opcional, requiere rclone configurado)
 if [ -n "$BACKUP_REMOTE" ]; then
-    if command -v rclone > /dev/null 2>&1; then
-        log "Subiendo a remote: $BACKUP_REMOTE"
-        if rclone copy "$BACKUP_DIR" "$BACKUP_REMOTE" \
-             --include "*-$DATE.*" --transfers 2 --checkers 2 --quiet; then
-            ok "Off-site OK · $BACKUP_REMOTE"
-        else
-            err "Falló la subida off-site (backup local sigue disponible)"
-        fi
-    else
-        warn "BACKUP_REMOTE definido pero rclone no está instalado. Salta off-site."
+    if ! command -v rclone > /dev/null 2>&1; then
+        err "BACKUP_REMOTE está definido pero rclone no está instalado"
+        exit 1
     fi
+
+    log "Subiendo a remote: $BACKUP_REMOTE"
+    if ! rclone copy "$BACKUP_DIR" "$BACKUP_REMOTE" \
+         --include "*-$DATE.*" --transfers 2 --checkers 2 --quiet; then
+        err "Falló la subida off-site (la copia local sigue disponible)"
+        exit 1
+    fi
+    ok "Off-site OK · $BACKUP_REMOTE"
 fi
 
 log "🎉 Backup completado exitosamente"
