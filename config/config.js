@@ -48,6 +48,17 @@ const corsOrigins = (process.env.CORS_ORIGINS || publicBaseUrl)
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+// El límite general protege frente a abuso masivo, pero no debe impedir la
+// navegación normal cuando varios asistentes comparten una salida a Internet.
+const defaultGeneralRateLimit = process.env.NODE_ENV === 'production' ? 1000 : 10000;
+const configuredGeneralRateLimit = Number.parseInt(
+  process.env.RATE_LIMIT_MAX_REQUESTS || String(defaultGeneralRateLimit),
+  10
+);
+const generalRateLimit = Number.isSafeInteger(configuredGeneralRateLimit) && configuredGeneralRateLimit > 0
+  ? configuredGeneralRateLimit
+  : defaultGeneralRateLimit;
+
 module.exports = {
   // Base de datos
   database: {
@@ -80,7 +91,7 @@ module.exports = {
   // Rate limiting
   rateLimiting: {
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: process.env.NODE_ENV === 'production' ? 100 : 1000, // requests por IP
+    max: generalRateLimit, // requests por IP; ajustable con RATE_LIMIT_MAX_REQUESTS
     message: 'Demasiadas peticiones desde esta IP, inténtalo más tarde.'
   },
 
