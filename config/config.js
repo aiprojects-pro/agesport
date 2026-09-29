@@ -36,7 +36,7 @@ if (process.env.NODE_ENV === 'production') {
 // el email de reset apunta a evil.com → token leak. Aquí garantizamos
 // que `publicBaseUrl` SIEMPRE es una URL válida y absoluta.
 const publicBaseUrlRaw = (process.env.PUBLIC_BASE_URL || '').trim();
-const publicBaseUrl = publicBaseUrlRaw || 'https://mapadeltalento.agesport.org';
+const publicBaseUrl = publicBaseUrlRaw || 'https://agesport-agesport.apps.testing.aiprojects.pro';
 if (!/^https?:\/\/[^\s]+$/.test(publicBaseUrl)) {
   console.error(
     `FATAL: PUBLIC_BASE_URL no es una URL absoluta válida ("${publicBaseUrl}"). Debe empezar por http:// o https://.`
