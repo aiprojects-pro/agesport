@@ -46,6 +46,12 @@ router.put('/perfil',
   sociosController.updatePerfil
 );
 
+// Primer acceso: el socio ha visto las fichas de tipo de socio.
+router.post('/bienvenida-vista',
+  authenticateSocio,
+  sociosController.marcarBienvenidaVista
+);
+
 // ==================== SUBIDA DE FOTO Y CV ====================
 router.post('/perfil/foto',
   authenticateSocio,

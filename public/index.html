@@ -20,570 +20,167 @@
   <meta name="twitter:description" content="Plataforma estratégica para identificar, conectar y activar el talento profesional del deporte en Andalucía.">
   <meta name="twitter:image" content="/assets/agesport-logo.svg">
 
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <style>
     :root {
-      --navy: #0d355f;
-      --navy-deep: #08233f;
-      --navy-soft: #1e5d96;
-      --green-light: #6da93f;
-      --green: #37964f;
-      --green-mid: #0f895b;
-      --green-deep: #008460;
-      --lime: #a8cf2f;
-      --sand: #f5f0e6;
-      --mist: #edf3f8;
-      --ink: #18222e;
-      --muted: #5f6d7b;
-      --line: rgba(13, 53, 95, 0.14);
-      --card: rgba(255, 255, 255, 0.82);
-      --shadow: 0 30px 80px rgba(8, 35, 63, 0.16);
-      --radius-xl: 28px;
-      --radius-lg: 20px;
-      --radius-md: 14px;
-      --max: 1180px;
+      --navy: #0d355f; --navy-deep: #08233f; --navy-soft: #1e5d96;
+      --green: #37964f; --green-mid: #0f895b; --green-deep: #008460; --green-light: #6da93f;
+      --ink: #14202c; --muted: #5d6d7b; --line: rgba(13,53,95,.10);
+      --bg: #f5f8f7; --card: #ffffff; --soft: #eef4f1;
+      --radius: 22px; --shadow: 0 24px 60px rgba(8,35,63,.10);
+      --grad: linear-gradient(120deg, var(--green-light) 0%, var(--green-mid) 45%, var(--navy) 100%);
     }
-
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      font-family: "Manrope", sans-serif;
-      color: var(--ink);
-      background:
-        radial-gradient(circle at top right, rgba(109, 169, 63, 0.22), transparent 24rem),
-        radial-gradient(circle at left 20%, rgba(13, 53, 95, 0.10), transparent 26rem),
-        linear-gradient(180deg, #f7fafc 0%, #eef3f7 48%, #f7f4ed 100%);
-    }
+    body { margin: 0; font-family: 'Manrope', system-ui, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.6; }
+    img { max-width: 100%; }
+    a { color: inherit; }
+    .shell { width: min(1180px, 100% - 32px); margin: 0 auto; }
+    .skip-link { position: absolute; left: -999px; top: 8px; background: #fff; padding: 8px 12px; border-radius: 8px; z-index: 100; }
+    .skip-link:focus { left: 8px; }
 
-    a { color: inherit; text-decoration: none; }
-    img { display: block; max-width: 100%; }
-
-    .shell { width: min(calc(100% - 32px), var(--max)); margin: 0 auto; }
-
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      backdrop-filter: blur(18px);
-      background: rgba(247, 250, 252, 0.78);
-      border-bottom: 1px solid rgba(13, 53, 95, 0.08);
-    }
-
-    .topbar-inner {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-      min-height: 78px;
-    }
-
-    .brand { display: flex; align-items: center; gap: 14px; }
-    .brand-logo { height: 44px; width: auto; display: block; }
-
-    .navlinks {
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      color: var(--muted);
-      font-weight: 600;
-    }
-    .navlinks a:hover { color: var(--navy); }
-
-    .button-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-
-    .btn {
-      border: 0;
-      cursor: pointer;
-      border-radius: 999px;
-      padding: 13px 20px;
-      font: inherit;
-      font-weight: 700;
-      transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
+    /* ---------- Topbar ---------- */
+    .topbar { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,.86); backdrop-filter: saturate(1.4) blur(12px); border-bottom: 1px solid var(--line); }
+    .topbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 72px; }
+    .brand-logo { height: 42px; width: auto; display: block; }
+    .navlinks { display: flex; gap: 22px; font-weight: 600; font-size: .95rem; }
+    .navlinks a { text-decoration: none; color: var(--navy-deep); opacity: .8; white-space: nowrap; }
+    .button-row { flex-wrap: nowrap; }
+    .button-row .btn { white-space: nowrap; }
+    .navlinks a:hover { opacity: 1; color: var(--green-deep); }
+    .button-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 20px; border-radius: 999px; font-weight: 700; font-size: .95rem; text-decoration: none; border: 1px solid transparent; transition: transform .15s, box-shadow .15s, background .15s; }
     .btn:hover { transform: translateY(-1px); }
+    .btn-primary { background: var(--grad); color: #fff; box-shadow: 0 12px 28px rgba(15,137,91,.28); }
+    .btn-navy { background: var(--navy); color: #fff; }
+    .btn-ghost { background: #fff; border-color: var(--line); color: var(--navy-deep); }
+    .btn-light { background: rgba(255,255,255,.14); color: #fff; border-color: rgba(255,255,255,.35); }
 
-    .btn-primary {
-      color: white;
-      background: linear-gradient(135deg, var(--green) 0%, var(--green-deep) 60%, var(--navy) 100%);
-      box-shadow: 0 18px 34px rgba(15, 137, 91, 0.22);
-    }
-    .btn-navy {
-      color: white;
-      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-soft) 100%);
-      box-shadow: 0 18px 34px rgba(13, 53, 95, 0.24);
-    }
-    .btn-secondary {
-      color: var(--navy);
-      background: rgba(13, 53, 95, 0.08);
-    }
-    .btn-ghost {
-      color: var(--green-deep);
-      background: rgba(15, 137, 91, 0.10);
-    }
+    /* ---------- Hero ---------- */
+    .hero { position: relative; overflow: hidden; padding: 72px 0 56px; background:
+      radial-gradient(900px 480px at 85% -10%, rgba(15,137,91,.16), transparent 60%),
+      radial-gradient(700px 420px at -10% 110%, rgba(13,53,95,.12), transparent 60%), var(--bg); }
+    .hero-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: #fff; border: 1px solid var(--line); font-weight: 700; font-size: .82rem; color: var(--green-deep); letter-spacing: .02em; }
+    .eyebrow::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--green-mid); box-shadow: 0 0 0 4px rgba(15,137,91,.18); }
+    .hero h1 { font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: clamp(2.3rem, 5vw, 3.9rem); line-height: 1.05; letter-spacing: -.02em; margin: 20px 0 18px; color: var(--navy-deep); }
+    .hero h1 em { font-style: normal; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lead { font-size: 1.12rem; color: var(--muted); max-width: 60ch; margin: 0 0 28px; }
+    .hero-cta { display: flex; gap: 12px; flex-wrap: wrap; }
+    .hero-points { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px 22px; margin-top: 36px; }
+    .point { display: grid; gap: 2px; padding-left: 14px; border-left: 3px solid var(--green-mid); }
+    .point strong { color: var(--navy-deep); font-size: .98rem; }
+    .point span { color: var(--muted); font-size: .9rem; }
 
-    .hero {
-      padding: 52px 0 40px;
-      position: relative;
-      overflow: hidden;
-    }
-    /* Ornamento de fondo del hero: círculos suaves que dan movimiento sin distraer. */
-    .hero::before {
-      content: '';
-      position: absolute;
-      inset: -40% -20% auto auto;
-      width: 620px; height: 620px;
-      border-radius: 999px;
-      background: radial-gradient(closest-side, rgba(15,137,91,.09), transparent 70%);
-      z-index: 0;
-      pointer-events: none;
-    }
-    .hero::after {
-      content: '';
-      position: absolute;
-      inset: auto auto -30% -10%;
-      width: 420px; height: 420px;
-      border-radius: 999px;
-      background: radial-gradient(closest-side, rgba(13,53,95,.06), transparent 70%);
-      z-index: 0;
-      pointer-events: none;
-    }
-    .hero > .shell { position: relative; z-index: 1; }
+    .live-card { background: var(--navy-deep); color: #fff; border-radius: 28px; padding: 30px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+    .live-card::after { content: ''; position: absolute; inset: auto -80px -120px auto; width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, rgba(109,169,63,.45), transparent 70%); }
+    .live-badge { display: inline-flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #b7e4c7; }
+    .live-badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #5ee08c; animation: pulse 1.8s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(94,224,140,.6); } 100% { box-shadow: 0 0 0 12px rgba(94,224,140,0); } }
+    .big-number { font-family: 'Fraunces', Georgia, serif; font-size: clamp(3.6rem, 9vw, 5.6rem); line-height: 1; margin: 16px 0 4px; font-weight: 700; }
+    .live-label { color: rgba(255,255,255,.78); margin: 0 0 22px; font-size: 1rem; }
+    .live-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; position: relative; z-index: 1; }
+    .live-stat { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 16px; padding: 14px; }
+    .live-stat b { display: block; font-size: 1.6rem; font-family: 'Fraunces', Georgia, serif; }
+    .live-stat span { font-size: .82rem; color: rgba(255,255,255,.72); }
+    .role-bar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; margin: 22px 0 10px; background: rgba(255,255,255,.1); position: relative; z-index: 1; }
+    .role-bar i { display: block; height: 100%; }
+    .live-note { font-size: .78rem; color: rgba(255,255,255,.6); margin: 8px 0 0; position: relative; z-index: 1; }
+    .live-trust { display: flex; gap: 8px; align-items: center; margin-top: 14px; font-size: .82rem; color: rgba(255,255,255,.75); position: relative; z-index: 1; }
+    .live-trust strong { color: #fff; }
 
-    .hero-grid {
-      display: grid;
-      grid-template-columns: 1.05fr .95fr;
-      gap: 30px;
-      align-items: stretch;
-    }
+    /* ---------- Secciones ---------- */
+    .block { padding: 88px 0; }
+    .block-alt { background: #fff; border-block: 1px solid var(--line); }
+    .section-head { max-width: 760px; margin-bottom: 40px; }
+    .section-kicker { font-size: .8rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--green-deep); }
+    h2 { font-family: 'Fraunces', Georgia, serif; font-size: clamp(1.9rem, 3.6vw, 2.7rem); line-height: 1.12; letter-spacing: -.01em; margin: 10px 0 14px; color: var(--navy-deep); }
+    .section-head p { color: var(--muted); font-size: 1.05rem; margin: 0; }
+    h3 { margin: 0 0 8px; color: var(--navy-deep); font-size: 1.12rem; }
+    .cards-3, .cards-4 { display: grid; gap: 20px; }
+    .cards-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .cards-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; transition: transform .2s, box-shadow .2s; }
+    .card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+    .card p { color: var(--muted); margin: 0; }
+    .card-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; background: var(--soft); color: var(--green-deep); margin-bottom: 16px; }
+    .tag { display: inline-block; font-size: .74rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--green-deep); margin-bottom: 8px; }
 
-    .hero-copy { padding: 26px 6px 10px 0; }
+    /* ---------- Mapa público ---------- */
+    .map-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; align-items: stretch; }
+    .map-frame { background: #fff; border: 1px solid var(--line); border-radius: 26px; overflow: hidden; box-shadow: var(--shadow); min-height: 460px; position: relative; }
+    #landing-map { position: absolute; inset: 0; }
+    .map-side { background: #fff; border: 1px solid var(--line); border-radius: 26px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+    .prov-rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 330px; overflow: auto; }
+    .prov-rank li { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; font-weight: 600; font-size: .92rem; }
+    .prov-rank .bar { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: var(--soft); overflow: hidden; }
+    .prov-rank .bar i { display: block; height: 100%; background: var(--grad); border-radius: 999px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: .8rem; color: var(--muted); }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .map-empty { color: var(--muted); font-size: .92rem; }
+    .prov-bubble-icon { background: transparent; border: none; }
+    .prov-bubble { border-radius: 50%; display: grid; place-items: center; border: 3px solid #fff; box-shadow: 0 6px 16px rgba(8,35,63,.28); cursor: pointer; transition: transform .15s; }
+    .prov-bubble:hover { transform: scale(1.08); }
+    .prov-bubble span { display: grid; place-items: center; width: 62%; height: 62%; border-radius: 50%; background: #fff; color: var(--navy-deep); font-weight: 800; font-size: .95rem; }
+    .map-tooltip ul { list-style: none; margin: 6px 0 0; padding: 0; font-size: .82rem; }
+    .map-tooltip .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
 
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: rgba(15, 137, 91, 0.12);
-      color: var(--green-deep);
-      font-size: .84rem;
-      font-weight: 800;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-    }
+    /* ---------- Tipos de socio ---------- */
+    .types { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .type-card { background: #fff; border: 1px solid var(--line); border-radius: 26px; padding: 30px; position: relative; overflow: hidden; }
+    .type-card::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 5px; background: var(--grad); }
+    .type-card ul { margin: 14px 0 0; padding-left: 20px; color: var(--muted); }
+    .type-card p { color: var(--muted); margin: 0; }
 
-    h1 {
-      margin: 20px 0 18px;
-      font-family: "Fraunces", serif;
-      font-size: clamp(2.7rem, 5vw, 5rem);
-      line-height: .96;
-      letter-spacing: -0.05em;
-      color: var(--navy-deep);
-    }
-    h1 em {
-      font-style: normal;
-      background: linear-gradient(135deg, var(--green-light), var(--green-deep));
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-    }
+    /* ---------- Fases ---------- */
+    .timeline { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 18px; counter-reset: step; }
+    .step { position: relative; }
+    .step-num { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; background: var(--grad); margin-bottom: 14px; box-shadow: 0 10px 24px rgba(15,137,91,.25); }
+    .step .card { height: 100%; }
 
-    .lead {
-      max-width: 62ch;
-      font-size: 1.08rem;
-      line-height: 1.72;
-      color: var(--muted);
-    }
+    /* ---------- Acceso ---------- */
+    .cta-band { background: var(--navy-deep); color: #fff; border-radius: 32px; padding: 48px; display: grid; grid-template-columns: 1fr 1.3fr; gap: 32px; align-items: center; position: relative; overflow: hidden; }
+    .cta-band::after { content: ''; position: absolute; right: -120px; top: -120px; width: 360px; height: 360px; border-radius: 50%; background: radial-gradient(circle, rgba(109,169,63,.35), transparent 70%); }
+    .cta-band h2 { color: #fff; }
+    .cta-band p { color: rgba(255,255,255,.75); margin: 0; }
+    .access-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; position: relative; z-index: 1; }
+    .access-card { display: grid; gap: 6px; padding: 20px; border-radius: 20px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); text-decoration: none; color: #fff; transition: background .15s, transform .15s; }
+    .access-card:hover { background: rgba(255,255,255,.14); transform: translateY(-2px); }
+    .access-card span:last-child { font-size: .86rem; color: rgba(255,255,255,.7); }
+    .access-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: rgba(255,255,255,.12); }
 
-    .hero-points {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 20px;
-      margin: 32px 0 0;
-    }
+    .footer { padding: 36px 0 48px; color: var(--muted); font-size: .9rem; }
+    .footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+    .footer a { color: var(--green-deep); text-decoration: none; font-weight: 600; }
 
-    .point {
-      padding: 14px 0 0;
-      background: transparent;
-      border: 0;
-      border-top: 1px solid rgba(13, 53, 95, 0.12);
-      border-radius: 0;
-      box-shadow: none;
-      color: var(--navy-deep);
-      font-weight: 700;
-    }
-    .point span {
-      display: block;
-      margin-top: 6px;
-      color: var(--muted);
-      font-size: .9rem;
-      font-weight: 500;
-      line-height: 1.4;
-    }
+    .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+    .reveal.revealed { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } html { scroll-behavior: auto; } .live-badge::before { animation: none; } }
 
-    .hero-visual { position: relative; min-height: 480px; }
-
-    .hero-map-card {
-      position: relative;
-      border-radius: var(--radius-xl);
-      overflow: hidden;
-      box-shadow: var(--shadow);
-      border: 1px solid rgba(255,255,255,.7);
-      background: white;
-    }
-    .hero-map-card .cap {
-      padding: 14px 18px;
-      font-size: .82rem;
-      font-weight: 800;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      color: var(--green-deep);
-      background: linear-gradient(180deg, rgba(15,137,91,.14), rgba(15,137,91,.04));
-      border-bottom: 1px solid var(--line);
-    }
-    .hero-map-card .body { padding: 14px; }
-    .hero-map-card img { display: block; width: 100%; height: auto; }
-
-    .hero-meta {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 14px;
-    }
-    .mini { padding: 14px 12px; border-radius: 16px; background: var(--mist); }
-    .mini strong { display: block; color: var(--navy); font-size: 1.2rem; }
-    .mini span { color: var(--muted); font-size: .85rem; line-height: 1.4; }
-
-    section.block { padding: 26px 0 68px; }
-
-    .section-head {
-      display: flex;
-      justify-content: space-between;
-      gap: 24px;
-      align-items: end;
-      margin-bottom: 24px;
-    }
-    .section-head h2 {
-      margin: 0 0 8px;
-      font-family: "Fraunces", serif;
-      font-size: clamp(2rem, 3vw, 3.2rem);
-      line-height: 1;
-      letter-spacing: -.04em;
-      color: var(--navy-deep);
-    }
-    .section-head p { margin: 0; max-width: 54ch; color: var(--muted); line-height: 1.7; }
-
-    .cards-3, .cards-4 { display: grid; gap: 18px; }
-    .cards-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .cards-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 24px;
-      padding: 22px;
-      box-shadow: 0 16px 40px rgba(13,53,95,.07);
-    }
-    .card h3 { margin: 0 0 10px; color: var(--navy); font-size: 1.08rem; }
-    .card p, .card li { margin: 0; color: var(--muted); line-height: 1.68; }
-
-    .tag {
-      display: inline-block;
-      margin-bottom: 12px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: rgba(15, 137, 91, .12);
-      color: var(--green-deep);
-      font-size: .78rem;
-      font-weight: 800;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-    }
-    .tag.navy { background: rgba(13,53,95,.08); color: var(--navy); }
-
-    .split {
-      display: grid;
-      grid-template-columns: .95fr 1.05fr;
-      gap: 22px;
-    }
-
-    .timeline { display: grid; gap: 16px; }
-    /* Variante horizontal para "Implementación en 4 fases": 4 columnas
-       con el número arriba de cada tarjeta. Colapsa a 2×2 en tablet y
-       a 1 columna en móvil. */
-    .timeline-h {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 20px;
-      margin-top: 10px;
-    }
-    .timeline-h .step {
-      grid-template-columns: 1fr;
-      gap: 12px;
-      align-items: stretch;
-    }
-    .timeline-h .step-num { margin-bottom: 0; }
-    .timeline-h .card { height: 100%; }
-    @media (max-width: 980px) {
-      .timeline-h { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-    @media (max-width: 560px) {
-      .timeline-h { grid-template-columns: 1fr; }
-      .timeline-h .step { grid-template-columns: 52px 1fr; }
-    }
-    .step {
-      display: grid;
-      grid-template-columns: 52px 1fr;
-      gap: 14px;
-      align-items: start;
-    }
-    .step-num {
-      width: 52px;
-      height: 52px;
-      display: grid;
-      place-items: center;
-      border-radius: 16px;
-      background: linear-gradient(135deg, var(--green) 0%, var(--green-deep) 100%);
-      color: white;
-      font-weight: 800;
-      font-size: 1.2rem;
-      box-shadow: 0 14px 28px rgba(15,137,91,.22);
-    }
-
-    .status-panel {
-      background: linear-gradient(180deg, rgba(13,53,95,.96), rgba(8,35,63,.98));
-      color: white;
-      border-radius: 28px;
-      padding: 24px;
-      box-shadow: var(--shadow);
-    }
-    .status-line {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 18px;
-    }
-    .pulse {
-      width: 14px;
-      height: 14px;
-      border-radius: 999px;
-      background: #66f290;
-      box-shadow: 0 0 0 10px rgba(102,242,144,.12);
-    }
-
-    .status-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      margin: 18px 0 22px;
-    }
-    .status-box {
-      padding: 14px;
-      border-radius: 18px;
-      background: rgba(255,255,255,.08);
-      border: 1px solid rgba(255,255,255,.08);
-    }
-    .status-box strong { display: block; font-size: 1.05rem; margin-bottom: 5px; }
-    .status-box span { color: rgba(255,255,255,.78); font-size: .92rem; line-height: 1.5; }
-
-    .login-panel {
-      margin-top: 18px;
-      padding-top: 18px;
-      border-top: 1px solid rgba(255,255,255,.12);
-    }
-    .login-panel h3 { margin: 0 0 6px; font-size: 1.08rem; }
-    .login-panel p { margin: 0 0 14px; color: rgba(255,255,255,.76); line-height: 1.6; font-size: .94rem; }
-    .login-panel .button-row .btn { flex: 1; }
-    /* btn-secondary por defecto es navy-sobre-mist, ilegible sobre el panel oscuro.
-       Lo ajustamos para que tenga buen contraste en este contexto. */
-    .login-panel .btn-secondary {
-      color: white;
-      background: rgba(255,255,255,.14);
-      border: 1px solid rgba(255,255,255,.28);
-    }
-    .login-panel .btn-secondary:hover { background: rgba(255,255,255,.22); }
-
-    /* Panel de accesos minimalista (reemplaza el status-panel oscuro) */
-    .access-panel { margin-top: 4px; }
-    .access-head h2 {
-      font-family: 'Fraunces', serif;
-      color: var(--navy-deep);
-      font-size: 1.6rem;
-      margin: 0 0 4px;
-    }
-    .access-head p { margin: 0 0 20px; font-size: .98rem; }
-    .access-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
-    }
-    .access-card {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      padding: 20px 20px 22px;
-      border-radius: 16px;
-      background: white;
-      border: 1px solid rgba(13, 53, 95, 0.1);
-      color: var(--navy-deep);
-      text-decoration: none;
-      transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
-    }
-    .access-card:hover {
-      border-color: rgba(15,137,91,.55);
-      transform: translateY(-1px);
-      box-shadow: 0 8px 24px rgba(13,53,95,.08);
-    }
-    .access-card strong { font-size: 1rem; font-weight: 700; }
-    .access-card span { color: var(--muted); font-size: .88rem; line-height: 1.45; }
-    .access-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      background: rgba(15,137,91,.1);
-      color: var(--green-deep);
-      margin-bottom: 4px;
-    }
-    @media (max-width: 720px) {
-      .access-grid { grid-template-columns: 1fr; }
-    }
-
-    /* =================== KICKERS + CARD ICONS + REVEAL =================== */
-
-    /* Chip pequeño encima de cada H2 con "01 · Proyecto", "02 · Capacidades"...
-       Aporta jerarquía visual y sensación de recorrido. */
-    .section-kicker {
-      display: inline-block;
-      font-size: .78rem;
-      font-weight: 700;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      color: var(--green-deep);
-      background: rgba(15,137,91,.08);
-      padding: 6px 12px;
-      border-radius: 999px;
-      margin-bottom: 12px;
-    }
-
-    /* Icono redondo verde suave sobre cada tarjeta de propósito/capacidades. */
-    .card-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 46px;
-      height: 46px;
-      border-radius: 14px;
-      background: rgba(15,137,91,.1);
-      color: var(--green-deep);
-      margin-bottom: 14px;
-      border: 1px solid rgba(15,137,91,.15);
-      transition: transform .2s ease, background .2s ease;
-    }
-    .card:hover .card-icon {
-      transform: scale(1.08) rotate(-2deg);
-      background: rgba(15,137,91,.18);
-    }
-
-    /* Bloque con fondo ligeramente distinto para dar ritmo visual entre
-       secciones sin romper la línea limpia. */
-    .block-alt {
-      background: linear-gradient(180deg, rgba(15,137,91,.03), rgba(15,137,91,.01) 60%, transparent);
-    }
-
-    /* Animación fade-in + slide-up al entrar en viewport. Se aplica a
-       elementos con clase .reveal; el observer les añade .revealed cuando
-       cruzan el 15% del viewport. Sin JS los elementos son visibles igual
-       (progressive enhancement). */
-    @media (prefers-reduced-motion: no-preference) {
-      .reveal {
-        opacity: 0;
-        transform: translateY(24px);
-        transition: opacity .6s cubic-bezier(.2,.7,.3,1), transform .6s cubic-bezier(.2,.7,.3,1);
-        will-change: opacity, transform;
-      }
-      .reveal.revealed {
-        opacity: 1;
-        transform: translateY(0);
-      }
-      /* Delay escalonado para 3 y 4 tarjetas por fila */
-      .cards-3 > .reveal:nth-child(2), .cards-4 > .reveal:nth-child(2) { transition-delay: .08s; }
-      .cards-3 > .reveal:nth-child(3), .cards-4 > .reveal:nth-child(3) { transition-delay: .16s; }
-      .cards-4 > .reveal:nth-child(4) { transition-delay: .24s; }
-      .timeline > .reveal:nth-child(2) { transition-delay: .08s; }
-      .timeline > .reveal:nth-child(3) { transition-delay: .16s; }
-      .timeline > .reveal:nth-child(4) { transition-delay: .24s; }
-    }
-
-    /* Cards más contundentes visualmente */
-    .card {
-      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-    }
-    .card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 32px rgba(13,53,95,.08);
-      border-color: rgba(15,137,91,.28);
-    }
-
-    /* Título hero más contundente */
-    .hero-copy h1 {
-      letter-spacing: -.015em;
-    }
-    .hero-copy h1 em {
-      font-style: italic;
-      color: var(--green-deep);
-      position: relative;
-    }
-    .hero-copy h1 em::after {
-      content: '';
-      position: absolute;
-      left: 0; right: 0;
-      bottom: -4px;
-      height: 3px;
-      background: linear-gradient(90deg, rgba(15,137,91,.35), rgba(15,137,91,0));
-      border-radius: 2px;
-    }
-
-    .footer { padding: 24px 0 50px; color: var(--muted); font-size: .95rem; }
-    .footer-inner {
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
-      align-items: center;
-      border-top: 1px solid var(--line);
-      padding-top: 22px;
-    }
-
-    @media (max-width: 980px) {
+    @media (max-width: 1400px) { .navlinks { gap: 16px; font-size: .9rem; } .navlinks a[href="#fases"], .navlinks a[href="#capacidades"] { display: none; } }
+    @media (max-width: 1020px) {
       .navlinks { display: none; }
-      .hero-grid, .split, .cards-3, .cards-4 { grid-template-columns: 1fr; }
-      .hero-visual { min-height: auto; }
-      .hero-points { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .status-grid, .hero-meta { grid-template-columns: 1fr; }
-      .section-head, .footer-inner { flex-direction: column; align-items: start; }
+      .hero-grid, .map-layout, .cta-band { grid-template-columns: 1fr; }
+      .cards-4, .timeline { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .cards-3 { grid-template-columns: 1fr 1fr; }
     }
-    @media (max-width: 560px) {
-      .hero-points { grid-template-columns: 1fr; }
+    @media (max-width: 680px) {
+      .topbar-inner { min-height: 64px; }
+      .brand-logo { height: 34px; }
+      .button-row .btn-navy { display: none; }
+      .hero { padding: 44px 0 36px; }
+      .hero-points, .cards-3, .cards-4, .timeline, .types, .access-grid, .live-stats { grid-template-columns: 1fr; }
+      .block { padding: 60px 0; }
+      .cta-band { padding: 30px 22px; border-radius: 24px; }
+      .map-frame { min-height: 360px; }
     }
-
-    @media (max-width: 720px) {
-      .topbar-inner { min-height: 72px; }
-      .button-row .btn { width: 100%; }
-      .hero { padding-top: 34px; }
-      .card { padding: 18px; }
-      .brand-logo { height: 36px; }
-    }
+    .leaflet-attribution-flag { display: none !important; }
   </style>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <style>.leaflet-attribution-flag{display:none!important}</style>
 
   <!-- CSS del modo edición in-situ (sólo se activa si el visitante es admin). -->
   <style>
@@ -677,12 +274,14 @@
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#inicio">Saltar al contenido</a>
   <header class="topbar">
     <div class="shell topbar-inner">
       <a class="brand" href="#inicio">
         <img class="brand-logo" data-cms-img="topbar.logo" src="/assets/agesport-logo.svg" alt="AGEsport · Asociación Andaluza de Gestores del Deporte">
       </a>
-      <nav class="navlinks">
+      <nav class="navlinks" aria-label="Secciones">
+        <a href="#mapa">Mapa</a>
         <a href="#proyecto" data-cms="topbar.nav1.label">Conocer el proyecto</a>
         <a href="#capacidades" data-cms="topbar.nav2.label">Capacidades</a>
         <a href="#fases" data-cms="topbar.nav3.label">Implementación</a>
@@ -695,21 +294,16 @@
     </div>
   </header>
 
-  <main id="inicio">
+  <main id="inicio" tabindex="-1">
     <section class="hero">
       <div class="shell hero-grid">
-        <div class="hero-copy">
+        <div>
           <span class="eyebrow" data-cms="hero.eyebrow">Plataforma estratégica para AGESPORT</span>
-          <h1 data-cms="hero.title">Conectar <em>talento</em>, territorio e industria del deporte andaluz.</h1>
-          <p class="lead" data-cms="hero.lead">
-            El Mapa del Talento AGESPORT organiza el capital profesional de la asociación,
-            lo geolocaliza por provincia, lo hace visible dentro de un entorno privado y lo
-            orienta a colaboración, networking inteligente y activación del clúster deportivo
-            en Andalucía y el resto del territorio nacional.
-          </p>
-          <div class="button-row" style="margin-top:24px">
-            <a class="btn btn-primary" href="#proyecto" data-cms="hero.cta1.label">Conocer el proyecto</a>
-            <a class="btn btn-secondary" href="/acceso.html" data-cms="hero.cta2.label">Acceso socio</a>
+          <h1 data-cms="hero.title">Conectar talento, territorio e industria del deporte andaluz.</h1>
+          <p class="lead" data-cms="hero.lead">El Mapa del Talento AGESPORT organiza el capital profesional de la asociación, lo geolocaliza por provincia, lo hace visible dentro de un entorno privado y lo orienta a colaboración, networking inteligente y activación del clúster deportivo.</p>
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="/registro.html" data-cms="acceso.cta2.label">Solicitar acceso</a>
+            <a class="btn btn-ghost" href="#mapa" data-cms="hero.cta1.label">Conocer el proyecto</a>
           </div>
           <div class="hero-points">
             <div class="point"><strong data-cms="hero.point1.title">Geolocalización profesional</strong><span data-cms="hero.point1.body">Quién es quién, dónde opera y en qué destaca.</span></div>
@@ -719,27 +313,35 @@
           </div>
         </div>
 
-        <div class="hero-visual">
-          <article class="hero-map-card">
-            <div class="cap" data-cms="hero.visor.caption">El visor del talento — provincias de Andalucía</div>
-            <div class="body">
-              <div id="landing-map" style="height:340px;border-radius:12px;overflow:hidden"></div>
-              <div class="hero-meta">
-                <div class="mini">
-                  <strong data-cms="hero.stat1.value">8</strong>
-                  <span data-cms="hero.stat1.label">provincias andaluzas en una única capa de lectura.</span>
-                </div>
-                <div class="mini">
-                  <strong data-cms="hero.stat2.value">17 CCAA</strong>
-                  <span data-cms="hero.stat2.label">cobertura ampliable al resto del territorio nacional.</span>
-                </div>
-                <div class="mini">
-                  <strong data-cms="hero.stat3.value">Privado</strong>
-                  <span data-cms="hero.stat3.label">acceso restringido a socios y administración.</span>
-                </div>
-              </div>
-            </div>
-          </article>
+        <aside class="live-card" aria-labelledby="liveTotalLabel">
+          <span class="live-badge">En directo</span>
+          <div class="big-number" id="liveTotal" aria-live="polite">—</div>
+          <p class="live-label" id="liveTotalLabel" data-cms="hero.counter.label">profesionales del deporte ya forman parte del mapa</p>
+          <div class="live-stats">
+            <div class="live-stat"><b id="liveProvincias">—</b><span data-cms="hero.counter.provincias">provincias con socios</span></div>
+            <div class="live-stat"><b id="liveRoles">—</b><span data-cms="hero.counter.roles">perfiles profesionales del clúster</span></div>
+          </div>
+          <div class="role-bar" id="liveRoleBar" role="img" aria-label="Reparto de socios por perfil profesional"></div>
+          <p class="live-note" data-cms="hero.visor.note">Datos agregados y actualizados en tiempo real. La identidad de cada socio sólo es visible dentro del área privada.</p>
+          <div class="live-trust"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg><strong data-cms="hero.stat3.value">Privado</strong> <span data-cms="hero.stat3.label">acceso restringido a socios y administración.</span></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="block block-alt" id="mapa">
+      <div class="shell">
+        <div class="section-head reveal">
+          <span class="section-kicker" data-cms="hero.visor.caption">El visor del talento</span>
+          <h2 data-cms="mapa.h2">El talento, provincia a provincia</h2>
+          <p data-cms="mapa.lead">Pasa el cursor sobre cada provincia para ver cuántos socios hay y qué perfiles profesionales predominan.</p>
+        </div>
+        <div class="map-layout reveal">
+          <div class="map-frame"><div id="landing-map" role="region" aria-label="Mapa de socios por provincia; el ranking lateral ofrece la misma información"></div></div>
+          <div class="map-side">
+            <h3>Socios por provincia</h3>
+            <ol class="prov-rank" id="provRank"><li class="map-empty">Cargando datos…</li></ol>
+            <div class="legend" id="roleLegend"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -747,34 +349,26 @@
     <section class="block" id="proyecto">
       <div class="shell">
         <div class="section-head reveal">
-          <div>
-            <span class="section-kicker">01 · Proyecto</span>
-            <h2 data-cms="proyecto.h2">Qué resuelve el Mapa del Talento</h2>
-            <p data-cms="proyecto.lead">Una infraestructura de relación para AGESPORT, el clúster y el tejido profesional del deporte andaluz. Identifica, valida y conecta a quienes hacen deporte posible en el territorio.</p>
-          </div>
+          <span class="section-kicker">Proyecto</span>
+          <h2 data-cms="proyecto.h2">Qué resuelve el Mapa del Talento</h2>
+          <p data-cms="proyecto.lead">Una infraestructura de relación para AGESPORT, el clúster y el tejido profesional del deporte andaluz. Identifica, valida y conecta a quienes hacen deporte posible en el territorio.</p>
         </div>
         <div class="cards-3">
           <article class="card reveal">
-            <span class="card-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            </span>
+            <span class="card-icon"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
             <span class="tag" data-cms="proyecto.card1.tag">Propósito</span>
             <h3 data-cms="proyecto.card1.title">Identificar y ordenar el talento</h3>
             <p data-cms="proyecto.card1.body">Ubica físicamente la actividad profesional de cada socio y la conecta con experiencia, cargo, entidad y especialización técnica.</p>
           </article>
           <article class="card reveal">
-            <span class="card-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </span>
+            <span class="card-icon"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></span>
             <span class="tag" data-cms="proyecto.card2.tag">Valor sectorial</span>
             <h3 data-cms="proyecto.card2.title">Activar sinergias reales</h3>
             <p data-cms="proyecto.card2.body">Permite localizar expertos, colaboradores, mentores, consultores y agentes con capacidad de aportar a proyectos concretos.</p>
           </article>
           <article class="card reveal">
-            <span class="card-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-            </span>
-            <span class="tag navy" data-cms="proyecto.card3.tag">Clúster</span>
+            <span class="card-icon"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+            <span class="tag" data-cms="proyecto.card3.tag">Clúster</span>
             <h3 data-cms="proyecto.card3.title">Extender AGESPORT al ecosistema B2B</h3>
             <p data-cms="proyecto.card3.body">Abre una lectura industrial del sector: gestión, proveedores, tecnología, servicios, formación, eventos y administración pública.</p>
           </article>
@@ -782,123 +376,74 @@
       </div>
     </section>
 
-    <section class="block block-alt" id="capacidades">
+    <section class="block block-alt" id="socios">
       <div class="shell">
         <div class="section-head reveal">
-          <div>
-            <span class="section-kicker">02 · Capacidades</span>
-            <h2 data-cms="capacidades.h2">Capacidades planteadas</h2>
-            <p data-cms="capacidades.lead">La plataforma se articula en torno a capacidades de identificación, conexión, colaboración sectorial y lectura territorial del talento.</p>
-          </div>
+          <span class="section-kicker">Socios</span>
+          <h2 data-cms="socio.h2">¿Qué tipo de socio eres?</h2>
+          <p data-cms="socio.lead">El Mapa del Talento reúne a personas y a organizaciones. Cada ficha recoge los datos adecuados a su naturaleza.</p>
+        </div>
+        <div class="types">
+          <article class="type-card reveal">
+            <span class="card-icon"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span>
+            <h3 data-cms="fichas.fisica.title">Socio persona física</h3>
+            <p data-cms="fichas.fisica.body">Profesional que se asocia a título individual.</p>
+            <ul data-list="fichas.fisica.items"></ul>
+          </article>
+          <article class="type-card reveal">
+            <span class="card-icon"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 9h2a2 2 0 0 1 2 2v10M2 21h20M8 7h4M8 11h4M8 15h4"/></svg></span>
+            <h3 data-cms="fichas.juridica.title">Socio persona jurídica</h3>
+            <p data-cms="fichas.juridica.body">Organización que se asocia como entidad.</p>
+            <ul data-list="fichas.juridica.items"></ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="capacidades">
+      <div class="shell">
+        <div class="section-head reveal">
+          <span class="section-kicker">Capacidades</span>
+          <h2 data-cms="capacidades.h2">Capacidades planteadas</h2>
+          <p data-cms="capacidades.lead">La plataforma se articula en torno a capacidades de identificación, conexión, colaboración sectorial y lectura territorial del talento.</p>
         </div>
         <div class="cards-4">
-          <article class="card reveal">
-            <span class="card-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-            </span>
-            <h3 data-cms="capacidades.card1.title">Geolocalización profesional</h3>
-            <p data-cms="capacidades.card1.body">Dirección, localidad, provincia, comunidad autónoma y área de influencia para lectura territorial útil.</p>
-          </article>
-          <article class="card reveal">
-            <span class="card-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>
-            </span>
-            <h3 data-cms="capacidades.card2.title">Especialización por áreas</h3>
-            <p data-cms="capacidades.card2.body">16 especialidades: instalaciones, eventos, derecho, marketing, digitalización, RRHH, formación, sostenibilidad y más.</p>
-          </article>
-          <article class="card reveal">
-            <span class="card-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M20 3H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/></svg>
-            </span>
-            <h3 data-cms="capacidades.card3.title">Disponibilidad asociativa</h3>
-            <p data-cms="capacidades.card3.body">Mentorías, grupos de trabajo, ponencias y participación en iniciativas clave del clúster.</p>
-          </article>
-          <article class="card reveal">
-            <span class="card-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 4 4 5-6"/></svg>
-            </span>
-            <h3 data-cms="capacidades.card4.title">Observatorio de gestión</h3>
-            <p data-cms="capacidades.card4.body">Lectura de densidad profesional, especialidades dominantes y peso territorial del ecosistema.</p>
-          </article>
+          <article class="card reveal"><span class="card-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span><h3 data-cms="capacidades.card1.title">Geolocalización profesional</h3><p data-cms="capacidades.card1.body">Dirección, localidad, provincia, comunidad autónoma y área de influencia para lectura territorial útil.</p></article>
+          <article class="card reveal"><span class="card-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9L12 3z"/></svg></span><h3 data-cms="capacidades.card2.title">Especialización por áreas</h3><p data-cms="capacidades.card2.body">16 especialidades: instalaciones, eventos, derecho, marketing, digitalización, RRHH, formación, sostenibilidad y más.</p></article>
+          <article class="card reveal"><span class="card-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M16 14.6c3 .2 5.5 2 5.5 5.4"/></svg></span><h3 data-cms="capacidades.card3.title">Disponibilidad asociativa</h3><p data-cms="capacidades.card3.body">Mentorías, grupos de trabajo, ponencias y participación en iniciativas clave del clúster.</p></article>
+          <article class="card reveal"><span class="card-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><h3 data-cms="capacidades.card4.title">Observatorio de gestión</h3><p data-cms="capacidades.card4.body">Lectura de densidad profesional, especialidades dominantes y peso territorial del ecosistema.</p></article>
         </div>
       </div>
     </section>
 
-    <section class="block" id="fases">
+    <section class="block block-alt" id="fases">
       <div class="shell">
         <div class="section-head reveal">
-          <div>
-            <span class="section-kicker">03 · Implementación</span>
-            <h2 data-cms="fases.h2">Implementación en 4 fases</h2>
-            <p data-cms="fases.lead">La propuesta se organiza en cuatro etapas para estructurar la recogida de información, su validación, la visualización privada y la activación del ecosistema profesional.</p>
-          </div>
+          <span class="section-kicker">Implementación</span>
+          <h2 data-cms="fases.h2">Implementación en 4 fases</h2>
+          <p data-cms="fases.lead">La propuesta se organiza en cuatro etapas para estructurar la recogida de información, su validación, la visualización privada y la activación del ecosistema profesional.</p>
         </div>
-        <!-- Timeline horizontal en 4 columnas para dar peso visual a cada fase
-             y eliminar el hueco vacío que dejaba el antiguo .split. -->
-        <div class="timeline timeline-h">
-          <div class="step reveal">
-            <div class="step-num">1</div>
-            <div class="card">
-              <h3 data-cms="fases.fase1.title">Ficha del talento</h3>
-              <p data-cms="fases.fase1.body">Captura normalizada de datos de perfil profesional, especialidad, localización y relación con el clúster, con consentimientos RGPD explícitos.</p>
-            </div>
-          </div>
-          <div class="step reveal">
-            <div class="step-num">2</div>
-            <div class="card">
-              <h3 data-cms="fases.fase2.title">Procesamiento y validación por AGESPORT</h3>
-              <p data-cms="fases.fase2.body">Revisión por Gerencia, alta del socio en el entorno privado y segmentación de la base para asegurar consistencia operativa.</p>
-            </div>
-          </div>
-          <div class="step reveal">
-            <div class="step-num">3</div>
-            <div class="card">
-              <h3 data-cms="fases.fase3.title">Visualización privada del ecosistema</h3>
-              <p data-cms="fases.fase3.body">Acceso restringido para consulta del directorio, lectura del mapa territorial y localización de perfiles relevantes.</p>
-            </div>
-          </div>
-          <div class="step reveal">
-            <div class="step-num">4</div>
-            <div class="card">
-              <h3 data-cms="fases.fase4.title">Dinamización del clúster</h3>
-              <p data-cms="fases.fase4.body">Activación del sistema como base de networking, asesoramiento, contacto directo entre socios y generación de oportunidades B2B.</p>
-            </div>
-          </div>
+        <div class="timeline">
+          <div class="step reveal"><div class="step-num">1</div><div class="card"><h3 data-cms="fases.fase1.title">Ficha del talento</h3><p data-cms="fases.fase1.body">Captura normalizada de datos de perfil profesional, especialidad, localización y relación con el clúster, con consentimientos RGPD explícitos.</p></div></div>
+          <div class="step reveal"><div class="step-num">2</div><div class="card"><h3 data-cms="fases.fase2.title">Procesamiento y validación por AGESPORT</h3><p data-cms="fases.fase2.body">Revisión por Gerencia, alta del socio en el entorno privado y segmentación de la base para asegurar consistencia operativa.</p></div></div>
+          <div class="step reveal"><div class="step-num">3</div><div class="card"><h3 data-cms="fases.fase3.title">Visualización privada del ecosistema</h3><p data-cms="fases.fase3.body">Acceso restringido para consulta del directorio, lectura del mapa territorial y localización de perfiles relevantes.</p></div></div>
+          <div class="step reveal"><div class="step-num">4</div><div class="card"><h3 data-cms="fases.fase4.title">Dinamización del clúster</h3><p data-cms="fases.fase4.body">Activación del sistema como base de networking, asesoramiento, contacto directo entre socios y generación de oportunidades B2B.</p></div></div>
         </div>
       </div>
     </section>
 
-    <!-- Apartado propio para los accesos: ancho completo, minimalista. -->
-    <section class="block" style="padding-top:0">
+    <section class="block" id="acceso">
       <div class="shell">
-        <div id="acceso" class="access-panel reveal">
-          <div class="access-head">
-            <span class="section-kicker">04 · Acceso</span>
+        <div class="cta-band reveal">
+          <div>
+            <span class="section-kicker" style="color:#b7e4c7">Acceso</span>
             <h2 data-cms="acceso.h3">Accede a la plataforma</h2>
-            <p class="muted" data-cms="acceso.lead">Elige tu vía de entrada. Los accesos de socio y administración son independientes.</p>
+            <p data-cms="acceso.lead">Elige tu vía de entrada. Los accesos de socio y administración son independientes.</p>
           </div>
           <div class="access-grid">
-            <a class="access-card" href="/acceso.html">
-              <span class="access-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
-              </span>
-              <strong data-cms="acceso.cta1.label">Acceso socio</strong>
-              <span>Entra a tu área privada, directorio y mensajería.</span>
-            </a>
-            <a class="access-card" href="/acceso-admin.html">
-              <span class="access-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>
-              </span>
-              <strong data-cms="acceso.cta3.label">Acceso administración</strong>
-              <span>Panel de gestión, aprobaciones y contenidos.</span>
-            </a>
-            <a class="access-card" href="/registro.html">
-              <span class="access-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-              </span>
-              <strong data-cms="acceso.cta2.label">Solicitar acceso</strong>
-              <span>¿Aún no eres socio? Envía tu solicitud de alta.</span>
-            </a>
+            <a class="access-card" href="/acceso.html"><span class="access-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span><strong data-cms="acceso.cta1.label">Acceso socio</strong><span>Área privada, directorio, mapa y mensajería.</span></a>
+            <a class="access-card" href="/registro.html"><span class="access-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><strong data-cms="acceso.cta2.label">Solicitar acceso</strong><span>¿Aún no estás? Envía tu solicitud de alta.</span></a>
+            <a class="access-card" href="/acceso-admin.html"><span class="access-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg></span><strong data-cms="acceso.cta3.label">Acceso administración</strong><span>Gestión, aprobaciones y contenidos.</span></a>
           </div>
         </div>
       </div>
@@ -909,15 +454,13 @@
     <div class="shell footer-inner">
       <div data-cms="footer.line1">AGESPORT · Mapa del Talento · Andalucía</div>
       <div data-cms="footer.line2">Plataforma privada orientada a conexión, conocimiento y activación sectorial.</div>
-      <div><a href="/privacidad.html" style="color:var(--green-deep);text-decoration:none">Política de privacidad y protección de datos</a></div>
+      <div><a href="/privacidad.html">Política de privacidad y protección de datos</a></div>
     </div>
   </footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="/assets/catalogos.js"></script>
   <script src="/assets/landing.js"></script>
-  <!-- El fade-in al scroll vive dentro de landing.js (la sesión hermana lo
-       consolidó ahí). Se eliminó el observer inline duplicado que estaba aquí. -->
   <!-- Editor in-situ: sólo se muestra si el visitante está autenticado como admin. -->
   <script src="/assets/landing-editor.js" defer></script>
   <script src="/assets/cookie-banner.js" defer></script>

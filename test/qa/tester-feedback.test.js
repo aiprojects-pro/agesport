@@ -122,7 +122,9 @@ test('CSV missing province is rejected early; corrected import preserves new fie
  assert.equal(imported.sector,'privado');assert.equal(imported.rol_secundario,payload.rol_secundario);assert.ok(imported.telefono_personal_encrypted);
 });
 test('additive migration can be applied again without losing profile data',async()=>{
- await db.query(fs.readFileSync(path.resolve(__dirname,'../../database/migrations/018_profile_fields_and_specialties.sql'),'utf8'));
+ // Re-apply the profile migration and every later one (022 extends the view 018 defines).
+ const dir=path.resolve(__dirname,'../../database/migrations');
+ for(const f of fs.readdirSync(dir).filter(f=>f.endsWith('.sql')&&f>='018').sort()) await db.query(fs.readFileSync(path.join(dir,f),'utf8'));
  const profile=await call('/api/socios/perfil/'+ownerId,null,owner,'GET');assert.equal(profile.status,200);assert.equal(profile.body.socio.especialidades.length,cat.ESPECIALIDADES.length);assert.equal(profile.body.socio.telefono_personal,payload.telefono_personal);
 });
 test('old emailed paths redirect to valid login pages',async()=>{

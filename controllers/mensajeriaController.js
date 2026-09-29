@@ -69,7 +69,7 @@ class MensajeriaController {
     if (notifyEmail && consents.acepta_notificaciones_email) {
       try {
         const delivery = await emailService.notifyNewMessage(
-          { email: receptor.email_preferido === 'personal' && receptor.email_personal ? receptor.email_personal : receptor.email, nombre: receptor.nombre, acepta_notificaciones_email: true },
+          { ...receptor, acepta_notificaciones_email: true },
           { nombre: emisor.nombre, apellidos: emisor.apellidos },
           contenido
         );

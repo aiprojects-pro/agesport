@@ -34,3 +34,38 @@ exports.relocate = async (req,res,next) => {
     res.json({actualizado:true,message:'Ubicación municipal recuperada. Actualiza el mapa para verla.'});
   } catch(err) {next(err);}
 };
+
+// Geolocalización masiva de los socios aprobados sin municipio. Corre en
+// segundo plano respetando el límite de Nominatim (1 petición/segundo).
+let bulkRunning = false;
+exports.bulkRelocate = async (req,res,next) => {
+  const db=require('../config/database');
+  const geo=require('../services/geocodingService');
+  try {
+    if (bulkRunning) return res.status(409).json({error:'Ya hay una geolocalización en curso. Actualiza el diagnóstico en unos minutos.'});
+    const rows=(await db.query(`SELECT id,localidad,provincia FROM socios
+      WHERE activo=true AND estado='aprobado' AND (latitud IS NULL OR longitud IS NULL)
+        AND COALESCE(trim(localidad),'')<>'' AND COALESCE(trim(provincia),'')<>'' ORDER BY id`)).rows;
+    await auditAction(null,req.adminId,'BULK_RECOVER_MAP_LOCATION','socios',null,{pendientes:rows.length},req);
+    res.json({pendientes:rows.length,message:rows.length ? `Geolocalizando ${rows.length} perfiles en segundo plano (aprox. ${Math.ceil(rows.length*1.1)} s). Actualiza el diagnóstico al terminar.` : 'No hay perfiles pendientes de ubicar.'});
+    if (!rows.length) return;
+    bulkRunning = true;
+    const delay = process.env.NODE_ENV === 'test' ? 0 : 1100;
+    setImmediate(async () => {
+      let ok=0;
+      try {
+        for (const s of rows) {
+          try {
+            const coords=await geo.geocode(`${s.localidad}, ${s.provincia}, España`);
+            if (coords) {
+              const r=await db.query(`UPDATE socios SET latitud=$1,longitud=$2 WHERE id=$3 AND localidad=$4 AND provincia=$5 AND latitud IS NULL RETURNING id`,[coords.lat,coords.lng,s.id,s.localidad,s.provincia]);
+              ok+=r.rows.length;
+            }
+          } catch (e) { /* municipio no localizable: queda la referencia provincial */ }
+          if (delay) await new Promise(r=>setTimeout(r,delay));
+        }
+        console.log(`[geocode] geolocalización masiva: ${ok}/${rows.length} perfiles ubicados`);
+      } finally { bulkRunning = false; }
+    });
+  } catch(err) {bulkRunning=false;next(err);}
+};

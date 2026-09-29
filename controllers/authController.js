@@ -221,6 +221,12 @@ class AuthController {
 
       // Notificar a administradores
       try { await emailService.notifyAdminNewRegistration(nuevoSocio); } catch (e) { console.warn('Email admin:', e.message); }
+      // Acuse de recibo al solicitante (plantilla editable email.confirmation.*).
+      try {
+        await emailService.notifyRegistrationReceived({
+          ...nuevoSocio, email_personal: email_personal || null, email_preferido: email_preferido || 'profesional',
+        });
+      } catch (e) { console.warn('Email confirmación:', e.message); }
 
       // Auditar registro
       await auditAction(nuevoSocio.id, null, 'REGISTER', 'socios', null, nuevoSocio, req);

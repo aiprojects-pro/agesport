@@ -38,6 +38,13 @@
     catch(err){$('mapDiagnostics').textContent=err.message;btn.disabled=false;}
   });
 
+  $('bulkGeocodeBtn').addEventListener('click',async()=>{
+    const btn=$('bulkGeocodeBtn'); btn.disabled=true;
+    try { const r=await request('/api/admin/mapa-diagnostico/completar-ubicaciones',{method:'POST'}); $('mapDiagnostics').textContent=r.message; }
+    catch(err){ $('mapDiagnostics').textContent=err.message; }
+    finally { btn.disabled=false; }
+  });
+
   function stateBadge(state) {
     const cls=({aprobado:'ok',pendiente:'pending',suspendido:'blocked',rechazado:'blocked'})[state] || 'neutral';
     return '<span class="state-badge '+cls+'">'+escapeHtml(state || 'Sin estado')+'</span>';
@@ -350,10 +357,11 @@
 
       Array.from(document.querySelectorAll('[data-reject]')).forEach(function (btn) {
         btn.addEventListener('click', async function () {
-          if (!window.confirm('¿Rechazar esta solicitud?')) return;
+          const motivo = await askRejectionReason();
+          if (!motivo) return;
           try {
             await request('/api/admin/socios/' + btn.dataset.reject + '/rechazar', {
-              method: 'POST', body: JSON.stringify({ motivo: 'Rechazado por administración' })
+              method: 'POST', body: JSON.stringify({ motivo: motivo })
             });
             await loadPendientes();
           } catch (err) {
@@ -886,14 +894,54 @@
         rolSel.appendChild(opt);
       });
     }
+    const histSel = $('comHistProvincia');
+    if (histSel && histSel.options.length === 1) {
+      Array.from(provSel.options).slice(1).forEach(function (o) { histSel.appendChild(new Option(o.textContent, o.value)); });
+    }
     window._comLoaded = true;
+    loadComHistorial();
   }
+
+  const COM_ESTADOS = { en_cola: 'En cola', enviando: 'Enviando', completada: 'Completada', con_errores: 'Con errores' };
+  async function loadComHistorial() {
+    const box = $('comHistList');
+    if (!box) return;
+    try {
+      const q = $('comHistProvincia').value ? '?provincia=' + encodeURIComponent($('comHistProvincia').value) : '';
+      const data = await request('/api/admin/comunicaciones' + q, { method: 'GET', headers: {} });
+      const rows = data.comunicaciones || [];
+      box.innerHTML = rows.length ? '<div class="table-scroll"><table class="table-list"><thead><tr><th>Fecha</th><th>Asunto</th><th>Enviado por</th><th>Destinatarios por provincia</th><th>Resultado</th><th></th></tr></thead><tbody>' +
+        rows.map(function (c) {
+          const provs = (c.por_provincia || []).map(function (p) { return escapeHtml(p.provincia) + ': ' + p.total; }).join(' · ');
+          return '<tr><td>' + new Date(c.created_at).toLocaleString('es-ES') + '</td><td>' + escapeHtml(c.asunto) + '</td><td>' + escapeHtml(c.admin_nombre || '—') + '</td><td>' + provs + '</td>' +
+            '<td>' + escapeHtml(COM_ESTADOS[c.estado] || c.estado) + ' · ' + c.enviados + ' aceptados / ' + c.fallidos + ' fallidos de ' + c.total_destinatarios + '</td>' +
+            '<td><button type="button" class="btn-upload" data-com-detalle="' + c.id + '">Ver destinatarios</button></td></tr>' +
+            '<tr hidden data-com-detalle-row="' + c.id + '"><td colspan="6"></td></tr>';
+        }).join('') + '</tbody></table></div>' : '<p class="muted">Todavía no se ha enviado ninguna comunicación.</p>';
+    } catch (e) { box.textContent = e.message; }
+  }
+  if ($('comHistBtn')) $('comHistBtn').addEventListener('click', loadComHistorial);
+  if ($('comHistProvincia')) $('comHistProvincia').addEventListener('change', loadComHistorial);
+  if ($('comHistList')) $('comHistList').addEventListener('click', async function (ev) {
+    const btn = ev.target.closest('[data-com-detalle]');
+    if (!btn) return;
+    const row = document.querySelector('[data-com-detalle-row="' + btn.dataset.comDetalle + '"]');
+    if (!row.hidden) { row.hidden = true; return; }
+    try {
+      const d = await request('/api/admin/comunicaciones/' + btn.dataset.comDetalle + '/destinatarios', { method: 'GET', headers: {} });
+      row.firstElementChild.innerHTML = '<ul style="margin:0;padding-left:18px">' + (d.destinatarios || []).map(function (x) {
+        return '<li>' + escapeHtml([x.nombre, x.apellidos].filter(Boolean).join(' ') || 'Socio eliminado') + ' · ' + escapeHtml(x.provincia || '—') + ' · ' + escapeHtml(x.email_destino) + ' · ' + escapeHtml(x.estado) + (x.error_code ? ' (' + escapeHtml(x.error_code) + ')' : '') + '</li>';
+      }).join('') + '</ul>';
+      row.hidden = false;
+    } catch (e) { row.firstElementChild.textContent = e.message; row.hidden = false; }
+  });
   function readComFilters() {
     return {
       provincia: $('comProvincia').value || null,
       rol_cluster: $('comRol').value || null,
       disponibilidad: $('comDisponibilidad').value || null,
       ambito: $('comAmbito').value || null,
+      sector: $('comSector').value || null,
       solo_mentores: $('comSoloMentores').checked,
     };
   }
@@ -935,7 +983,8 @@
           method: 'POST', body: JSON.stringify({ asunto, cuerpo, filtros }),
         });
         setMessage($('comMessage'), true,
-          r.message + ' · ' + r.destinatarios + ' destinatarios · envío en curso');
+          r.message + ' · ' + r.destinatarios + ' destinatarios · envío en curso. El resultado queda en el histórico.');
+        setTimeout(loadComHistorial, 1500);
       } catch (e) { setMessage($('comMessage'), false, e.message); }
       finally { btn.disabled = false; btn.textContent = 'Enviar comunicación'; }
     });
@@ -1022,7 +1071,44 @@
     'email.welcome.cta':        { grupo: 'Bienvenida',   label: 'Texto del botón de acceso' },
     'email.welcome.outro':      { grupo: 'Bienvenida',   label: 'Despedida', multiline: true },
     'email.welcome.signature':  { grupo: 'Bienvenida',   label: 'Firma final' },
+    'email.confirmation.subject':   { grupo: 'Confirmación de solicitud', label: 'Asunto del email' },
+    'email.confirmation.heading':   { grupo: 'Confirmación de solicitud', label: 'Encabezado' },
+    'email.confirmation.greeting':  { grupo: 'Confirmación de solicitud', label: 'Saludo (usa {nombre})' },
+    'email.confirmation.body':      { grupo: 'Confirmación de solicitud', label: 'Texto principal', multiline: true },
+    'email.confirmation.outro':     { grupo: 'Confirmación de solicitud', label: 'Texto final', multiline: true },
+    'email.confirmation.signature': { grupo: 'Confirmación de solicitud', label: 'Firma' },
+    'email.rejection.subject':      { grupo: 'Rechazo', label: 'Asunto del email' },
+    'email.rejection.heading':      { grupo: 'Rechazo', label: 'Encabezado' },
+    'email.rejection.greeting':     { grupo: 'Rechazo', label: 'Saludo (usa {nombre})' },
+    'email.rejection.intro':        { grupo: 'Rechazo', label: 'Texto principal', multiline: true },
+    'email.rejection.motivo_label': { grupo: 'Rechazo', label: 'Etiqueta antes del motivo' },
+    'email.rejection.motivos':      { grupo: 'Rechazo', label: 'Motivos predefinidos (separados por "|")', multiline: true, hint: 'Se ofrecen al rechazar; también se admite un motivo libre' },
+    'email.rejection.outro':        { grupo: 'Rechazo', label: 'Texto final', multiline: true },
+    'email.rejection.signature':    { grupo: 'Rechazo', label: 'Firma' },
+    'email.message.subject':        { grupo: 'Aviso de mensaje nuevo', label: 'Asunto (usa {emisor})' },
+    'email.message.intro':          { grupo: 'Aviso de mensaje nuevo', label: 'Texto antes del extracto (usa {emisor})', multiline: true },
+    'email.message.cta':            { grupo: 'Aviso de mensaje nuevo', label: 'Texto del botón' },
+    'email.message.outro':          { grupo: 'Aviso de mensaje nuevo', label: 'Pie del aviso', multiline: true },
   };
+
+  // Motivo de rechazo: lista configurable (email.rejection.motivos) o texto
+  // libre. El motivo se incluye en el email que recibe el solicitante.
+  async function askRejectionReason() {
+    let motivos = [];
+    try {
+      const data = await request('/api/admin/landing?prefix=email.', { method: 'GET', headers: {} });
+      const row = (data.content || []).find(function (x) { return x.clave === 'email.rejection.motivos'; });
+      motivos = row ? String(row.valor || '').split(/[|\n]/).map(function (m) { return m.trim(); }).filter(Boolean) : [];
+    } catch (_) { /* sin lista: sólo texto libre */ }
+    const texto = window.prompt('Motivo del rechazo (se enviará al solicitante).' +
+      (motivos.length ? '\nEscribe el número de un motivo o un texto propio:\n' + motivos.map(function (m, i) { return (i + 1) + '. ' + m; }).join('\n') : ''), '');
+    if (texto === null) return null;
+    const t = texto.trim();
+    const n = parseInt(t, 10);
+    const motivo = String(n) === t && motivos[n - 1] ? motivos[n - 1] : t;
+    if (!motivo) { window.alert('Indica un motivo para rechazar la solicitud.'); return null; }
+    return window.confirm('¿Rechazar la solicitud con este motivo?\n\n' + motivo) ? motivo : null;
+  }
 
   async function loadEmailTemplates() {
     try {

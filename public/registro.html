@@ -165,16 +165,17 @@
         <label class="type-card active" data-tipo="numero">
           <input type="radio" name="tipo" value="numero" checked>
           <span class="tag">Persona física</span>
-          <h3>Socio/a de número</h3>
-          <p>Profesional individual que se incorpora a la asociación con plenitud de derechos.</p>
+          <h3 data-ficha="fichas.fisica.title">Socio/a de número</h3>
+          <p data-ficha="fichas.fisica.body">Profesional individual que se incorpora a la asociación con plenitud de derechos.</p>
         </label>
         <label class="type-card" data-tipo="asociado_corporativo">
           <input type="radio" name="tipo" value="asociado_corporativo">
           <span class="tag">Persona jurídica</span>
-          <h3>Socio/a asociado corporativo</h3>
-          <p>Empresa, club, federación o entidad que coadyuva en los fines de AGESPORT.</p>
+          <h3 data-ficha="fichas.juridica.title">Socio/a asociado corporativo</h3>
+          <p data-ficha="fichas.juridica.body">Empresa, club, federación o entidad que coadyuva en los fines de AGESPORT.</p>
         </label>
       </div>
+      <p style="margin-top:10px"><a href="#" data-open-fichas>Ver las fichas completas de cada tipo de socio</a></p>
 
       <form id="registerForm" class="form-grid" style="margin-top:6px">
 
@@ -343,6 +344,7 @@
 
   <script src="/assets/catalogos.js"></script>
   <script src="/assets/portal.js"></script>
+  <script src="/assets/fichas-socio.js"></script>
   <script src="/assets/register.js"></script>
   <script src="/assets/password-toggle.js" defer></script>
   <script src="/assets/cookie-banner.js" defer></script>

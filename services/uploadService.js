@@ -39,7 +39,7 @@ const MIME_TO_EXT = {
 const generateFilename = (originalname, mimetype) => {
   const ext = MIME_TO_EXT[mimetype] || '.bin';
   const stamp = Date.now();
-  const rand = crypto.randomBytes(6).toString('hex');
+  const rand = crypto.randomBytes(16).toString('hex');
   return `${stamp}-${rand}${ext}`;
 };
 
@@ -49,7 +49,7 @@ const buildStorage = (subdir) => multer.diskStorage({
     cb(null, path.join(UPLOADS_ROOT, subdir));
   },
   filename: function (req, file, cb) {
-    cb(null, generateFilename(file.originalname));
+    cb(null, generateFilename(file.originalname, file.mimetype));
   }
 });
 
@@ -81,11 +81,35 @@ const uploadFoto = multer({
   fileFilter: imageFilter
 }).single('foto');
 
-const uploadCV = multer({
+const uploadCVRaw = multer({
   storage: buildStorage('cvs'),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB para CVs
   fileFilter: cvFilter
 }).single('cv');
+
+// El tipo MIME lo declara el navegador y es falsificable: se comprueba la
+// firma real del fichero (PDF, DOC OLE2 o DOCX/ZIP) y se borra si no cuadra.
+const CV_SIGNATURES = [
+  Buffer.from('%PDF-'),
+  Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]),
+  Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+];
+const uploadCV = (req, res, cb) => uploadCVRaw(req, res, (err) => {
+  if (err || !req.file) return cb(err);
+  try {
+    const fd = fs.openSync(req.file.path, 'r');
+    const head = Buffer.alloc(8);
+    fs.readSync(fd, head, 0, 8, 0);
+    fs.closeSync(fd);
+    if (!CV_SIGNATURES.some((sig) => head.subarray(0, sig.length).equals(sig))) {
+      fs.unlinkSync(req.file.path);
+      return cb(new Error('El fichero no es un PDF, DOC o DOCX válido.'));
+    }
+  } catch (e) {
+    return cb(new Error('No se pudo comprobar el fichero subido.'));
+  }
+  cb();
+});
 
 const uploadLogo = multer({
   storage: buildStorage('logos'),

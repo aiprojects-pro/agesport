@@ -201,7 +201,7 @@ FRONTEND (SPA)     ←→    BACKEND (Node.js)    ←→    DATABASE (PostgreSQL
 
 1. **Review del código** por el equipo técnico AGESPORT
 2. **Configuración del servidor** de producción
-3. **Setup del dominio** mapatalento.agesport.org
+3. **Setup del dominio** mapadeltalento.agesport.org
 4. **Deployment inicial** en staging environment
 5. **Testing de usuario** con grupo beta
 6. **Go-live** en producción

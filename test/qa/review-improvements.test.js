@@ -86,9 +86,14 @@ test('CV direct URL requires authentication and relationship; all static bypasse
  assert.equal((await call(cv,tokens[0])).status,200);assert.equal((await call(cv,admin)).status,200);
  assert.match((await call(cv,admin)).headers.get('cache-control'),/no-store/);
  assert.equal((await call('/api/socios/perfil/'+ids[0],tokens[1])).body.socio.cv_url,undefined);
- await db.query('INSERT INTO conversaciones(socio_1_id,socio_2_id) VALUES($1,$2)',[ids[0],ids[1]]);
+ const conv=(await db.query('INSERT INTO conversaciones(socio_1_id,socio_2_id) VALUES($1,$2) RETURNING id',[ids[0],ids[1]])).rows[0].id;
+ // A conversation opened only by the requester does not unlock the CV.
+ await db.query('INSERT INTO mensajes(conversacion_id,emisor_id,receptor_id,contenido) VALUES($1,$2,$3,$4)',[conv,ids[1],ids[0],'Hola']);
+ assert.equal((await call(cv,tokens[1])).status,403);
+ await db.query('INSERT INTO mensajes(conversacion_id,emisor_id,receptor_id,contenido) VALUES($1,$2,$3,$4)',[conv,ids[0],ids[1],'Respuesta']);
  assert.equal((await call(cv,tokens[1])).status,200);assert.equal((await call(cv,tokens[2])).status,403);
  assert.equal((await call('/api/socios/perfil/'+ids[0],tokens[1])).body.socio.cv_url,cv);
+ await db.query('DELETE FROM mensajes WHERE conversacion_id=$1',[conv]);
  for(const url of ['/uploads/cvs%2fsynthetic.pdf','/uploads/fotos/%2e%2e%2fcvs%2fsynthetic.pdf','/uploads//cvs/synthetic.pdf']) assert.notEqual((await call(url)).status,200);
 });
 test('preferred email is used; SMTP failure is distinct from stored internal message',async()=>{

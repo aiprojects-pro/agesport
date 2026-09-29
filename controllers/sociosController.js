@@ -61,7 +61,7 @@ class SociosController {
         socios = await sociosQueries.searchSocios(search, filters, req.socioId);
       } else {
         // Construir query con filtros
-        let query = 'SELECT * FROM vista_socios_completos WHERE (acepta_visibilidad_datos=true OR id=$1)';
+        let query = 'SELECT * FROM vista_socios_perfil WHERE (acepta_visibilidad_datos=true OR id=$1)';
         const params = [req.socioId];
         let paramIndex = 2;
 
@@ -324,7 +324,7 @@ class SociosController {
       }
 
       const result = await db.query(
-        'SELECT * FROM vista_socios_completos WHERE id = $1',
+        'SELECT * FROM vista_socios_perfil WHERE id = $1',
         [socioId]
       );
 
@@ -341,6 +341,8 @@ class SociosController {
         const consentimientos = await db.findOne('consentimientos', { socio_id: socio.id });
         socio.acepta_mapa_interactivo = !!(consentimientos && (consentimientos.mapa_visible ?? consentimientos.acepta_mapa_interactivo));
         socio.acepta_notificaciones_email = !!(consentimientos && consentimientos.acepta_notificaciones_email);
+        socio.email_profesional = socio.email_profesional || socio.email;
+        socio.email_contacto = require('../services/contactEmail').contactEmailFor(socio);
       }
 
       // DNI sólo se descifra para owner/admin.
@@ -389,6 +391,7 @@ class SociosController {
 
         // v2: campos nuevos
         tipo_socio, email_personal, email_preferido, nombre_organizacion,
+        email_profesional, email_visible,
 
         // Rol cluster
         rol_cluster, b2b_ofrece, b2b_busca, b2b_licita,
@@ -449,8 +452,15 @@ class SociosController {
         if (tipo_socio !== undefined && tipo_socio !== datosAnteriores.tipo_socio) {
           const error = new Error('Solicita a administración el cambio de tipo de socio'); error.status=403; throw error;
         }
-        if (email_personal !== undefined) socioUpdate.email_personal = email_personal;
+        if (email_personal !== undefined) socioUpdate.email_personal = email_personal ? String(email_personal).trim() : null;
+        if (email_profesional !== undefined) socioUpdate.email_profesional = email_profesional ? String(email_profesional).trim() : null;
         if (email_preferido !== undefined) socioUpdate.email_preferido = email_preferido;
+        if (email_visible !== undefined) socioUpdate.email_visible = email_visible;
+        // El email elegido para avisos/directorio debe existir tras el cambio.
+        const personalFinal = email_personal !== undefined ? email_personal : datosAnteriores.email_personal;
+        if ((email_preferido === 'personal' || email_visible === 'personal') && !personalFinal) {
+          const error = new Error('Indica tu email personal para poder usarlo como email de contacto'); error.status = 400; throw error;
+        }
         if (nombre_organizacion !== undefined) socioUpdate.nombre_organizacion = nombre_organizacion;
 
         // Geocoding por municipio.
@@ -516,10 +526,13 @@ class SociosController {
           }
         }
 
-        // 4. Actualizar disponibilidad
+        // 4. Actualizar disponibilidad ('ninguna' = decisión explícita de no estar disponible)
         if (disponibilidad !== undefined) {
+          if (disponibilidad === 'ninguna' && [ponente, tutor_mentor, asistente, congreso_almeria, representacion, captacion_patrocinio].some(Boolean)) {
+            const error = new Error('Has indicado que no estás disponible: desmarca las opciones de colaboración o elige un nivel de disponibilidad'); error.status = 400; throw error;
+          }
           await client.query('DELETE FROM disponibilidad WHERE socio_id = $1', [socioId]);
-          if (disponibilidad) {
+          if (disponibilidad && disponibilidad !== 'ninguna') {
             await client.query(`
               INSERT INTO disponibilidad (
                 socio_id, nivel, ponente, tutor_mentor, asistente,
@@ -559,6 +572,9 @@ class SociosController {
         if (visible_email_directo !== undefined) consentimientoUpdate.visible_email_directo = visible_email_directo;
         if (visible_web_profesional !== undefined) consentimientoUpdate.visible_web_profesional = visible_web_profesional;
         if (visible_linkedin !== undefined) consentimientoUpdate.visible_linkedin = visible_linkedin;
+        // Guardado desde el formulario completo: el socio ha resuelto todas
+        // las decisiones obligatorias (validado en validateProfileData).
+        if (req.body.confirmar_preferencias === true) consentimientoUpdate.preferencias_revisadas_at = new Date();
 
         if (Object.keys(consentimientoUpdate).length > 0) {
           // Las cuentas importadas antiguas pueden no tener esta fila.
@@ -578,7 +594,7 @@ class SociosController {
 
       // Obtener datos actualizados
       const socioActualizado = await db.query(
-        'SELECT * FROM vista_socios_completos WHERE id = $1',
+        'SELECT * FROM vista_socios_perfil WHERE id = $1',
         [socioId]
       );
 
@@ -670,7 +686,7 @@ class SociosController {
       // Distribución por provincias
       const provinciasDist = await db.query(`
         SELECT provincia, COUNT(*) as total
-        FROM vista_socios_completos 
+        FROM vista_socios_perfil 
         GROUP BY provincia 
         ORDER BY total DESC
       `);
@@ -678,7 +694,7 @@ class SociosController {
       // Distribución por roles cluster
       const rolesDist = await db.query(`
         SELECT rol_cluster, COUNT(*) as total
-        FROM (SELECT unnest(ARRAY[rol_cluster,rol_secundario]) AS rol_cluster FROM vista_socios_completos) roles
+        FROM (SELECT unnest(ARRAY[rol_cluster,rol_secundario]) AS rol_cluster FROM vista_socios_perfil) roles
         WHERE rol_cluster IS NOT NULL
         GROUP BY rol_cluster 
         ORDER BY total DESC
@@ -692,7 +708,7 @@ class SociosController {
         SELECT especialidad, COUNT(*) as total
         FROM (
           SELECT unnest(especialidades) as especialidad
-          FROM vista_socios_completos
+          FROM vista_socios_perfil
           WHERE especialidades IS NOT NULL
         ) t
         GROUP BY especialidad 
@@ -703,7 +719,7 @@ class SociosController {
       // Disponibilidad para mentoring/ponencias
       const disponibilidadDist = await db.query(`
         SELECT disponibilidad, COUNT(*) as total
-        FROM vista_socios_completos 
+        FROM vista_socios_perfil 
         WHERE disponibilidad IS NOT NULL
         GROUP BY disponibilidad 
         ORDER BY 
@@ -921,6 +937,18 @@ class SociosController {
     } catch (error) {
       console.error('Error subiendo CV:', error);
       res.status(500).json({ error: 'Error subiendo CV' });
+    }
+  }
+
+  // ==================== PRIMER ACCESO ====================
+
+  async marcarBienvenidaVista(req, res) {
+    try {
+      await db.query('UPDATE socios SET bienvenida_vista_at = COALESCE(bienvenida_vista_at, NOW()) WHERE id = $1', [req.socioId]);
+      res.json({ ok: true });
+    } catch (error) {
+      console.error('Error marcando bienvenida:', error);
+      res.status(500).json({ error: 'No se pudo guardar' });
     }
   }
 

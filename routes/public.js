@@ -10,7 +10,20 @@ router.get('/visor-talento', async (req, res) => {
   try {
     const provincias = await sociosQueries.socioCountsByProvincia();
     const total = provincias.reduce((acc, p) => acc + p.count, 0);
-    res.json({ provincias, total });
+    const rolesGlobal = await db.query(`
+      SELECT rc.rol AS rol_cluster, COUNT(*)::int AS count
+      FROM socios s JOIN rol_cluster rc ON rc.socio_id = s.id
+      WHERE s.estado = 'aprobado' AND s.activo = true
+      GROUP BY rc.rol ORDER BY count DESC
+    `);
+    res.set('Cache-Control', 'public, max-age=60');
+    res.json({
+      provincias,
+      total,
+      total_provincias: provincias.length,
+      roles: rolesGlobal.rows,
+      actualizado: new Date().toISOString(),
+    });
   } catch (error) {
     console.error('Error en visor publico:', error);
     res.status(500).json({ error: 'Error obteniendo el visor del talento' });
@@ -35,7 +48,7 @@ router.get('/mapa-puntos', async (req, res) => {
       JOIN consentimientos c ON c.socio_id = s.id
       WHERE s.estado = 'aprobado'
         AND s.activo = true
-        AND c.acepta_mapa_interactivo = true
+        AND COALESCE(c.mapa_visible, c.acepta_mapa_interactivo, false) = true
         AND s.latitud IS NOT NULL
         AND s.longitud IS NOT NULL
     `);
