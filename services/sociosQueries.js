@@ -9,7 +9,7 @@ async function findNearby(lat, lng, radiusKm = 50, filters = {}) {
   const baseQuery = `
     SELECT *,
            ST_Distance(punto_geografico, ST_SetSRID(ST_MakePoint($1, $2), 4326)) / 1000 as distancia_km
-    FROM vista_socios_completos
+    FROM vista_socios_perfil
     WHERE ST_DWithin(
       punto_geografico,
       ST_SetSRID(ST_MakePoint($1, $2), 4326),
@@ -63,21 +63,32 @@ const SEARCH_FILTERABLE_COLUMNS = new Set([
   'b2b_licita',
 ]);
 
-// Búsqueda full-text en español sobre nombre, apellidos y entidad.
+// Búsqueda libre sobre nombre, apellidos, entidad, organización, cargo y
+// localidad. Antes se usaba full-text en español (stemming): nombres
+// propios parciales ("Ros" → Rosario) o con/sin tilde no aparecían al
+// filtrar. Ahora cada palabra debe aparecer (ILIKE, sin distinguir
+// mayúsculas ni tildes) en alguno de esos campos.
+const ACCENTS_FROM = 'áàäâéèëêíìïîóòöôúùüûñçÁÀÄÂÉÈËÊÍÌÏÎÓÒÖÔÚÙÜÛÑÇ';
+const ACCENTS_TO = 'aaaaeeeeiiiioooouuuuncAAAAEEEEIIIIOOOOUUUUNC';
+const fold = (v) => String(v).split('').map((c) => {
+  const i = ACCENTS_FROM.indexOf(c);
+  return i === -1 ? c : ACCENTS_TO[i];
+}).join('').toLowerCase();
+
 async function searchSocios(searchTerm, filters = {}, viewerId = null) {
+  const words = fold(searchTerm).replace(/[%_\\]/g, ' ').split(/\s+/).filter(Boolean).slice(0, 8);
+  const haystack = `lower(translate(concat_ws(' ', nombre, apellidos, entidad, nombre_organizacion, cargo_actual, localidad), '${ACCENTS_FROM}', '${ACCENTS_TO}'))`;
   let query = `
-    SELECT *,
-           ts_rank(to_tsvector('spanish', nombre || ' ' || apellidos || ' ' || COALESCE(entidad, '')),
-                   plainto_tsquery('spanish', $1)) as relevancia
-    FROM vista_socios_completos
-    WHERE to_tsvector('spanish', nombre || ' ' || apellidos || ' ' || COALESCE(entidad, ''))
-          @@ plainto_tsquery('spanish', $1)
-      AND (acepta_visibilidad_datos=true OR id=$2)
+    SELECT *
+    FROM vista_socios_perfil
+    WHERE (acepta_visibilidad_datos=true OR id=$1)
   `;
-
-  const values = [searchTerm, viewerId];
-  let paramIndex = 3;
-
+  const values = [viewerId];
+  let paramIndex = 2;
+  for (const word of words) {
+    query += ` AND ${haystack} LIKE $${paramIndex++}`;
+    values.push('%' + word + '%');
+  }
   Object.entries(filters).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
       if (key === 'rol_cluster') {
@@ -103,29 +114,51 @@ async function searchSocios(searchTerm, filters = {}, viewerId = null) {
     }
   });
 
-  query += ` ORDER BY relevancia DESC, nombre`;
+  query += ` ORDER BY nombre, apellidos`;
   const result = await db.query(query, values);
   return result.rows;
 }
 
-// Conteos agregados por provincia con centroide promedio.
-// Usado por el visor PÚBLICO de la landing — devuelve sólo agregados
-// (no PII) para no requerir consentimiento individual de cada socio.
-async function socioCountsByProvincia() {
+// Conteos agregados por provincia para el visor PÚBLICO de la landing.
+// Cuenta todas las cuentas aprobadas y activas (no sólo las geolocalizadas)
+// para dar una imagen real del volumen. Sólo agregados, sin PII. El
+// desglose por perfil agrupa en "otros" los perfiles con menos de
+// `minGroup` socios en una provincia para no permitir identificar a nadie.
+async function socioCountsByProvincia({ minGroup = 3 } = {}) {
+  const provinceCoords = require('../config/provinceCoordinates');
   const result = await db.query(`
-    SELECT provincia,
-           COUNT(*)::int AS count,
-           AVG(latitud)::float AS lat,
-           AVG(longitud)::float AS lng
-    FROM socios
-    WHERE estado = 'aprobado'
-      AND activo = true
-      AND latitud IS NOT NULL
-      AND longitud IS NOT NULL
-    GROUP BY provincia
-    ORDER BY provincia
+    SELECT s.provincia, rc.rol AS rol_cluster, COUNT(*)::int AS count
+    FROM socios s
+    LEFT JOIN rol_cluster rc ON rc.socio_id = s.id
+    WHERE s.estado = 'aprobado' AND s.activo = true AND s.provincia IS NOT NULL
+    GROUP BY s.provincia, rc.rol
   `);
-  return result.rows;
+  const byProv = new Map();
+  for (const row of result.rows) {
+    if (!byProv.has(row.provincia)) byProv.set(row.provincia, { provincia: row.provincia, count: 0, roles: {} });
+    const p = byProv.get(row.provincia);
+    p.count += row.count;
+    const key = row.rol_cluster || 'sin_rol';
+    p.roles[key] = (p.roles[key] || 0) + row.count;
+  }
+  return [...byProv.values()].map((p) => {
+    const roles = [];
+    let otros = 0;
+    for (const [rol, count] of Object.entries(p.roles)) {
+      if (rol !== 'sin_rol' && count >= minGroup) roles.push({ rol_cluster: rol, count });
+      else otros += count;
+    }
+    roles.sort((a, b) => b.count - a.count);
+    const c = provinceCoords[p.provincia];
+    return {
+      provincia: p.provincia,
+      count: p.count,
+      lat: c ? c[0] : null,
+      lng: c ? c[1] : null,
+      roles,
+      otros,
+    };
+  }).sort((a, b) => a.provincia.localeCompare(b.provincia, 'es'));
 }
 
 module.exports = { findNearby, searchSocios, socioCountsByProvincia };

@@ -1032,3 +1032,77 @@ fieldset{min-width:0;border:1px solid var(--line);border-radius:10px;padding:14p
 @media(max-width:600px){.leaflet-tooltip.socio-tooltip{max-width:160px;white-space:normal} .bar-row .bar-label{white-space:normal} .filters label{white-space:normal}}
 
 [hidden]{display:none !important}
+
+/* ===== Perfil: campos obligatorios y decisiones sí/no (sep 2026) ===== */
+.req { color: #b3261e; font-weight: 700; }
+.required-legend { margin: 8px 0 0; color: var(--muted); font-size: .9rem; }
+.decision-tag {
+  display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px;
+  background: rgba(13, 53, 95, .08); color: var(--navy); font-size: .72rem; font-weight: 700;
+  letter-spacing: .02em; vertical-align: middle; white-space: nowrap;
+}
+.section-title { margin: 14px 0 2px; color: var(--navy); font-size: 1.05rem; }
+.section-help { margin: 0 0 4px; font-size: .88rem; }
+fieldset.decision {
+  border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin: 0;
+  background: var(--card); transition: border-color .15s, background .15s;
+}
+fieldset.decision legend { padding: 0 6px; font-weight: 600; color: var(--navy-deep); }
+fieldset.decision > p { margin: 4px 0 8px; font-size: .88rem; }
+.choice-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.choice {
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; min-height: 40px;
+  border: 1px solid var(--line); border-radius: 999px; cursor: pointer; font-weight: 500;
+  background: var(--bg-soft);
+}
+.choice:has(input:checked) { border-color: var(--green-mid); background: rgba(15, 137, 91, .1); color: var(--green-deep); }
+.choice { flex: 0 0 auto; white-space: nowrap; }
+.choice input[type=radio] { margin: 0; width: auto; min-height: 0; flex: 0 0 auto; }
+.is-pending.decision, .field.is-pending input, .field.is-pending select, .field-full.is-pending select {
+  border-color: #d9822b;
+}
+.is-pending.decision { background: #fff8ef; }
+.collab-options, #b2bOpciones { margin-top: 10px; display: grid; gap: 4px; }
+.collab-options[hidden], #b2bOpciones[hidden], #rolSecundarioWrap[hidden] { display: none; }
+#rolSecundarioWrap { margin-top: 10px; }
+.pending-banner {
+  margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: #fff4e5;
+  border: 1px solid #f3c58b; color: #6b3e00;
+}
+.save-bar { position: static; background: var(--card); padding: 12px 0 4px; border-top: 1px solid var(--line); z-index: 5; }
+.pending-summary { margin: 0 0 10px; font-size: .88rem; color: #8a4b00; }
+.pending-summary.ok { color: var(--green-deep); }
+
+/* ===== Fichas de tipo de socio ===== */
+dialog.fichas-dialog {
+  border: none; border-radius: 20px; padding: 0; max-width: 760px; width: calc(100% - 32px);
+  box-shadow: var(--shadow); color: var(--ink);
+}
+dialog.fichas-dialog::backdrop { background: rgba(8, 35, 63, .55); }
+.fichas-dialog .fichas-body { padding: 26px; }
+.fichas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 16px 0; }
+.ficha-card { border: 1px solid var(--line); border-radius: 16px; padding: 18px; background: var(--bg-soft); }
+.ficha-card h3 { margin: 0 0 8px; color: var(--navy); font-size: 1.05rem; }
+.ficha-card ul { margin: 10px 0 0; padding-left: 18px; }
+.ficha-card.is-mine { border-color: var(--green-mid); background: rgba(15, 137, 91, .06); }
+.ficha-card .mine-tag { display: inline-block; margin-bottom: 6px; font-size: .75rem; font-weight: 700; color: var(--green-deep); }
+
+/* ===== Mapa: burbujas por provincia y leyenda de perfiles ===== */
+.prov-bubble-icon { background: transparent; border: none; }
+.prov-bubble {
+  border-radius: 50%; display: grid; place-items: center; box-shadow: 0 6px 16px rgba(8, 35, 63, .28);
+  border: 3px solid #fff; cursor: pointer; transition: transform .15s;
+}
+.prov-bubble:hover { transform: scale(1.08); }
+.prov-bubble span {
+  display: grid; place-items: center; width: 62%; height: 62%; border-radius: 50%;
+  background: #fff; color: var(--navy-deep); font-weight: 800; font-size: .95rem;
+}
+.socio-tooltip .dot, .prov-tooltip-list .dot {
+  display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle;
+}
+.prov-tooltip-list { list-style: none; margin: 6px 0 0; padding: 0; font-size: .82rem; }
+.prov-tooltip-list li { margin: 2px 0; }
+
+@media (min-width: 720px) { .save-bar { position: sticky; bottom: 0; } }
+@media (max-width: 719px) { .choice { white-space: normal; flex: 1 1 auto; } }

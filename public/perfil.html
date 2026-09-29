@@ -48,7 +48,7 @@
       <!-- Foto y documentos -->
       <article class="form-card" id="mediaCard">
         <h2>Foto y currículum</h2>
-        <p class="muted" style="margin-top:8px">Tu foto aparece en el directorio privado. El CV es opcional y solo visible para administración y para socios con quienes mantengas conversación.</p>
+        <p class="muted" style="margin-top:8px">Tu foto aparece en el directorio privado. El CV es opcional y sólo lo ven administración y los socios a los que tú hayas escrito.</p>
 
         <div class="photo-uploader" style="margin-top:18px">
           <div class="cv-icon" id="avatarPreview" aria-hidden="true">
@@ -89,93 +89,136 @@
 
       <!-- Datos profesionales -->
       <article class="form-card">
-        <h2>Datos profesionales</h2>
-        <form id="profileForm" class="form-grid" style="margin-top:18px">
+        <h2>Mi perfil</h2>
+        <p class="required-legend">Los campos con <span class="req" aria-hidden="true">*</span> son obligatorios. Las preguntas marcadas como <span class="decision-tag">Decisión obligatoria</span> deben responderse (sí o no) antes de guardar.</p>
+        <div id="pendingBanner" class="pending-banner" role="status" hidden></div>
+        <form id="profileForm" class="form-grid" style="margin-top:18px" novalidate>
 
-          <div class="field">
-            <label for="tipo_socio">Tipo de socio</label>
-            <select id="tipo_socio" disabled aria-describedby="tipoSocioHelp"></select><small id="tipoSocioHelp">Administración gestiona tu categoría. Solicita cualquier cambio a AGESPORT.</small>
-          </div>
-          <div class="field">
-            <label for="nombre">Nombre</label>
-            <input id="nombre">
-          </div>
-          <div class="field">
-            <label for="apellidos">Apellidos</label>
-            <input id="apellidos">
-          </div>
-
-          <div class="field" id="orgField" style="display:none">
-            <label for="nombre_organizacion">Nombre de la organización</label>
-            <input id="nombre_organizacion" placeholder="Si actúas como persona jurídica">
-          </div>
-
-          <!-- ====== Datos de contacto (auditoría 19 jun mejora #8) ======
-               Cada campo lleva su etiqueta clara (profesional/personal)
-               y un checkbox inline para decidir qué dato es público en
-               el directorio. La elección del "contacto principal" sigue
-               siendo independiente. -->
+          <!-- ====== 1. Visibilidad y contacto (antes quedaba al final y se saltaba) ====== -->
           <div class="field-full form-section">
-            <h3 style="margin:0 0 6px;font-size:1rem">Datos de contacto</h3>
-            <p class="muted" style="margin:0 0 12px;font-size:.88rem">
-              Marca con la casilla qué datos quieres que vean los demás
-              socios en tu ficha del directorio. El resto sólo lo verás tú
-              y la administración.
-            </p>
+            <h3 class="section-title">1. Visibilidad y contacto</h3>
+            <p class="muted section-help">Decide dónde apareces y cómo te contactan. Nada se publica sin tu elección.</p>
           </div>
 
+          <fieldset class="field-full decision" data-decision="directorio">
+            <legend>¿Quieres aparecer en el <strong>directorio</strong> de socios? <span class="decision-tag">Decisión obligatoria</span></legend>
+            <p class="muted">Tu ficha profesional será visible para los socios autenticados y podrán encontrarte al buscar por nombre o filtrar.</p>
+            <div class="choice-row">
+              <label class="choice"><input type="radio" name="dec_directorio" value="si"> Sí, mostrarme</label>
+              <label class="choice"><input type="radio" name="dec_directorio" value="no"> No, ocultarme</label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field-full decision" data-decision="mapa">
+            <legend>¿Quieres aparecer en el <strong>mapa</strong> de socios? <span class="decision-tag">Decisión obligatoria</span></legend>
+            <p class="muted">Se muestra tu nombre, actividad y la ubicación aproximada de tu municipio. Es independiente del directorio.</p>
+            <div class="choice-row">
+              <label class="choice"><input type="radio" name="dec_mapa" value="si"> Sí, mostrarme</label>
+              <label class="choice"><input type="radio" name="dec_mapa" value="no"> No, ocultarme</label>
+            </div>
+            <p id="locationStatus" class="muted" role="status"></p>
+          </fieldset>
+
+          <fieldset class="field-full decision" data-decision="mensajeria">
+            <legend>¿Aceptas recibir <strong>mensajes</strong> de otros socios? <span class="decision-tag">Decisión obligatoria</span></legend>
+            <div class="choice-row">
+              <label class="choice"><input type="radio" name="dec_mensajeria" value="si"> Sí</label>
+              <label class="choice"><input type="radio" name="dec_mensajeria" value="no"> No</label>
+            </div>
+          </fieldset>
+
+          <div class="field-full">
+            <label for="email">Email de acceso (inicio de sesión)</label>
+            <input id="email" disabled aria-describedby="emailAccessHelp">
+            <small id="emailAccessHelp" class="muted">Sólo sirve para entrar en la plataforma. No se muestra ni se usa para avisos salvo que lo elijas abajo. Para cambiarlo, contacta con administración.</small>
+          </div>
           <div class="field">
-            <label for="email">Email profesional</label>
-            <input id="email" disabled>
+            <label for="email_profesional">Email profesional <span class="req" aria-hidden="true">*</span></label>
+            <input id="email_profesional" type="email" required autocomplete="email">
           </div>
           <div class="field">
             <label for="email_personal">Email personal (opcional)</label>
             <input id="email_personal" type="email">
-            <label class="muted" style="display:block;font-size:.8rem;font-weight:normal;margin-top:6px">
-              Para uso interno. No se muestra en el directorio.
-            </label>
           </div>
 
-          <div class="field-full">
-            <label>¿En qué email quieres recibir los avisos de mensajes?</label>
-            <div class="segmented" id="emailPreferido">
-              <button type="button" data-value="profesional">Profesional</button>
-              <button type="button" data-value="personal">Personal</button>
+          <fieldset class="field-full decision" data-decision="email_contacto">
+            <legend>¿En qué email quieres recibir los avisos y comunicaciones? <span class="decision-tag">Decisión obligatoria</span></legend>
+            <div class="choice-row">
+              <label class="choice"><input type="radio" name="email_preferido" value="profesional"> Email profesional</label>
+              <label class="choice"><input type="radio" name="email_preferido" value="personal"> Email personal</label>
             </div>
-          </div>
+            <p class="muted" id="emailContactoResumen" aria-live="polite"></p>
+          </fieldset>
 
-          <div class="field-full">
+          <fieldset class="field-full decision" data-decision="avisos">
+            <legend>¿Quieres un aviso por email cuando recibas un mensaje? <span class="decision-tag">Decisión obligatoria</span></legend>
+            <div class="choice-row">
+              <label class="choice"><input type="radio" name="dec_avisos" value="si"> Sí, avisarme</label>
+              <label class="choice"><input type="radio" name="dec_avisos" value="no"> No</label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field-full decision" data-decision="email_ficha">
+            <legend>¿Qué email quieres mostrar en tu ficha del directorio? <span class="decision-tag">Decisión obligatoria</span></legend>
+            <div class="choice-row">
+              <label class="choice"><input type="radio" name="dec_email_ficha" value="no"> No mostrar ningún email</label>
+              <label class="choice"><input type="radio" name="dec_email_ficha" value="profesional"> El profesional</label>
+              <label class="choice"><input type="radio" name="dec_email_ficha" value="personal"> El personal</label>
+            </div>
+          </fieldset>
+
+          <div class="field">
             <label for="telefono">Teléfono profesional</label>
-            <input id="telefono" placeholder="+34 600 00 00 00">
+            <input id="telefono" type="tel" placeholder="+34 600 00 00 00">
           </div>
-
-          <div class="field-full"><label for="telefono_personal">Teléfono personal (opcional)</label><input id="telefono_personal" type="tel" placeholder="+34 600 00 00 00"></div>
-
-          <!-- Panel de visibilidad agrupado: ambas casillas juntas y alineadas. -->
+          <div class="field">
+            <label for="telefono_personal">Teléfono personal (opcional)</label>
+            <input id="telefono_personal" type="tel" placeholder="+34 600 00 00 00">
+          </div>
           <div class="field-full">
             <div class="visibility-panel">
-              <strong>Visibilidad en el directorio</strong>
-              <label><input id="visible_email_directo" type="checkbox"> Mostrar este email en mi ficha del directorio</label>
-              <label><input id="visible_telefono" type="checkbox"> Mostrar mi teléfono profesional en el directorio</label>
-              <label><input id="visible_telefono_personal" type="checkbox"> Mostrar mi teléfono personal en el directorio</label>
+              <strong>Mostrar también en mi ficha</strong>
+              <label><input id="visible_telefono" type="checkbox"> Mi teléfono profesional</label>
+              <label><input id="visible_telefono_personal" type="checkbox"> Mi teléfono personal</label>
+              <label><input id="visible_web_profesional" type="checkbox"> Mi web profesional</label>
+              <label><input id="visible_linkedin" type="checkbox"> Mi perfil de LinkedIn</label>
             </div>
           </div>
 
+          <!-- ====== 2. Datos profesionales ====== -->
+          <div class="field-full form-section">
+            <h3 class="section-title">2. Datos profesionales</h3>
+          </div>
           <div class="field">
-          <label for="sector">Sector de actividad</label>
-          <select id="sector"><option value="">Selecciona sector (opcional)</option><option value="publico">Sector público</option><option value="privado">Sector privado</option><option value="tercer_sector">Tercer sector</option></select>
-        </div>
+            <label for="tipo_socio">Tipo de socio</label>
+            <select id="tipo_socio" disabled aria-describedby="tipoSocioHelp"></select><small id="tipoSocioHelp">Administración gestiona tu categoría. Solicita cualquier cambio a AGESPORT. <a href="#" id="verFichasTipo">¿Qué significa cada tipo?</a></small>
+          </div>
+          <div class="field" id="orgField" style="display:none">
+            <label for="nombre_organizacion">Nombre de la organización <span class="req" aria-hidden="true">*</span></label>
+            <input id="nombre_organizacion" placeholder="Si actúas como persona jurídica">
+          </div>
           <div class="field">
-        <label for="entidad">Entidad / empresa</label>
+            <label for="nombre">Nombre <span class="req" aria-hidden="true">*</span></label>
+            <input id="nombre" required>
+          </div>
+          <div class="field">
+            <label for="apellidos">Apellidos <span class="req" aria-hidden="true">*</span></label>
+            <input id="apellidos" required>
+          </div>
+          <div class="field">
+            <label for="sector">Sector de actividad</label>
+            <select id="sector"><option value="">Selecciona sector (opcional)</option><option value="publico">Sector público</option><option value="privado">Sector privado</option><option value="tercer_sector">Tercer sector</option></select>
+          </div>
+          <div class="field">
+            <label for="entidad">Entidad / empresa</label>
             <input id="entidad">
           </div>
-
-          <div class="field">
-            <label for="cargo_actual">Cargo actual</label>
+          <div class="field" id="cargoField">
+            <label for="cargo_actual">Cargo actual <span class="req" aria-hidden="true">*</span></label>
             <input id="cargo_actual">
           </div>
           <div class="field">
-            <label for="anos_experiencia">Años de experiencia en el sector deportivo</label>
+            <label for="anos_experiencia" id="anosLabel">Años de experiencia en el sector deportivo <span class="req" aria-hidden="true">*</span></label>
             <input id="anos_experiencia" type="number" min="0" max="50">
           </div>
           <div class="field">
@@ -189,7 +232,6 @@
               Sólo se usa para estadísticas agregadas (nunca en tu ficha pública).
             </span>
           </div>
-
           <div class="field">
             <label for="comunidad_autonoma">Comunidad autónoma</label>
             <select id="comunidad_autonoma">
@@ -197,27 +239,13 @@
             </select>
           </div>
           <div class="field">
-            <label for="provincia">Provincia</label>
-            <select id="provincia"></select>
+            <label for="provincia">Provincia <span class="req" aria-hidden="true">*</span></label>
+            <select id="provincia" required></select>
           </div>
           <div class="field">
-            <label for="localidad">Localidad</label>
-            <input id="localidad">
+            <label for="localidad">Localidad <span class="req" aria-hidden="true">*</span></label>
+            <input id="localidad" required>
           </div>
-
-
-          <div class="field-full">
-            <label for="rol_cluster">Rol en el clúster del deporte</label>
-            <select id="rol_cluster"></select>
-            <label for="rol_secundario">Segundo rol (opcional)</label><select id="rol_secundario"></select>
-            <div class="muted" id="rolDescripcion" style="margin-top:6px;font-size:.88rem"></div>
-          </div>
-
-          <div class="field-full">
-            <label>Especialidades (selecciona las que se ajusten a tu actividad)</label>
-            <div id="especialidadesList" class="selectable-list"></div>
-          </div>
-
           <div class="field">
             <label for="linkedin_url">LinkedIn</label>
             <input id="linkedin_url" placeholder="https://linkedin.com/in/...">
@@ -231,92 +259,71 @@
             <input id="direccion_completa">
           </div>
 
-          <!-- ====== Disponibilidad y colaboración ======
-               Marca cómo puedes contribuir a la comunidad AGESPORT:
-               mentorías a jóvenes gestores, ponencias, asistencia a
-               eventos, representación institucional, etc. -->
+          <!-- ====== 3. Rol y especialidades ====== -->
           <div class="field-full form-section">
-            <h3 style="margin:8px 0 4px;color:var(--navy)">Disponibilidad y colaboración</h3>
-            <p class="muted" style="margin:0 0 8px;font-size:.88rem">
-              Indica cómo puedes participar en la comunidad. Los perfiles con disponibilidad
-              activa aparecen destacados en el KPI de mentores del panel de socios.
-            </p>
+            <h3 class="section-title">3. Rol en el clúster y especialidades</h3>
+          </div>
+          <div class="field-full">
+            <label for="rol_cluster">Rol principal en el clúster del deporte <span class="req" aria-hidden="true">*</span></label>
+            <select id="rol_cluster" required></select>
+            <div class="muted" id="rolDescripcion" style="margin-top:6px;font-size:.88rem"></div>
+          </div>
+          <fieldset class="field-full decision" data-decision="segundo_rol">
+            <legend>¿Tienes un segundo rol en el clúster? <span class="decision-tag">Decisión obligatoria</span></legend>
+            <div class="choice-row">
+              <label class="choice"><input type="radio" name="dec_segundo_rol" value="si"> Sí</label>
+              <label class="choice"><input type="radio" name="dec_segundo_rol" value="no"> No</label>
+            </div>
+            <div id="rolSecundarioWrap" hidden>
+              <label for="rol_secundario">Segundo rol <span class="req" aria-hidden="true">*</span></label>
+              <select id="rol_secundario"></select>
+            </div>
+          </fieldset>
+          <div class="field-full">
+            <label>Especialidades (selecciona las que se ajusten a tu actividad)</label>
+            <div id="especialidadesList" class="selectable-list"></div>
           </div>
 
-          <div class="field-full">
-            <label for="disponibilidad">Nivel de disponibilidad</label>
+          <!-- ====== 4. Disponibilidad y colaboración ====== -->
+          <div class="field-full form-section">
+            <h3 class="section-title">4. Disponibilidad y colaboración</h3>
+            <p class="muted section-help">Los perfiles con disponibilidad activa aparecen destacados en el indicador de mentores.</p>
+          </div>
+          <fieldset class="field-full decision" data-decision="disponibilidad">
+            <legend><label for="disponibilidad">Nivel de disponibilidad para colaborar con AGESPORT</label> <span class="decision-tag">Decisión obligatoria</span></legend>
             <select id="disponibilidad">
-              <option value="">No disponible por ahora</option>
+              <option value="">Selecciona una opción…</option>
+              <option value="ninguna">No disponible por ahora</option>
               <option value="Alta">Alta — disponibilidad continua</option>
               <option value="Media">Media — disponibilidad ocasional</option>
               <option value="Puntual">Puntual — casos concretos</option>
             </select>
-          </div>
-
-          <div class="field-full checkbox-row">
-            <input id="tutor_mentor" type="checkbox">
-            <label for="tutor_mentor">Me ofrezco como <strong>mentor/a</strong> para jóvenes gestores deportivos (aunque esté jubilado/a o poco vinculado/a a la actividad).</label>
-          </div>
-          <div class="field-full checkbox-row">
-            <input id="ponente" type="checkbox">
-            <label for="ponente">Estoy disponible como <strong>ponente</strong> en jornadas, congresos y formaciones del clúster.</label>
-          </div>
-          <div class="field-full checkbox-row">
-            <input id="asistente" type="checkbox">
-            <label for="asistente">Me interesa asistir a eventos y actividades del clúster.</label>
-          </div>
-          <div class="field-full checkbox-row">
-            <input id="representacion" type="checkbox">
-            <label for="representacion">Disponible para tareas de representación institucional en nombre de AGESPORT.</label>
-          </div>
-          <div class="field-full checkbox-row">
-            <input id="captacion_patrocinio" type="checkbox">
-            <label for="captacion_patrocinio">Puedo colaborar en captación de patrocinios y relaciones con empresas.</label>
-          </div>
-          <div class="field-full checkbox-row">
-            <input id="congreso_almeria" type="checkbox">
-            <label for="congreso_almeria">Interesado/a en el Congreso Nacional AGESPORT.</label>
-          </div>
-
-          <fieldset class="field-full"><legend>Intereses de colaboración empresarial (B2B)</legend>
-            <label class="checkbox-row"><input id="b2b_ofrece" type="checkbox"> Ofrezco servicios</label>
-            <label class="checkbox-row"><input id="b2b_busca" type="checkbox"> Busco proveedores o colaboraciones</label>
-            <label class="checkbox-row"><input id="b2b_licita" type="checkbox"> Me interesan licitaciones</label>
-            <p class="muted">Selecciona un rol profesional para guardar estos intereses. No representan proyectos en marcha.</p>
+            <div id="colaboracionOpciones" class="collab-options">
+              <label class="checkbox-row"><input id="tutor_mentor" type="checkbox"> Me ofrezco como <strong>mentor/a</strong> para jóvenes gestores deportivos.</label>
+              <label class="checkbox-row"><input id="ponente" type="checkbox"> Disponible como <strong>ponente</strong> en jornadas, congresos y formaciones.</label>
+              <label class="checkbox-row"><input id="asistente" type="checkbox"> Me interesa asistir a eventos y actividades del clúster.</label>
+              <label class="checkbox-row"><input id="representacion" type="checkbox"> Disponible para representación institucional de AGESPORT.</label>
+              <label class="checkbox-row"><input id="captacion_patrocinio" type="checkbox"> Puedo colaborar en captación de patrocinios.</label>
+              <label class="checkbox-row"><input id="congreso_almeria" type="checkbox"> Interesado/a en el Congreso Nacional AGESPORT.</label>
+            </div>
           </fieldset>
-          <div class="field-full"><p id="locationStatus" role="status"></p><p id="profileMapMode" class="muted"></p></div>
-          <div class="field-full">
-            <h3 style="margin:8px 0 6px;color:var(--navy)">Visibilidad en el directorio</h3>
-          </div>
-          <div class="field-full checkbox-row">
-            <input id="acepta_visibilidad_datos" type="checkbox">
-            <label for="acepta_visibilidad_datos">Mostrar mi perfil profesional a los demás socios en el directorio privado.</label>
-          </div>
-          <div class="field-full checkbox-row">
-            <input id="acepta_mapa_interactivo" type="checkbox">
-            <label for="acepta_mapa_interactivo">Aparecer en el mapa privado de socios (nombre, actividad y ubicación aproximada). Esta elección es independiente de la visibilidad del directorio.</label>
-          </div>
-          <div class="field-full checkbox-row">
-            <input id="acepta_mensajeria" type="checkbox">
-            <label for="acepta_mensajeria">Acepto recibir mensajería interna de otros socios autenticados.</label>
-          </div>
-          <div class="field-full checkbox-row">
-            <input id="acepta_notificaciones_email" type="checkbox">
-            <label for="acepta_notificaciones_email">Enviarme un aviso por email con un extracto y un enlace a los mensajes recibidos.</label>
-          </div>
-          <!-- visible_telefono y visible_email_directo se han movido
-               junto a sus campos correspondientes en la sección de
-               contacto, para mayor claridad (auditoría 19 jun #8). -->
-          <div class="field-full checkbox-row">
-            <input id="visible_web_profesional" type="checkbox">
-            <label for="visible_web_profesional">Mostrar mi web profesional.</label>
-          </div>
-          <div class="field-full checkbox-row">
-            <input id="visible_linkedin" type="checkbox">
-            <label for="visible_linkedin">Mostrar mi perfil de LinkedIn.</label>
-          </div>
 
-          <div class="field-full">
+          <fieldset class="field-full decision" data-decision="b2b">
+            <legend>¿Tienes intereses de colaboración empresarial (B2B)? <span class="decision-tag">Decisión obligatoria</span></legend>
+            <div class="choice-row">
+              <label class="choice"><input type="radio" name="dec_b2b" value="si"> Sí</label>
+              <label class="choice"><input type="radio" name="dec_b2b" value="no"> No</label>
+            </div>
+            <div id="b2bOpciones" hidden>
+              <label class="checkbox-row"><input id="b2b_ofrece" type="checkbox"> Ofrezco servicios</label>
+              <label class="checkbox-row"><input id="b2b_busca" type="checkbox"> Busco proveedores o colaboraciones</label>
+              <label class="checkbox-row"><input id="b2b_licita" type="checkbox"> Me interesan licitaciones</label>
+              <p class="muted">Marca al menos una opción. No representan proyectos en marcha.</p>
+            </div>
+          </fieldset>
+
+          <div class="field-full save-bar">
+            <p id="pendingSummary" class="pending-summary" aria-live="polite"></p>
             <button class="btn btn-primary" type="submit" id="saveBtn">Guardar cambios</button>
           </div>
         </form>
@@ -382,6 +389,7 @@
 
   <script src="/assets/catalogos.js"></script>
   <script src="/assets/portal.js"></script>
+  <script src="/assets/fichas-socio.js"></script>
   <script src="/assets/perfil.js"></script>
   <script src="/assets/password-toggle.js" defer></script>
 </body>

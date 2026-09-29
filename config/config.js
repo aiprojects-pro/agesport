@@ -36,7 +36,7 @@ if (process.env.NODE_ENV === 'production') {
 // el email de reset apunta a evil.com → token leak. Aquí garantizamos
 // que `publicBaseUrl` SIEMPRE es una URL válida y absoluta.
 const publicBaseUrlRaw = (process.env.PUBLIC_BASE_URL || '').trim();
-const publicBaseUrl = publicBaseUrlRaw || 'https://agesport.aiprojects.pro';
+const publicBaseUrl = publicBaseUrlRaw || 'https://agesport-agesport.apps.testing.aiprojects.pro';
 if (!/^https?:\/\/[^\s]+$/.test(publicBaseUrl)) {
   console.error(
     `FATAL: PUBLIC_BASE_URL no es una URL absoluta válida ("${publicBaseUrl}"). Debe empezar por http:// o https://.`
@@ -58,6 +58,25 @@ const configuredGeneralRateLimit = Number.parseInt(
 const generalRateLimit = Number.isSafeInteger(configuredGeneralRateLimit) && configuredGeneralRateLimit > 0
   ? configuredGeneralRateLimit
   : defaultGeneralRateLimit;
+// Las sesiones autenticadas se cuentan por cuenta, no por IP, y tienen un
+// cupo propio mayor (un panel con mapa y filtros hace muchas llamadas).
+const configuredAuthenticatedRateLimit = Number.parseInt(
+  process.env.RATE_LIMIT_MAX_AUTHENTICATED || String(Math.max(generalRateLimit, 3000)),
+  10
+);
+const authenticatedRateLimit = Number.isSafeInteger(configuredAuthenticatedRateLimit) && configuredAuthenticatedRateLimit > 0
+  ? configuredAuthenticatedRateLimit
+  : Math.max(generalRateLimit, 3000);
+
+// Proxies de confianza para obtener la IP real del cliente. Por defecto se
+// confía en las redes privadas (router de OpenShift, nginx, balanceador del
+// hosting), de forma que cada usuario se identifica por su propia IP y no
+// por la del proxy compartido. TRUST_PROXY admite un número de saltos
+// ("2"), "true"/"false" o una lista de subredes.
+const trustProxyRaw = (process.env.TRUST_PROXY || 'loopback, linklocal, uniquelocal').trim();
+const trustProxy = /^\d+$/.test(trustProxyRaw)
+  ? Number(trustProxyRaw)
+  : (['true', 'false'].includes(trustProxyRaw.toLowerCase()) ? trustProxyRaw.toLowerCase() === 'true' : trustProxyRaw);
 
 module.exports = {
   // Base de datos
@@ -91,9 +110,13 @@ module.exports = {
   // Rate limiting
   rateLimiting: {
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: generalRateLimit, // requests por IP; ajustable con RATE_LIMIT_MAX_REQUESTS
-    message: 'Demasiadas peticiones desde esta IP, inténtalo más tarde.'
+    max: generalRateLimit, // peticiones anónimas por IP; RATE_LIMIT_MAX_REQUESTS
+    maxAuthenticated: authenticatedRateLimit, // por cuenta; RATE_LIMIT_MAX_AUTHENTICATED
+    disabled: parseBoolean(process.env.RATE_LIMIT_DISABLED, false),
+    message: 'Hay mucha actividad en este momento. Espera unos segundos y vuelve a intentarlo.'
   },
+
+  trustProxy,
 
   // CORS
   cors: {
@@ -105,8 +128,9 @@ module.exports = {
   // Email (para notificaciones)
   email: {
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: process.env.EMAIL_PORT || 587,
-    secure: false,
+    port: Number(process.env.EMAIL_PORT) || 587,
+    // Vacío: se deduce del puerto (465 → TLS directo; 587 → STARTTLS).
+    secure: process.env.EMAIL_SECURE === undefined || process.env.EMAIL_SECURE === '' ? undefined : parseBoolean(process.env.EMAIL_SECURE),
     auth: {
       user: process.env.EMAIL_USER || 'noreply@agesport.org',
       pass: process.env.EMAIL_PASS || 'your_email_password'

@@ -31,6 +31,10 @@ let httpServer = null;
 
 // ==================== MIDDLEWARES ====================
 
+// Debe fijarse antes de cualquier limitador para que req.ip sea la IP real
+// del usuario y no la del proxy compartido (ver config.trustProxy).
+app.set('trust proxy', config.trustProxy);
+
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 } else {
@@ -77,14 +81,14 @@ app.use((req, res, next) => {
 
 app.use(securityHeaders);
 app.use(securityLogger);
-app.use(generalLimiter);
 app.use(cors(config.cors));
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+// Tras cookieParser: el limitador identifica la sesión por su cookie.
+app.use(generalLimiter);
 app.use(validateInput);
-app.set('trust proxy', 1);
 
 // ==================== ROUTES ====================
 

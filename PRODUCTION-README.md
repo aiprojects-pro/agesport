@@ -46,7 +46,7 @@ Variables **obligatorias** que hay que rellenar:
 | `JWT_SECRET` | firma de tokens de sesión | `openssl rand -hex 32` |
 | `ENCRYPTION_KEY` | cifra teléfono y DNI en la BD | `openssl rand -hex 16` (32 chars hex) |
 | `EMAIL_HOST/USER/PASS` | SMTP para notificaciones | del proveedor (Gmail app-password, SES, etc.) |
-| `PUBLIC_BASE_URL` | dominio público con https | ej. `https://mapatalento.agesport.org` |
+| `PUBLIC_BASE_URL` | dominio público con https | ej. `https://mapadeltalento.agesport.org` |
 | `CORS_ORIGINS` | orígenes permitidos, coma-separados | mismo dominio |
 | `ADMIN_INITIAL_EMAIL` / `_PASSWORD` | crea el primer admin al ejecutar `db:setup` | elige uno |
 
@@ -72,7 +72,7 @@ pm2 save
 pm2 startup      # sigue las instrucciones que muestra
 ```
 
-Nginx: usar `nginx/mapatalento.conf` como base — hace reverse-proxy a `http://127.0.0.1:3001` y sirve `/uploads/` como estático directo. Certificado TLS con `certbot --nginx -d mapatalento.agesport.org`.
+Nginx: usar `nginx/mapadeltalento.conf` como base — hace reverse-proxy a `http://127.0.0.1:3001` y sirve `/uploads/` como estático directo. Certificado TLS con `certbot --nginx -d mapadeltalento.agesport.org`.
 
 ## Backups
 
@@ -100,7 +100,7 @@ Opciones gratuitas recomendadas:
 ### Configuración recomendada en UptimeRobot
 
 1. Crear cuenta gratuita y añadir "New Monitor" tipo **HTTP(s)**.
-2. **URL:** `https://mapatalento.agesport.org/health` (ajusta al dominio real).
+2. **URL:** `https://mapadeltalento.agesport.org/health` (ajusta al dominio real).
 3. **Monitoring Interval:** 5 minutos.
 4. **Timeout:** 30 s.
 5. **Alert Contacts:** el email de Gerencia + el del administrador de sistemas.
@@ -160,7 +160,7 @@ para aplicar la migración 015 que añade la columna `socios.sexo`).
   validar credenciales).
 - `emailService` recarga la configuración en caliente al guardar (no hace
   falta reiniciar el servidor).
-- Instrucción: crear una cuenta institucional `mapatalento@agesport.org`
+- Instrucción: crear una cuenta institucional `mapadeltalento@agesport.org`
   (recomendado no-reply) con el proveedor de correo de AGESPORT y pegar los
   credenciales en el panel.
 

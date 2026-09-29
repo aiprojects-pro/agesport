@@ -26,7 +26,6 @@
   const bajaBtn = $('bajaBtn');
   const bajaMessage = $('bajaMessage');
   const orgField = $('orgField');
-  const emailPreferido = $('emailPreferido');
   const especialidadesList = $('especialidadesList');
   const rolDescripcion = $('rolDescripcion');
 
@@ -92,11 +91,16 @@
     especialidadesList.appendChild(row);
   });
 
-  // Tipo socio: mostrar campo de organización si es corporativo
-  $('tipo_socio').addEventListener('change', function () {
-    orgField.style.display = $('tipo_socio').value === 'asociado_corporativo' ? '' : 'none';
-    document.querySelector('label[for=anos_experiencia]').textContent = $('tipo_socio').value === 'asociado_corporativo' ? 'Años de actividad de la organización' : 'Años de experiencia en el sector deportivo';
-  });
+  // Tipo socio: campos de organización (persona jurídica) o de la persona.
+  function applyTipoSocio(tipo) {
+    const corporativo = tipo === 'asociado_corporativo';
+    orgField.style.display = corporativo ? '' : 'none';
+    $('anosLabel').innerHTML = (corporativo ? 'Años de actividad de la organización' : 'Años de experiencia en el sector deportivo <span class="req" aria-hidden="true">*</span>');
+    $('cargoField').querySelector('label').innerHTML = corporativo ? 'Cargo de la persona de contacto' : 'Cargo actual <span class="req" aria-hidden="true">*</span>';
+  }
+  $('tipo_socio').addEventListener('change', function () { applyTipoSocio($('tipo_socio').value); });
+  const verFichas = $('verFichasTipo');
+  if (verFichas) verFichas.addEventListener('click', function (ev) { ev.preventDefault(); if (window.AgesportFichas) window.AgesportFichas.open({}); });
 
   // Descripción del rol seleccionado
   $('rol_cluster').addEventListener('change', function () {
@@ -105,35 +109,90 @@
     rolDescripcion.style.color = rol ? rol.color : '';
   });
 
-  // Selector email_preferido
-  emailPreferido.addEventListener('click', function (ev) {
-    const btn = ev.target.closest('button');
-    if (!btn) return;
-    Array.from(emailPreferido.querySelectorAll('button')).forEach(function (b) { b.classList.remove('active'); });
-    btn.classList.add('active');
-  });
-  function setEmailPreferido(value) {
-    Array.from(emailPreferido.querySelectorAll('button')).forEach(function (b) {
-      b.classList.toggle('active', b.dataset.value === value);
-    });
+  // ===== Decisiones obligatorias (radios sí/no) =====
+  function radioValue(name) {
+    const el = form.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : '';
   }
-  function getEmailPreferido() {
-    const btn = emailPreferido.querySelector('button.active');
-    return btn ? btn.dataset.value : 'profesional';
+  function setRadio(name, value) {
+    form.querySelectorAll('input[name="' + name + '"]').forEach(function (r) { r.checked = value !== null && value !== undefined && r.value === value; });
+  }
+  const yesNo = function (v) { return v ? 'si' : 'no'; };
+
+  const COLLAB_IDS = ['tutor_mentor','ponente','asistente','representacion','captacion_patrocinio','congreso_almeria'];
+  function syncConditional() {
+    const segundo = radioValue('dec_segundo_rol') === 'si';
+    $('rolSecundarioWrap').hidden = !segundo;
+    if (!segundo) $('rol_secundario').value = '';
+    const b2b = radioValue('dec_b2b') === 'si';
+    $('b2bOpciones').hidden = !b2b;
+    if (!b2b) ['b2b_ofrece','b2b_busca','b2b_licita'].forEach(function (id) { $(id).checked = false; });
+    const disp = $('disponibilidad').value;
+    const collab = disp && disp !== 'ninguna';
+    $('colaboracionOpciones').hidden = !collab;
+    if (!collab) COLLAB_IDS.forEach(function (id) { $(id).checked = false; });
+    const pref = radioValue('email_preferido');
+    const target = pref === 'personal' ? $('email_personal').value.trim() : (pref === 'profesional' ? $('email_profesional').value.trim() : '');
+    $('emailContactoResumen').textContent = target ? 'Los avisos y comunicaciones se enviarán a ' + target + '.' : (pref === 'personal' ? 'Escribe tu email personal para poder usarlo.' : '');
+    renderPending();
+  }
+  form.addEventListener('change', syncConditional);
+  form.addEventListener('input', syncConditional);
+
+  // Lista de lo que falta. Cada entrada: [elemento a enfocar, texto].
+  function collectPending() {
+    const out = [];
+    const need = function (cond, el, label) { if (cond) out.push([el, label]); };
+    const firstRadio = function (name) { return form.querySelector('input[name="' + name + '"]'); };
+    need(!radioValue('dec_directorio'), firstRadio('dec_directorio'), 'Aparecer en el directorio');
+    need(!radioValue('dec_mapa'), firstRadio('dec_mapa'), 'Aparecer en el mapa');
+    need(!radioValue('dec_mensajeria'), firstRadio('dec_mensajeria'), 'Aceptar mensajes');
+    need(!$('email_profesional').value.trim(), $('email_profesional'), 'Email profesional');
+    need(!radioValue('email_preferido'), firstRadio('email_preferido'), 'Email para avisos');
+    need(radioValue('email_preferido') === 'personal' && !$('email_personal').value.trim(), $('email_personal'), 'Email personal (lo has elegido para avisos)');
+    need(!radioValue('dec_avisos'), firstRadio('dec_avisos'), 'Avisos de mensajes por email');
+    need(!radioValue('dec_email_ficha'), firstRadio('dec_email_ficha'), 'Email visible en la ficha');
+    need(radioValue('dec_email_ficha') === 'personal' && !$('email_personal').value.trim(), $('email_personal'), 'Email personal (lo has elegido para tu ficha)');
+    need(!$('nombre').value.trim(), $('nombre'), 'Nombre');
+    need(!$('apellidos').value.trim(), $('apellidos'), 'Apellidos');
+    const corporativo = $('tipo_socio').value === 'asociado_corporativo';
+    need(corporativo && !$('nombre_organizacion').value.trim(), $('nombre_organizacion'), 'Nombre de la organización');
+    need(!corporativo && !$('cargo_actual').value.trim(), $('cargo_actual'), 'Cargo actual');
+    need(!corporativo && $('anos_experiencia').value === '', $('anos_experiencia'), 'Años de experiencia');
+    need(!$('provincia').value, $('provincia'), 'Provincia');
+    need(!$('localidad').value.trim(), $('localidad'), 'Localidad');
+    need(!$('rol_cluster').value, $('rol_cluster'), 'Rol principal');
+    need(!radioValue('dec_segundo_rol'), firstRadio('dec_segundo_rol'), 'Segundo rol (sí/no)');
+    need(radioValue('dec_segundo_rol') === 'si' && !$('rol_secundario').value, $('rol_secundario'), 'Elegir el segundo rol');
+    need(radioValue('dec_segundo_rol') === 'si' && $('rol_secundario').value && $('rol_secundario').value === $('rol_cluster').value, $('rol_secundario'), 'El segundo rol debe ser distinto del principal');
+    need(!$('disponibilidad').value, $('disponibilidad'), 'Nivel de disponibilidad');
+    need(!radioValue('dec_b2b'), firstRadio('dec_b2b'), 'Intereses de colaboración (sí/no)');
+    need(radioValue('dec_b2b') === 'si' && !['b2b_ofrece','b2b_busca','b2b_licita'].some(function (id) { return $(id).checked; }), $('b2b_ofrece'), 'Marcar al menos un interés de colaboración');
+    return out;
+  }
+  function renderPending() {
+    const pending = collectPending();
+    form.querySelectorAll('.decision, .field').forEach(function (el) { el.classList.remove('is-pending'); });
+    pending.forEach(function (p) { const box = p[0] && p[0].closest('.decision, .field, .field-full'); if (box) box.classList.add('is-pending'); });
+    $('pendingSummary').textContent = pending.length
+      ? 'Falta por completar o decidir (' + pending.length + '): ' + pending.map(function (p) { return p[1]; }).join(' · ')
+      : 'Todo listo para guardar.';
+    $('pendingSummary').classList.toggle('ok', !pending.length);
+    return pending;
   }
 
   // ===== Carga de datos del perfil =====
   function fillForm(socio) {
-    ['nombre', 'apellidos', 'email', 'email_personal', 'telefono', 'entidad', 'cargo_actual',
+    ['nombre', 'apellidos', 'email', 'email_personal', 'email_profesional', 'telefono', 'entidad', 'cargo_actual',
      'anos_experiencia', 'localidad', 'linkedin_url', 'web_profesional', 'direccion_completa',
      'nombre_organizacion', 'ambito', 'sexo', 'sector', 'telefono_personal', 'rol_secundario'].forEach(function (id) {
       const el = $(id);
       if (el) el.value = socio[id] == null ? '' : socio[id];
     });
 
+    if (!socio.email_profesional) $('email_profesional').value = socio.email || '';
     $('tipo_socio').value = socio.tipo_socio || 'numero';
-    orgField.style.display = socio.tipo_socio === 'asociado_corporativo' ? '' : 'none';
-    document.querySelector('label[for=anos_experiencia]').textContent = socio.tipo_socio === 'asociado_corporativo' ? 'Años de actividad de la organización' : 'Años de experiencia en el sector deportivo';
+    applyTipoSocio(socio.tipo_socio);
 
     // CCAA + provincia (rellena la cascada)
     if (socio.comunidad_autonoma) {
@@ -163,7 +222,6 @@
       cb.checked = especialidades.indexOf(cb.value) !== -1;
     });
 
-    setEmailPreferido(socio.email_preferido || 'profesional');
 
     // Foto y CV
     if (socio.foto_url) {
@@ -179,14 +237,29 @@
       cvDeleteBtn.style.display = '';
     }
 
-    ['acepta_mapa_interactivo','acepta_visibilidad_datos','acepta_mensajeria','acepta_notificaciones_email','visible_telefono','visible_telefono_personal','visible_email_directo','visible_web_profesional','visible_linkedin',
+    ['visible_telefono','visible_telefono_personal','visible_web_profesional','visible_linkedin',
      'b2b_ofrece','b2b_busca','b2b_licita','tutor_mentor','ponente','asistente','representacion','captacion_patrocinio','congreso_almeria'].forEach(function (key) {
       const el = $(key);
       if (el) el.checked = !!socio[key];
     });
-    // Nivel de disponibilidad (enum): sirve para el KPI "Mentores disponibles"
-    const dispSel = $('disponibilidad');
-    if (dispSel) dispSel.value = socio.disponibilidad || '';
+
+    // Decisiones: si el socio ya las confirmó, se muestran sus respuestas;
+    // si no, quedan sin marcar para obligarle a elegir (antes un "no" por
+    // defecto se confundía con una decisión y el socio no aparecía).
+    const reviewed = !!socio.preferencias_revisadas_at;
+    const b2bAny = !!(socio.b2b_ofrece || socio.b2b_busca || socio.b2b_licita);
+    setRadio('dec_directorio', reviewed || socio.acepta_visibilidad_datos ? yesNo(socio.acepta_visibilidad_datos) : null);
+    setRadio('dec_mapa', reviewed || socio.acepta_mapa_interactivo ? yesNo(socio.acepta_mapa_interactivo) : null);
+    setRadio('dec_mensajeria', reviewed || socio.acepta_mensajeria ? yesNo(socio.acepta_mensajeria) : null);
+    setRadio('dec_avisos', reviewed || socio.acepta_notificaciones_email ? yesNo(socio.acepta_notificaciones_email) : null);
+    setRadio('email_preferido', reviewed ? (socio.email_preferido || 'profesional') : (socio.email_preferido === 'personal' ? 'personal' : null));
+    setRadio('dec_email_ficha', socio.visible_email_directo ? (socio.email_visible || 'profesional') : (reviewed ? 'no' : null));
+    setRadio('dec_segundo_rol', socio.rol_secundario ? 'si' : (reviewed ? 'no' : null));
+    setRadio('dec_b2b', b2bAny ? 'si' : (reviewed ? 'no' : null));
+    $('disponibilidad').value = socio.disponibilidad || (reviewed ? 'ninguna' : '');
+    $('pendingBanner').hidden = reviewed;
+    $('pendingBanner').innerHTML = reviewed ? '' : '<strong>Tienes decisiones pendientes.</strong> Para aparecer en el directorio y en el mapa, responde a las preguntas marcadas como «Decisión obligatoria» y guarda el perfil.';
+    syncConditional();
   }
 
   function showPublicProfile(socio) {
@@ -196,7 +269,7 @@
     bajaCard.hidden = true;
     $('portabilityCard').hidden = true;
     const card = document.createElement('article'); card.className='form-card';
-    const labels = {entidad:'Entidad', nombre_organizacion:'Organización', cargo_actual:'Cargo', localidad:'Localidad', provincia:'Provincia', email:'Email profesional', telefono:'Teléfono profesional', telefono_personal:'Teléfono personal', web_profesional:'Web', linkedin_url:'LinkedIn'};
+    const labels = {entidad:'Entidad', nombre_organizacion:'Organización', cargo_actual:'Cargo', localidad:'Localidad', provincia:'Provincia', email:'Email de contacto', telefono:'Teléfono profesional', telefono_personal:'Teléfono personal', web_profesional:'Web', linkedin_url:'LinkedIn'};
     card.innerHTML='<h2>Ficha profesional</h2><dl>'+Object.keys(labels).filter(k => socio[k]).map(k => '<dt><strong>'+labels[k]+'</strong></dt><dd style="overflow-wrap:anywhere;margin:4px 0 16px">'+escapeHtml(socio[k])+'</dd>').join('')+'</dl>';
     const roles = [socio.rol_cluster,socio.rol_secundario].filter(Boolean).map(slug => cat.findRolBySlug(slug)?.label || slug);
     const specialties = (socio.especialidades || []).map(slug => cat.findEspecialidadBySlug(slug)?.label || slug);
@@ -282,7 +355,6 @@
     fillForm(socio);
     if (isOwnProfile) {
       $('locationStatus').textContent = socio.ubicacion_estado === 'municipio' ? 'Ubicación disponible a nivel de municipio.' : socio.ubicacion_estado === 'provincia' ? 'El mapa utiliza una referencia aproximada de tu provincia. Guarda tu localidad para intentar precisar el municipio.' : 'Ubicación pendiente: revisa provincia y localidad.';
-      $('profileMapMode').textContent='El mapa no caduca. Desmarca la opción de aparecer y guarda los cambios para dejar de mostrarse a otros socios. Puedes volver a activarla cuando quieras; administración conserva su vista de gestión.';
     }
 
     if (!isOwnProfile) {
@@ -304,24 +376,33 @@
       .map(function (cb) { return cb.value; });
 
     try {
-      if (!$('disponibilidad').value && ['tutor_mentor','ponente','asistente','representacion','captacion_patrocinio','congreso_almeria'].some(id => $(id).checked)) throw new Error('Selecciona un nivel de disponibilidad para guardar tus opciones de colaboración.');
-      if (['b2b_ofrece','b2b_busca','b2b_licita'].some(id => $(id).checked) && !$('rol_cluster').value) throw new Error('Selecciona tu rol principal para guardar los intereses de colaboración.');
-      if ($('rol_secundario').value && (!$('rol_cluster').value || $('rol_cluster').value === $('rol_secundario').value)) throw new Error('Selecciona un rol principal y un segundo rol distinto.');
+      const pending = renderPending();
+      if (pending.length) {
+        const first = pending[0][0];
+        if (first && first.focus) first.focus();
+        throw new Error('Antes de guardar, completa o decide: ' + pending.map(function (p) { return p[1]; }).join(' · ') + '.');
+      }
+      const emailFicha = radioValue('dec_email_ficha');
+      const disponibilidad = $('disponibilidad').value;
       await request('/api/socios/perfil', {
         method: 'PUT',
         body: JSON.stringify({
+          confirmar_preferencias: true,
           b2b_ofrece: $('b2b_ofrece').checked,
           b2b_busca: $('b2b_busca').checked,
           b2b_licita: $('b2b_licita').checked,
           nombre: $('nombre').value.trim(),
           apellidos: $('apellidos').value.trim(),
           nombre_organizacion: $('nombre_organizacion').value.trim() || null,
+          email_profesional: $('email_profesional').value.trim(),
           email_personal: $('email_personal').value.trim() || null,
-          email_preferido: getEmailPreferido(),
+          email_preferido: radioValue('email_preferido'),
+          email_visible: emailFicha === 'personal' ? 'personal' : 'profesional',
+          visible_email_directo: emailFicha !== 'no',
           telefono: $('telefono').value.trim() || null,
           telefono_personal: $('telefono_personal').value.trim() || null,
           sector: $('sector').value || null,
-          rol_secundario: $('rol_secundario').value || null,
+          rol_secundario: radioValue('dec_segundo_rol') === 'si' ? $('rol_secundario').value : null,
           visible_telefono_personal: $('visible_telefono_personal').checked,
           entidad: $('entidad').value.trim(),
           cargo_actual: $('cargo_actual').value.trim(),
@@ -334,17 +415,15 @@
           linkedin_url: $('linkedin_url').value.trim(),
           web_profesional: $('web_profesional').value.trim(),
           direccion_completa: $('direccion_completa').value.trim(),
-          acepta_mensajeria: $('acepta_mensajeria').checked,
-          acepta_mapa_interactivo: $('acepta_mapa_interactivo').checked,
-          acepta_visibilidad_datos: $('acepta_visibilidad_datos').checked,
-          acepta_notificaciones_email: $('acepta_notificaciones_email').checked,
+          acepta_visibilidad_datos: radioValue('dec_directorio') === 'si',
+          acepta_mapa_interactivo: radioValue('dec_mapa') === 'si',
+          acepta_mensajeria: radioValue('dec_mensajeria') === 'si',
+          acepta_notificaciones_email: radioValue('dec_avisos') === 'si',
           visible_telefono: $('visible_telefono').checked,
-          visible_email_directo: $('visible_email_directo').checked,
           visible_web_profesional: $('visible_web_profesional').checked,
           visible_linkedin: $('visible_linkedin').checked,
-          // Disponibilidad y colaboración (mentor, ponente, etc.)
           sexo: $('sexo').value || null,
-          disponibilidad: $('disponibilidad').value || null,
+          disponibilidad: disponibilidad,
           tutor_mentor: $('tutor_mentor').checked,
           ponente: $('ponente').checked,
           asistente: $('asistente').checked,
@@ -353,6 +432,7 @@
           congreso_almeria: $('congreso_almeria').checked
         })
       });
+      $('pendingBanner').hidden = true;
       setMessage(profileMessage, true, '✓ Perfil actualizado correctamente.');
       // Auditoría 19 jun #5: la usuaria reportaba que no aparecía
       // mensaje de confirmación. El mensaje SÍ se pintaba pero

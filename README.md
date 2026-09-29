@@ -113,7 +113,7 @@ EMAIL_PASS=tu_password_email
 
 # Producción
 NODE_ENV=production
-CORS_ORIGINS=https://mapatalento.agesport.org
+CORS_ORIGINS=https://mapadeltalento.agesport.org
 ```
 
 ### **SSL/HTTPS (Producción)**

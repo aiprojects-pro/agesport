@@ -161,10 +161,71 @@
     return true;
   }
 
+  function rolLabel(slug) {
+    const r = cat.ROLES_CLUSTER.find(function (x) { return x.slug === slug; });
+    return r ? r.label : 'Sin rol declarado';
+  }
+
+  // Vista agregada: una burbuja por provincia con el nº de socios y un
+  // anillo con el reparto por perfil profesional (color del rol). Al pasar
+  // el cursor se detalla el reparto; al pulsar se filtra esa provincia.
+  function renderProvinceBubbles(visibles) {
+    const byProv = {};
+    visibles.forEach(function (s) {
+      if (!s.provincia || !PROV_CENTROIDS[s.provincia]) return;
+      const p = byProv[s.provincia] || (byProv[s.provincia] = { total: 0, roles: {} });
+      p.total++;
+      const key = s.rol_cluster || '';
+      p.roles[key] = (p.roles[key] || 0) + 1;
+    });
+    const provs = Object.keys(byProv);
+    const max = provs.reduce(function (m, k) { return Math.max(m, byProv[k].total); }, 1);
+    provs.forEach(function (prov) {
+      const p = byProv[prov];
+      const roles = Object.keys(p.roles).map(function (k) { return { slug: k, n: p.roles[k] }; })
+        .sort(function (a, b) { return b.n - a.n; });
+      let acc = 0;
+      const stops = roles.map(function (r) {
+        const from = acc / p.total * 360; acc += r.n;
+        return rolColor(r.slug) + ' ' + from.toFixed(1) + 'deg ' + (acc / p.total * 360).toFixed(1) + 'deg';
+      }).join(', ');
+      const size = Math.round(34 + 34 * Math.sqrt(p.total / max));
+      const icon = L.divIcon({
+        className: 'prov-bubble-icon',
+        iconSize: [size, size],
+        html: '<div class="prov-bubble" style="width:' + size + 'px;height:' + size + 'px;background:conic-gradient(' + stops + ')">' +
+          '<span>' + p.total + '</span></div>',
+      });
+      const c = PROV_CENTROIDS[prov];
+      const marker = L.marker([c[0], c[1]], { icon: icon, keyboard: true, title: prov + ': ' + p.total + ' socios' });
+      marker.bindTooltip('<strong>' + escapeHtml(prov) + '</strong> · ' + p.total + (p.total === 1 ? ' socio' : ' socios') +
+        '<ul class="prov-tooltip-list">' + roles.map(function (r) {
+          return '<li><span class="dot" style="background:' + rolColor(r.slug) + '"></span>' + escapeHtml(rolLabel(r.slug)) + ': ' + r.n + '</li>';
+        }).join('') + '</ul>', { direction: 'top', offset: [0, -size / 2], className: 'socio-tooltip' });
+      marker.on('click', function () {
+        currentProvFilter = prov;
+        if (filtroProvincia) filtroProvincia.value = prov;
+        const btn = labelMode && labelMode.querySelector('button[data-label="nombre"]');
+        if (btn) btn.click(); else { currentLabelMode = 'nombre'; applyFilters(); }
+      });
+      markersLayer.addLayer(marker);
+    });
+    return provs.length;
+  }
+
   function renderMarkers() {
     if (!markersLayer) return;
     markersLayer.clearLayers();
     const visibles = sociosMapa.filter(matchesFilters);
+    if (currentLabelMode === 'provincia') {
+      const nProv = renderProvinceBubbles(visibles);
+      $('mapListCount').textContent = visibles.length + ' perfiles en el mapa · ' + nProv + ' provincias';
+      $('mapList').innerHTML = visibles.length ? visibles.map(socioItem).join('') : '<p>No hay perfiles con estos filtros.</p>';
+      const bboxByScope = { andalucia: BBOX_ANDALUCIA, oriental: BBOX_ORIENTAL, occidental: BBOX_OCCIDENTAL, espana: BBOX_ESPANA };
+      mapaLeaflet.fitBounds(bboxByScope[currentScope] || BBOX_ESPANA);
+      setTimeout(function () { mapaLeaflet.invalidateSize(); }, 60);
+      return;
+    }
     const groups = new Map();
     visibles.forEach(s => { const key=s.lat+','+s.lng; if(!groups.has(key)) groups.set(key,[]); groups.get(key).push(s); });
     groups.forEach(function (members) {
@@ -185,7 +246,10 @@
       const label = currentLabelMode === 'rol'
         ? (rolLabelText || '—')
         : (nombreCorto || s.localidad || '—');
-      marker.bindTooltip(escapeHtml(members.length > 1 ? members.length + ' socios · ' + (s.provincia || '') : label), {
+      const dot = '<span class="dot" style="background:' + color + '"></span>';
+      marker.bindTooltip(members.length > 1
+        ? escapeHtml(members.length + ' socios · ' + (s.provincia || ''))
+        : dot + escapeHtml(label) + (currentLabelMode === 'rol' ? '' : '<br><small>' + escapeHtml(rolLabelText || 'Sin rol declarado') + '</small>'), {
         permanent: members.length > 1,
         direction: 'right',
         offset: [12, 0],
@@ -417,6 +481,24 @@
       $('feedCard').hidden=true;
       mensajeriaSummary.closest('article').hidden=true;
       document.querySelector('section.grid-3').hidden=true;
+    }
+    if (!adminView) {
+      // Primer acceso: fichas de tipo de socio y recordatorio de completar
+      // el perfil y decidir la visibilidad. Se muestra una sola vez.
+      request('/api/socios/perfil/' + session.user.id, { method: 'GET', headers: {} }).then(function (d) {
+        const me = d.socio || {};
+        if (!me.preferencias_revisadas_at) {
+          const note = document.createElement('p');
+          note.className = 'pending-banner';
+          note.innerHTML = '<strong>Completa tu perfil:</strong> decide si quieres aparecer en el directorio y en el mapa. <a href="/perfil.html">Ir a mi perfil</a>';
+          welcomeText.after(note);
+        }
+        if (!me.bienvenida_vista_at && window.AgesportFichas) {
+          window.AgesportFichas.open({ firstAccess: true, tipo: me.tipo_socio, onClose: function () {
+            request('/api/socios/bienvenida-vista', { method: 'POST' }).catch(function () {});
+          } });
+        }
+      }).catch(function () {});
     }
     await loadMap();
     if (!adminView) {

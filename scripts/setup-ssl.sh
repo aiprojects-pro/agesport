@@ -8,7 +8,7 @@
 set -e
 
 # Configuración
-DOMAIN="mapatalento.agesport.org"
+DOMAIN="mapadeltalento.agesport.org"
 EMAIL="admin@agesport.org"
 WEBROOT="/var/www/certbot"
 
@@ -118,7 +118,7 @@ events {
 http {
     server {
         listen 80;
-        server_name mapatalento.agesport.org www.mapatalento.agesport.org;
+        server_name mapadeltalento.agesport.org www.mapadeltalento.agesport.org;
 
         location /.well-known/acme-challenge/ {
             root /var/www/certbot;
@@ -163,8 +163,8 @@ if [ $? -eq 0 ]; then
     echo "✅ Certificados renovados exitosamente"
     
     # Copiar certificados actualizados
-    cp certbot/conf/live/mapatalento.agesport.org/fullchain.pem nginx/ssl/cert.pem
-    cp certbot/conf/live/mapatalento.agesport.org/privkey.pem nginx/ssl/key.pem
+    cp certbot/conf/live/mapadeltalento.agesport.org/fullchain.pem nginx/ssl/cert.pem
+    cp certbot/conf/live/mapadeltalento.agesport.org/privkey.pem nginx/ssl/key.pem
     
     # Recargar nginx
     docker-compose exec nginx nginx -s reload

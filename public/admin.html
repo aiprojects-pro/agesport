@@ -64,7 +64,7 @@
         <p id="adminMapMode" role="status">Consultando modo del mapa…</p>
         <p>El mapa no tiene caducidad. Cada socio puede activar o desactivar su aparición desde Mi perfil. Administración mantiene la vista completa de gestión.</p>
         <a class="btn btn-secondary" href="/panel.html?administracion=1">Ver mapa e indicadores</a>
-        <p id="mapDiagnostics" role="status"></p><div id="mapDiagnosticsList"></div>
+        <p id="mapDiagnostics" role="status"></p><p><button type="button" class="btn btn-secondary" id="bulkGeocodeBtn">Completar ubicaciones pendientes</button></p><div id="mapDiagnosticsList"></div>
       </article>
 
       <!-- Evolución mensual: altas de socios en los últimos 12 meses.
@@ -272,7 +272,7 @@
         <p class="muted" style="margin-top:6px">
           Todos los emails de la plataforma (bienvenidas, restablecimientos de contraseña,
           notificaciones de mensajería interna) salen desde esta cuenta. Configura una
-          cuenta institucional tipo <strong>mapatalento@agesport.org</strong> — se recomienda
+          cuenta institucional tipo <strong>mapadeltalento@agesport.org</strong> — se recomienda
           <em>no-reply</em> — con las credenciales SMTP que proporcione el proveedor de
           correo de AGESPORT.
         </p>
@@ -298,7 +298,7 @@
           </div>
           <div class="field">
             <label for="smtp_user">Usuario</label>
-            <input id="smtp_user" placeholder="mapatalento@agesport.org" required>
+            <input id="smtp_user" placeholder="mapadeltalento@agesport.org" required>
           </div>
           <div class="field">
             <label for="smtp_pass">Contraseña / App password</label>
@@ -317,7 +317,7 @@
           </div>
           <div class="field">
             <label for="smtp_from_email">Email remitente</label>
-            <input id="smtp_from_email" type="email" placeholder="mapatalento@agesport.org" required>
+            <input id="smtp_from_email" type="email" placeholder="mapadeltalento@agesport.org" required>
           </div>
           <div class="field-full">
             <label for="smtp_reply_to">Responder a (opcional)</label>
@@ -392,7 +392,16 @@
             </select>
           </div>
           <div class="field">
-            <label for="comAmbito">Ámbito</label>
+            <label for="comSector">Ámbito público / privado</label>
+            <select id="comSector">
+              <option value="">Todos</option>
+              <option value="publico">Sector público</option>
+              <option value="privado">Sector privado</option>
+              <option value="tercer_sector">Tercer sector</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="comAmbito">Ámbito (clasificación anterior)</label>
             <select id="comAmbito">
               <option value="">Todos</option>
               <option value="Público">Público</option>
@@ -422,6 +431,20 @@
           </div>
         </form>
         <div id="comMessage" class="message-box"></div>
+      </article>
+      <article class="form-card" style="margin-top:18px">
+        <h2 style="margin:0 0 6px">Histórico de comunicaciones</h2>
+        <p class="muted" style="margin:0 0 14px">Qué se envió, quién lo envió, a cuántos socios de cada provincia y con qué resultado. Se conserva el email de destino de cada socio para la trazabilidad RGPD.</p>
+        <div class="form-grid">
+          <div class="field">
+            <label for="comHistProvincia">Provincia de destino</label>
+            <select id="comHistProvincia"><option value="">Todas</option></select>
+          </div>
+          <div class="field" style="align-self:end">
+            <button type="button" class="btn btn-secondary" id="comHistBtn">Actualizar histórico</button>
+          </div>
+        </div>
+        <div id="comHistList" style="margin-top:14px"></div>
       </article>
     </section>
 

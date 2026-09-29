@@ -6,31 +6,41 @@ const catalogos = require('../config/catalogos');
 const authLimitMax = parseInt(process.env.RATE_LIMIT_AUTH_MAX || '20', 10);
 const registerLimitMax = parseInt(process.env.RATE_LIMIT_REGISTER_MAX || '10', 10);
 
-// Rate limiting general
+// Identidad para el limitador general. Las sesiones autenticadas cuentan
+// por cuenta (socio/admin) y no por IP: varias personas de una misma
+// oficina, delegación o red móvil comparten salida a Internet y antes
+// agotaban juntas el cupo ("Demasiadas peticiones desde esta IP").
+// Sólo se decodifica el JWT (firma verificada); la autorización real la
+// siguen haciendo los middlewares de cada ruta.
+const jwt = require('jsonwebtoken');
+const sessionKey = (req) => {
+  const token = (req.cookies && req.cookies.token) ||
+    (typeof req.headers.authorization === 'string' ? req.headers.authorization.split(' ')[1] : null);
+  if (!token) return null;
+  try {
+    const decoded = jwt.verify(token, config.jwt.secret);
+    if (decoded.type === 'socio' && decoded.socioId) return 'socio:' + decoded.socioId;
+    if (decoded.type === 'admin' && decoded.adminId) return 'admin:' + decoded.adminId;
+  } catch (_) { /* token caducado o inválido: se trata como anónimo */ }
+  return null;
+};
+
+// Rate limiting general. Sólo protege la API: páginas, recursos estáticos
+// y subidas públicas no cuentan. Desactivable con RATE_LIMIT_DISABLED=true
+// cuando el proxy/WAF de producción ya aplica su propio control.
 const generalLimiter = rateLimit({
   windowMs: config.rateLimiting.windowMs,
-  max: config.rateLimiting.max,
+  max: (req) => (sessionKey(req) ? config.rateLimiting.maxAuthenticated : config.rateLimiting.max),
   message: {
     error: config.rateLimiting.message
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => sessionKey(req) || ipKeyGenerator(req.ip),
   skip: (req) => {
+    if (config.rateLimiting.disabled) return true;
     const path = req.path || '';
-    if (
-      path === '/favicon.ico' ||
-      path === '/health' ||
-      path.startsWith('/assets/') ||
-      path.startsWith('/css/') ||
-      path.startsWith('/js/') ||
-      path.startsWith('/images/')
-    ) {
-      return true;
-    }
-
-    // Skip rate limiting para admins en desarrollo
-    return process.env.NODE_ENV === 'development' && 
-           req.headers.authorization?.includes('admin');
+    return !path.startsWith('/api/') || path.startsWith('/api/public/');
   }
 });
 
@@ -107,15 +117,16 @@ const registerLimiter = rateLimit({
   }
 });
 
-// Rate limiting para mensajería
+// Rate limiting para mensajería: por socio, nunca por IP. El envío a varios
+// destinatarios cuenta como una única petición.
 const messagingLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutos
-  max: 20, // máximo 20 mensajes por usuario cada 5 minutos
-  keyGenerator: (req) => {
-    return req.socioId || ipKeyGenerator(req.ip); // Rate limit por socio, no por IP
-  },
+  max: parseInt(process.env.RATE_LIMIT_MESSAGE_MAX || '60', 10),
+  keyGenerator: (req) => (req.socioId ? 'socio:' + req.socioId : ipKeyGenerator(req.ip)),
+  standardHeaders: true,
+  legacyHeaders: false,
   message: {
-    error: 'Demasiados mensajes enviados. Espera un momento antes de enviar más.'
+    error: 'Has enviado muchos mensajes en poco tiempo. Espera unos minutos antes de enviar más.'
   }
 });
 
@@ -213,7 +224,7 @@ const validateSocioFields = (mode) => (req, res, next) => {
   const required = mode === 'registration';
   const errors = [];
 
-  const limits = { nombre:100, apellidos:150, email:255, email_personal:255, entidad:300,
+  const limits = { nombre:100, apellidos:150, email:255, email_personal:255, email_profesional:255, entidad:300,
     nombre_organizacion:300, cargo_actual:200, localidad:100, codigo_postal:10 };
   for (const [key, max] of Object.entries(limits)) {
     if (b[key] != null && (typeof b[key] !== 'string' || b[key].length > max)) errors.push(key + ': máximo ' + max + ' caracteres');
@@ -226,6 +237,35 @@ const validateSocioFields = (mode) => (req, res, next) => {
     if (b[key] !== undefined && typeof b[key] !== 'boolean') errors.push('La preferencia ' + key + ' debe ser sí o no');
   }
   if (b.email_personal && !validateEmail(b.email_personal)) errors.push('Email personal inválido');
+  if (b.email_profesional && !validateEmail(b.email_profesional)) errors.push('Email profesional inválido');
+  if (!required && b.email_profesional !== undefined && !b.email_profesional) errors.push('El email profesional es obligatorio');
+  for (const key of ['email_preferido', 'email_visible']) {
+    if (b[key] !== undefined && b[key] !== null && !['profesional','personal'].includes(b[key])) errors.push('Selecciona email profesional o personal');
+  }
+  if (b.disponibilidad !== undefined && b.disponibilidad !== null && b.disponibilidad !== '' &&
+      !['Alta','Media','Puntual','ninguna'].includes(b.disponibilidad)) errors.push('Nivel de disponibilidad inválido');
+  if (b.sexo !== undefined && b.sexo !== null && b.sexo !== '' && !['femenino','masculino'].includes(b.sexo)) errors.push('Valor de sexo no válido');
+  // Guardado del formulario de perfil completo: todas las decisiones que
+  // antes quedaban ocultas al final deben venir resueltas (sí/no).
+  if (!required && b.confirmar_preferencias === true) {
+    const pending = [];
+    const decisions = {
+      acepta_visibilidad_datos: 'Mostrarme en el directorio',
+      acepta_mapa_interactivo: 'Mostrarme en el mapa',
+      acepta_mensajeria: 'Aceptar mensajería',
+      acepta_notificaciones_email: 'Avisos de mensajes por email',
+      visible_email_directo: 'Mostrar email en el directorio',
+      b2b_ofrece: 'Intereses de colaboración', b2b_busca: 'Intereses de colaboración', b2b_licita: 'Intereses de colaboración',
+    };
+    for (const [key, label] of Object.entries(decisions)) {
+      if (typeof b[key] !== 'boolean' && !pending.includes(label)) pending.push(label);
+    }
+    if (!('rol_secundario' in b)) pending.push('Segundo rol');
+    if (!b.disponibilidad) pending.push('Nivel de disponibilidad');
+    if (!b.email_preferido) pending.push('Email de contacto');
+    if (!b.rol_cluster) pending.push('Rol principal en el clúster');
+    if (pending.length) errors.push('Decide antes de guardar: ' + pending.join(', '));
+  }
   if (b.telefono_personal && !validateSpanishPhone(b.telefono_personal)) errors.push('Teléfono personal inválido');
   if (b.sector && !['publico','privado','tercer_sector'].includes(b.sector)) errors.push('Sector inválido');
   if (b.rol_secundario && (!catalogos.isValidRolSlug(b.rol_secundario) || b.rol_secundario === b.rol_cluster || b.rol_cluster === null || b.rol_cluster === '')) errors.push('Selecciona dos roles distintos y un rol principal');

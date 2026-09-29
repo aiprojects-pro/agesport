@@ -1,9 +1,13 @@
 const db = require('../config/database');
+// Un CV sólo lo ven el propio socio, administración y los socios a los que
+// el titular ha escrito. Antes bastaba con que existiera una conversación,
+// y cualquiera podía abrirla enviando un primer mensaje al titular.
 async function canRead(req, ownerId) {
   if (req.adminId || req.socioId === ownerId) return true;
-  const result = await db.query(`SELECT 1 FROM conversaciones c
+  if (!req.socioId) return false;
+  const result = await db.query(`SELECT 1 FROM mensajes m
     JOIN socios s ON s.id=$2 AND s.activo=true AND s.estado='aprobado'
-    WHERE (c.socio_1_id=$1 AND c.socio_2_id=$2) OR (c.socio_1_id=$2 AND c.socio_2_id=$1) LIMIT 1`, [req.socioId,ownerId]);
+    WHERE m.emisor_id=$2 AND m.receptor_id=$1 LIMIT 1`, [req.socioId, ownerId]);
   return result.rows.length > 0;
 }
 module.exports = {canRead};

@@ -74,7 +74,7 @@ El servidor **falla al arrancar** (`process.exit(1)`) si alguno de estos no se c
 | `JWT_SECRET` | `openssl rand -hex 32` | Cookies de sesión firmadas |
 | `ENCRYPTION_KEY` | `openssl rand -hex 16` (= 32 chars) | AES-256-CBC de DNI/teléfono |
 | `DB_PASSWORD` | la que pusiste en el paso 3 | Conexión a Postgres |
-| `PUBLIC_BASE_URL` | `https://mapatalento.agesport.org` | Enlaces en emails de reset password |
+| `PUBLIC_BASE_URL` | `https://mapadeltalento.agesport.org` | Enlaces en emails de reset password |
 | `ADMIN_INITIAL_PASSWORD` | contraseña fuerte ≥8 chars | Sólo se usa en `npm run db:setup` |
 
 Valores mínimos imprescindibles:
@@ -94,8 +94,8 @@ ENCRYPTION_KEY=<openssl rand -hex 16>
 ADMIN_INITIAL_EMAIL=admin@agesport.org
 ADMIN_INITIAL_PASSWORD=<contraseña-fuerte>
 
-PUBLIC_BASE_URL=https://mapatalento.agesport.org
-CORS_ORIGINS=https://mapatalento.agesport.org,https://www.agesport.org
+PUBLIC_BASE_URL=https://mapadeltalento.agesport.org
+CORS_ORIGINS=https://mapadeltalento.agesport.org,https://www.agesport.org
 
 PORT=3001
 HOST=127.0.0.1   # nginx hace proxy_pass — NO exponer Node directamente
@@ -166,19 +166,19 @@ pm2 restart mapa-talento-agesport
 ## 7. Configurar nginx (TLS + reverse proxy)
 
 ```nginx
-# /etc/nginx/sites-available/mapatalento.agesport.org
+# /etc/nginx/sites-available/mapadeltalento.agesport.org
 server {
     listen 80;
-    server_name mapatalento.agesport.org;
+    server_name mapadeltalento.agesport.org;
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name mapatalento.agesport.org;
+    server_name mapadeltalento.agesport.org;
 
-    ssl_certificate     /etc/letsencrypt/live/mapatalento.agesport.org/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/mapatalento.agesport.org/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/mapadeltalento.agesport.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/mapadeltalento.agesport.org/privkey.pem;
 
     client_max_body_size 10M;     # uploads (CV/foto/logo)
 
@@ -201,11 +201,11 @@ server {
 Activar:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/mapatalento.agesport.org /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/mapadeltalento.agesport.org /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 
 # TLS con Let's Encrypt:
-sudo certbot --nginx -d mapatalento.agesport.org
+sudo certbot --nginx -d mapadeltalento.agesport.org
 ```
 
 > El servidor lee `req.ip` confiando en `X-Forwarded-For`. Asegúrate de no
@@ -217,13 +217,13 @@ sudo certbot --nginx -d mapatalento.agesport.org
 
 ```bash
 # Health del proceso
-curl -fsS https://mapatalento.agesport.org/health
+curl -fsS https://mapadeltalento.agesport.org/health
 
 # Landing pública (CMS)
-curl -fsS https://mapatalento.agesport.org/api/public/landing | head -c 300
+curl -fsS https://mapadeltalento.agesport.org/api/public/landing | head -c 300
 
 # Login admin
-curl -X POST https://mapatalento.agesport.org/api/auth/login/admin \
+curl -X POST https://mapadeltalento.agesport.org/api/auth/login/admin \
   -H 'Content-Type: application/json' \
   -d '{"email":"admin@agesport.org","password":"<ADMIN_INITIAL_PASSWORD>"}'
 # → debe devolver un JWT y user.rol === "superadmin"

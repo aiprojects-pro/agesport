@@ -13,6 +13,7 @@ const { uploadLandingImage } = require('../services/uploadService');
 const mapTestController = require('../controllers/mapTestController');
 router.get('/mapa-prueba', authenticateAdmin, mapTestController.status);
 router.get('/mapa-diagnostico', authenticateAdmin, mapTestController.diagnostics);
+router.post('/mapa-diagnostico/completar-ubicaciones', authenticateAdmin, mapTestController.bulkRelocate);
 router.post('/mapa-diagnostico/:socioId/ubicacion', authenticateAdmin, mapTestController.relocate);
 router.put('/mapa-prueba', authenticateAdmin, validateInput, mapTestController.update);
 router.get('/mapa', authenticateAdmin, require('../controllers/sociosController').getMapaSocios);
@@ -292,6 +293,15 @@ router.post('/comunicaciones/enviar',
   authenticateAdmin, requireSuperadmin,
   validateInput,
   adminController.enviarComunicacion
+);
+// Histórico de comunicaciones (trazabilidad RGPD por delegado y provincia).
+router.get('/comunicaciones',
+  authenticateAdmin,
+  adminController.listarComunicaciones
+);
+router.get('/comunicaciones/:id/destinatarios',
+  authenticateAdmin,
+  adminController.detalleComunicacion
 );
 
 module.exports = router;

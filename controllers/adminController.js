@@ -21,6 +21,7 @@ function buildSocioFilterWhere(f) {
   if (f.rol_cluster)  { wh.push(`(rc.rol = $${i} OR rc.rol_secundario = $${i++})`);               params.push(f.rol_cluster); }
   if (f.disponibilidad){wh.push(`d.nivel = $${i++}`);              params.push(f.disponibilidad); }
   if (f.ambito)       { wh.push(`s.ambito = $${i++}`);             params.push(f.ambito); }
+  if (f.sector)       { wh.push(`s.sector = $${i++}`);             params.push(f.sector); }
   if (f.solo_mentores === true || f.solo_mentores === 'true') {
     wh.push('d.tutor_mentor = true');
   }
@@ -123,11 +124,7 @@ class AdminController {
       }, { id: socioId });
 
       // Enviar email de notificación
-      const delivery = await emailService.notifySocioApproved({
-        email: socio.email,
-        nombre: socio.nombre,
-        apellidos: socio.apellidos
-      });
+      const delivery = await emailService.notifySocioApproved(socio);
 
       // Auditar aprobación
       await auditAction(socioId, req.adminId, 'APPROVE_SOCIO', 'socios', socio, { estado: 'aprobado', notas }, req);
@@ -175,17 +172,15 @@ class AdminController {
       }, { id: socioId });
 
       // Enviar email de notificación
-      await emailService.notifySocioRejected({
-        email: socio.email,
-        nombre: socio.nombre,
-        apellidos: socio.apellidos
-      }, motivo);
+      const delivery = await emailService.notifySocioRejected(socio, motivo);
 
       // Auditar rechazo
       await auditAction(socioId, req.adminId, 'REJECT_SOCIO', 'socios', socio, { estado: 'rechazado', motivo, notas }, req);
 
-      res.json({ 
-        message: `Socio ${socio.nombre} ${socio.apellidos} rechazado`,
+      res.json({
+        message: `Socio ${socio.nombre} ${socio.apellidos} rechazado` +
+          (delivery?.success ? '; correo aceptado por el servidor de envío' : '; el correo de aviso no se ha podido enviar'),
+        notification_sent: !!delivery?.success,
         motivo
       });
 
@@ -1598,9 +1593,7 @@ class AdminController {
         });
       }
       const emailService = require('../services/emailService');
-      const result = await emailService.notifySocioApproved({
-        email: socio.email, nombre: socio.nombre, apellidos: socio.apellidos,
-      });
+      const result = await emailService.notifySocioApproved(socio);
       await auditAction(null, req.adminId, 'RESEND_WELCOME_EMAIL', 'socios',
         null, { target_id: id, target_email: socio.email }, req);
       if (!result || result.success !== true) {
@@ -1732,7 +1725,8 @@ class AdminController {
 
   // POST /api/admin/comunicaciones/enviar — envía un email a todos los
   // socios que cumplen los filtros. Uso: comunicados de Gerencia, avisos
-  // de eventos, cambios de política. Uno por uno en background.
+  // de eventos, cambios de política. Cada envío queda registrado por
+  // destinatario (email usado, provincia y resultado) para trazabilidad.
   async enviarComunicacion(req, res) {
     try {
       const { asunto, cuerpo, filtros } = req.body || {};
@@ -1744,7 +1738,8 @@ class AdminController {
       }
       const { where, params } = buildSocioFilterWhere(filtros || {});
       const dests = await db.query(
-        `SELECT DISTINCT s.id, s.email, s.nombre
+        `SELECT DISTINCT s.id, s.email, s.email_profesional, s.email_personal,
+                s.email_preferido, s.nombre, s.provincia
          FROM socios s
          JOIN consentimientos c ON c.socio_id = s.id
          LEFT JOIN rol_cluster rc ON rc.socio_id = s.id
@@ -1754,39 +1749,123 @@ class AdminController {
       );
       const adminId = req.adminId;
       const emailService = require('../services/emailService');
+      const { contactEmailFor } = require('../services/contactEmail');
+
+      const campaign = await db.transaction(async (client) => {
+        const created = (await client.query(
+          `INSERT INTO comunicaciones (admin_id, asunto, cuerpo, filtros, total_destinatarios, estado)
+           VALUES ($1,$2,$3,$4,$5,'en_cola') RETURNING id`,
+          [adminId, asunto.trim(), cuerpo, JSON.stringify(filtros || {}), dests.rows.length]
+        )).rows[0];
+        for (const d of dests.rows) {
+          await client.query(
+            `INSERT INTO comunicacion_destinatarios (comunicacion_id, socio_id, provincia, email_destino)
+             VALUES ($1,$2,$3,$4)`,
+            [created.id, d.id, d.provincia, contactEmailFor(d) || '(sin email)']
+          );
+        }
+        return created;
+      });
 
       // Devolvemos ya al admin y disparamos envíos en background.
       res.json({
         message: 'Comunicación en cola',
+        comunicacion_id: campaign.id,
         destinatarios: dests.rows.length,
       });
 
       // Auditar el disparo
       try {
         await auditAction(null, adminId, 'SEND_MASS_COMMUNICATION', 'socios',
-          null, { destinatarios: dests.rows.length, asunto }, req);
+          null, { comunicacion_id: campaign.id, destinatarios: dests.rows.length, asunto }, req);
       } catch (_) { /* no bloquear */ }
 
-      // Envío en background — no bloquea la respuesta
+      const escapeHtml = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
       const html = '<div style="font-family:Arial,sans-serif;color:#333;line-height:1.5">' +
-        '<p>' + String(cuerpo).replace(/\n/g, '<br>') + '</p>' +
+        '<p>' + escapeHtml(cuerpo).replace(/\n/g, '<br>') + '</p>' +
         '<hr><p style="font-size:.85em;color:#666">AGESPORT · Mapa del Talento</p>' +
       '</div>';
-      setImmediate(function () {
-        (async function () {
-          for (const d of dests.rows) {
+      setImmediate(async () => {
+        try {
+          await db.query("UPDATE comunicaciones SET estado='enviando' WHERE id=$1", [campaign.id]);
+          const rows = (await db.query(
+            `SELECT cd.id, cd.email_destino, s.nombre FROM comunicacion_destinatarios cd
+             LEFT JOIN socios s ON s.id = cd.socio_id WHERE cd.comunicacion_id=$1 ORDER BY cd.id`,
+            [campaign.id]
+          )).rows;
+          let ok = 0; let ko = 0;
+          for (const d of rows) {
+            let delivery;
             try {
-              const personalized = html.replace(/\{nombre\}/g, d.nombre || 'socio');
-              await emailService.sendEmail(d.email, asunto, personalized);
+              const personalized = html.replace(/\{nombre\}/g, escapeHtml(d.nombre || 'socio'));
+              delivery = await emailService.sendEmail(d.email_destino.includes('@') ? d.email_destino : null, asunto, personalized);
             } catch (e) {
-              console.warn('[mass-comm] fallo para', d.email, ':', e.message);
+              delivery = { success: false, reason: 'smtp_error' };
             }
+            if (delivery.success) ok++; else ko++;
+            await db.query(
+              `UPDATE comunicacion_destinatarios SET estado=$2, error_code=$3, sent_at=NOW() WHERE id=$1`,
+              [d.id, delivery.success ? 'aceptado' : 'fallido', delivery.success ? null : (delivery.reason || 'smtp_error')]
+            );
           }
-        })();
+          await db.query(
+            `UPDATE comunicaciones SET enviados=$2, fallidos=$3, estado=$4, finished_at=NOW() WHERE id=$1`,
+            [campaign.id, ok, ko, ko ? 'con_errores' : 'completada']
+          );
+        } catch (e) {
+          console.warn('[mass-comm] error en la comunicación', campaign.id, ':', e.message);
+        }
       });
     } catch (error) {
       console.error('Error enviando comunicación:', error);
       res.status(500).json({ error: 'No se pudo enviar la comunicación' });
+    }
+  }
+
+  // GET /api/admin/comunicaciones — histórico de comunicaciones enviadas,
+  // filtrable por administrador (delegado) y por provincia de destino.
+  async listarComunicaciones(req, res) {
+    try {
+      const params = [];
+      const wh = [];
+      if (req.query.admin_id) { params.push(parseInt(req.query.admin_id, 10) || 0); wh.push(`c.admin_id = $${params.length}`); }
+      if (req.query.provincia) {
+        params.push(String(req.query.provincia));
+        wh.push(`EXISTS (SELECT 1 FROM comunicacion_destinatarios x WHERE x.comunicacion_id=c.id AND x.provincia=$${params.length})`);
+      }
+      const result = await db.query(
+        `SELECT c.id, c.asunto, c.filtros, c.total_destinatarios, c.enviados, c.fallidos,
+                c.estado, c.created_at, c.finished_at, a.nombre AS admin_nombre, a.email AS admin_email,
+                COALESCE((SELECT json_agg(json_build_object('provincia', p.provincia, 'total', p.total) ORDER BY p.provincia)
+                          FROM (SELECT COALESCE(provincia,'(sin provincia)') AS provincia, COUNT(*)::int AS total
+                                FROM comunicacion_destinatarios WHERE comunicacion_id=c.id GROUP BY 1) p), '[]'::json) AS por_provincia
+         FROM comunicaciones c LEFT JOIN administradores a ON a.id=c.admin_id
+         ${wh.length ? 'WHERE ' + wh.join(' AND ') : ''}
+         ORDER BY c.created_at DESC LIMIT 200`,
+        params
+      );
+      res.json({ comunicaciones: result.rows });
+    } catch (error) {
+      console.error('Error listando comunicaciones:', error);
+      res.status(500).json({ error: 'No se pudo obtener el histórico de comunicaciones' });
+    }
+  }
+
+  // GET /api/admin/comunicaciones/:id/destinatarios — detalle por socio.
+  async detalleComunicacion(req, res) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const result = await db.query(
+        `SELECT cd.socio_id, s.nombre, s.apellidos, cd.provincia, cd.email_destino,
+                cd.estado, cd.error_code, cd.sent_at
+         FROM comunicacion_destinatarios cd LEFT JOIN socios s ON s.id=cd.socio_id
+         WHERE cd.comunicacion_id=$1 ORDER BY cd.provincia, s.apellidos`,
+        [id]
+      );
+      res.json({ destinatarios: result.rows });
+    } catch (error) {
+      console.error('Error detalle comunicación:', error);
+      res.status(500).json({ error: 'No se pudo obtener el detalle de la comunicación' });
     }
   }
 

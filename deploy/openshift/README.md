@@ -27,8 +27,10 @@ Campos minimos:
 - `ENCRYPTION_KEY=<openssl rand -hex 16>`
 - `ADMIN_INITIAL_EMAIL=<email admin>`
 - `ADMIN_INITIAL_PASSWORD=<password temporal>`
-- `PUBLIC_BASE_URL=https://agesport-agesport.apps.testing.aiprojects.pro`
-- `CORS_ORIGINS=https://agesport-agesport.apps.testing.aiprojects.pro`
+- `PUBLIC_BASE_URL=https://agesport-agesport.apps.testing.aiprojects.pro` (pasar a `https://mapadeltalento.agesport.org` cuando exista el DNS)
+- `CORS_ORIGINS=https://agesport-agesport.apps.testing.aiprojects.pro,https://mapadeltalento.agesport.org`
+- `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS`, `EMAIL_FROM` (o configuración SMTP desde el panel de administración)
+- Opcional: `TRUST_PROXY` (por defecto confía en redes privadas: router de OpenShift), `RATE_LIMIT_MAX_AUTHENTICATED`, `RATE_LIMIT_DISABLED`
 - `PORT=3001`
 - `HOST=0.0.0.0`
 - `UPLOADS_PATH=/app/uploads`
@@ -43,6 +45,8 @@ oc apply -f deploy/openshift/30-postgres.yaml
 oc apply -f deploy/openshift/40-buildconfig.yaml
 oc -n agesport start-build agesport --from-dir=. --follow
 oc apply -f deploy/openshift/50-db-init-job.yaml
+# Dominio definitivo (tras crear el CNAME en el DNS de agesport.org):
+oc apply -f deploy/openshift/61-route-dominio.yaml
 oc -n agesport logs job/agesport-db-init -f
 oc apply -f deploy/openshift/60-app.yaml
 oc apply -f deploy/openshift/70-networkpolicy.yaml

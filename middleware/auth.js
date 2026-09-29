@@ -337,18 +337,30 @@ const filterSensitiveData = (socioData, viewerIsOwner = false, viewerIsAdmin = f
 
   if (viewerIsAdmin || viewerIsOwner) return filtered;
 
-  // Datos que siempre se ocultan de otros socios
+  // Datos que siempre se ocultan de otros socios. El email de acceso nunca
+  // se muestra: si el socio lo autoriza, se muestra el email que haya
+  // elegido (profesional o personal), independiente del de acceso.
   delete filtered.cv_url;
   delete filtered.email_personal;
+  delete filtered.email_profesional;
+  delete filtered.email_preferido;
+  delete filtered.email_visible;
+  delete filtered.sexo;
+  delete filtered.codigo_postal;
+  delete filtered.bienvenida_vista_at;
+  delete filtered.preferencias_revisadas_at;
+  delete filtered.acepta_notificaciones_email;
   if (!socioData.visible_telefono_personal) delete filtered.telefono_personal;
 
   // Datos condicionados por consentimientos
   if (!socioData.visible_telefono) {
     delete filtered.telefono;
   }
-  if (!socioData.visible_email_directo) {
-    delete filtered.email;
-  }
+  const shownEmail = socioData.visible_email_directo
+    ? require('../services/contactEmail').displayEmailFor(socioData)
+    : null;
+  if (shownEmail) filtered.email = shownEmail;
+  else delete filtered.email;
   if (!socioData.visible_web_profesional) {
     delete filtered.web_profesional;
   }

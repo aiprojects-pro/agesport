@@ -1,0 +1,27 @@
+# Ruta del dominio definitivo. Requiere que el DNS de agesport.org tenga un
+# CNAME `mapadeltalento` apuntando al router del clúster (o al balanceador
+# del hosting) y un certificado TLS válido para el nombre.
+# Tras aplicarla, actualizar el secreto agesport-config:
+#   PUBLIC_BASE_URL=https://mapadeltalento.agesport.org
+#   CORS_ORIGINS=https://mapadeltalento.agesport.org
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: agesport-dominio
+  namespace: agesport
+  labels:
+    app: agesport
+  annotations:
+    haproxy.router.openshift.io/timeout: "60s"
+spec:
+  host: mapadeltalento.agesport.org
+  to:
+    kind: Service
+    name: agesport
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
