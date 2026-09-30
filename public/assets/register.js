@@ -115,7 +115,8 @@
   typeCards.forEach(function (card) {
     card.querySelector('input').addEventListener('change', function () { applyTipo(card.dataset.tipo); });
   });
-  applyTipo('numero');
+  // Desde la landing: /registro.html?tipo=asociado_corporativo preselecciona el tipo.
+  applyTipo(new URLSearchParams(location.search).get('tipo') === 'asociado_corporativo' ? 'asociado_corporativo' : 'numero');
 
   // Muestra el mensaje y hace scroll para que sea visible.
   // Antes la usuaria reportaba "el botón parpadea y no envía"

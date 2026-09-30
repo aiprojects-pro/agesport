@@ -25,6 +25,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="/assets/fichas-socio.css">
   <style>
     :root {
       --navy: #0d355f; --navy-deep: #08233f; --navy-soft: #1e5d96;
@@ -282,6 +283,7 @@
       </a>
       <nav class="navlinks" aria-label="Secciones">
         <a href="#mapa">Mapa</a>
+        <a href="#socios">Hazte socio</a>
         <a href="#proyecto" data-cms="topbar.nav1.label">Conocer el proyecto</a>
         <a href="#capacidades" data-cms="topbar.nav2.label">Capacidades</a>
         <a href="#fases" data-cms="topbar.nav3.label">Implementación</a>
@@ -380,23 +382,10 @@
       <div class="shell">
         <div class="section-head reveal">
           <span class="section-kicker">Socios</span>
-          <h2 data-cms="socio.h2">¿Qué tipo de socio eres?</h2>
-          <p data-cms="socio.lead">El Mapa del Talento reúne a personas y a organizaciones. Cada ficha recoge los datos adecuados a su naturaleza.</p>
+          <h2 data-cms="socio.h2">Socios y socias de AGESPORT</h2>
+          <p data-cms="socio.lead">Dos formas de formar parte de la principal red profesional de gestión deportiva de Andalucía: como profesional o como entidad. Consulta las ventajas y compromisos de cada una.</p>
         </div>
-        <div class="types">
-          <article class="type-card reveal">
-            <span class="card-icon"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span>
-            <h3 data-cms="fichas.fisica.title">Socio persona física</h3>
-            <p data-cms="fichas.fisica.body">Profesional que se asocia a título individual.</p>
-            <ul data-list="fichas.fisica.items"></ul>
-          </article>
-          <article class="type-card reveal">
-            <span class="card-icon"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 9h2a2 2 0 0 1 2 2v10M2 21h20M8 7h4M8 11h4M8 15h4"/></svg></span>
-            <h3 data-cms="fichas.juridica.title">Socio persona jurídica</h3>
-            <p data-cms="fichas.juridica.body">Organización que se asocia como entidad.</p>
-            <ul data-list="fichas.juridica.items"></ul>
-          </article>
-        </div>
+        <div class="reveal" data-fichas-full data-cta id="tipos-socio"></div>
       </div>
     </section>
 
@@ -461,6 +450,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="/assets/catalogos.js"></script>
   <script src="/assets/landing.js"></script>
+  <script src="/assets/fichas-socio.js"></script>
   <!-- Editor in-situ: sólo se muestra si el visitante está autenticado como admin. -->
   <script src="/assets/landing-editor.js" defer></script>
   <script src="/assets/cookie-banner.js" defer></script>
