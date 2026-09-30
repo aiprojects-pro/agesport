@@ -37,7 +37,7 @@ INSERT INTO landing_content (clave, valor) VALUES
   ('fichas.fisica.perfil', ''),
   ('fichas.fisica.bloques', E'Visibilidad y reconocimiento: Reconocimiento de socio/a de número AGESPORT, pudiendo mencionarlo y hacerlo constar en su perfil profesional (CV, LinkedIn, etc.) | Presencia, como socio/a, dentro del Mapa del Talento AGESPORT\nNetworking y relaciones: Participación en todas las actividades de AGESPORT | Proponer y participar en procesos de networking | Disfrute de los beneficios de los acuerdos comerciales alcanzados por AGESPORT\nConocimiento y desarrollo: Recepción de comunicaciones de AGESPORT por cualquier medio: publicaciones, estudios, informes, ofertas o demandas de trabajo, formación, entre otros | Consulta de los fondos documentales de AGESPORT\nParticipación asociativa: Presentación de propuestas, mociones y memorias ante los órganos de gobierno, de acuerdo a los Estatutos | Derecho a voto en las Asambleas Generales y en el proceso electoral de AGESPORT'),
   ('fichas.fisica.compromisos', 'Estar al corriente de pago de las cuotas anuales | Colaborar, en la medida de sus posibilidades, en el desarrollo de AGESPORT y en el cumplimiento de su misión, visión y valores'),
-  ('fichas.fisica.cuota', ''),
+  ('fichas.fisica.cuota', '100 € / año'),
   ('fichas.fisica.link', ''),
   ('fichas.juridica.tagline', 'Empresas, entidades e instituciones comprometidas con la gestión deportiva en Andalucía'),
   ('fichas.juridica.perfil', 'Empresas de servicios deportivos, consultoras, gestoras de instalaciones, federaciones, universidades, fundaciones, administraciones públicas y empresas colaboradoras del deporte.'),
