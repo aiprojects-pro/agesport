@@ -100,7 +100,7 @@
   }
   $('tipo_socio').addEventListener('change', function () { applyTipoSocio($('tipo_socio').value); });
   const verFichas = $('verFichasTipo');
-  if (verFichas) verFichas.addEventListener('click', function (ev) { ev.preventDefault(); if (window.AgesportFichas) window.AgesportFichas.open({}); });
+  if (verFichas) verFichas.addEventListener('click', function (ev) { ev.preventDefault(); if (window.AgesportFichas) window.AgesportFichas.open({ tipo: $('tipo_socio').value }); });
 
   // Descripción del rol seleccionado
   $('rol_cluster').addEventListener('change', function () {

@@ -1073,20 +1073,6 @@ fieldset.decision > p { margin: 4px 0 8px; font-size: .88rem; }
 .pending-summary { margin: 0 0 10px; font-size: .88rem; color: #8a4b00; }
 .pending-summary.ok { color: var(--green-deep); }
 
-/* ===== Fichas de tipo de socio ===== */
-dialog.fichas-dialog {
-  border: none; border-radius: 20px; padding: 0; max-width: 760px; width: calc(100% - 32px);
-  box-shadow: var(--shadow); color: var(--ink);
-}
-dialog.fichas-dialog::backdrop { background: rgba(8, 35, 63, .55); }
-.fichas-dialog .fichas-body { padding: 26px; }
-.fichas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 16px 0; }
-.ficha-card { border: 1px solid var(--line); border-radius: 16px; padding: 18px; background: var(--bg-soft); }
-.ficha-card h3 { margin: 0 0 8px; color: var(--navy); font-size: 1.05rem; }
-.ficha-card ul { margin: 10px 0 0; padding-left: 18px; }
-.ficha-card.is-mine { border-color: var(--green-mid); background: rgba(15, 137, 91, .06); }
-.ficha-card .mine-tag { display: inline-block; margin-bottom: 6px; font-size: .75rem; font-weight: 700; color: var(--green-deep); }
-
 /* ===== Mapa: burbujas por provincia y leyenda de perfiles ===== */
 .prov-bubble-icon { background: transparent; border: none; }
 .prov-bubble {

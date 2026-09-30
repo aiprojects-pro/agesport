@@ -161,3 +161,12 @@ test('authenticated sessions are not throttled by a shared IP; anonymous traffic
  assert.equal((await call('/api/public/visor-talento')).status,200);
 });
 
+
+test('member-type sheets from AGESPORT replace the provisional texts and are public',async()=>{
+ const r=await call('/api/public/landing');assert.equal(r.status,200);const c=r.body.content;
+ assert.equal(c['fichas.fisica.title'],'Socio/a de número');assert.equal(c['fichas.juridica.title'],'Socio corporativo');
+ assert.equal(c['fichas.juridica.cuota'],'250 € / año');assert.match(c['fichas.juridica.link'],/^https:\/\/agesport\.org\//);
+ const blocks=c['fichas.juridica.bloques'].split('\n');assert.equal(blocks.length,4);assert.ok(blocks.every(b=>/^[^:]+: .+/.test(b)));
+ assert.equal(c['fichas.fisica.compromisos'].split('|').length,2);assert.equal(c['fichas.juridica.compromisos'].split('|').length,5);
+ assert.ok(!Object.keys(c).some(k=>k.startsWith('email.')));
+});

@@ -1,0 +1,97 @@
+/* Fichas de tipo de socio (landing, primer acceso, perfil, registro). */
+.fs-root {
+  --fs-navy: #0d355f; --fs-navy-deep: #08233f; --fs-green: #0f895b; --fs-green-deep: #008460;
+  --fs-ink: #14202c; --fs-muted: #5d6d7b; --fs-line: rgba(13,53,95,.10); --fs-soft: #eef4f1;
+  --fs-accent: var(--fs-navy);
+  color: var(--fs-ink);
+}
+.fs-tabs {
+  display: inline-flex; gap: 6px; padding: 6px; border-radius: 999px; background: #fff;
+  border: 1px solid var(--fs-line); margin-bottom: 22px; max-width: 100%; flex-wrap: wrap;
+}
+.fs-tabs button {
+  display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; cursor: pointer;
+  padding: 10px 18px; border-radius: 999px; font: inherit; font-weight: 700; color: var(--fs-navy-deep);
+  min-height: 44px;
+}
+.fs-tabs button[aria-selected="true"] { background: var(--fs-navy); color: #fff; box-shadow: 0 8px 20px rgba(13,53,95,.22); }
+.fs-tabs button:focus-visible { outline: 3px solid var(--fs-green); outline-offset: 2px; }
+.fs-mine { font-style: normal; font-size: .72rem; padding: 2px 8px; border-radius: 999px; background: rgba(15,137,91,.16); color: var(--fs-green-deep); }
+.fs-tabs button[aria-selected="true"] .fs-mine { background: rgba(255,255,255,.2); color: #fff; }
+
+.fs-panel {
+  display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.6fr); gap: 0;
+  background: #fff; border: 1px solid var(--fs-line); border-radius: 28px; overflow: hidden;
+  box-shadow: 0 24px 60px rgba(8,35,63,.08);
+}
+.fs-juridica { --fs-accent: var(--fs-green-deep); }
+.fs-intro {
+  position: relative; padding: 32px; color: #fff; overflow: hidden;
+  background: linear-gradient(160deg, var(--fs-navy) 0%, var(--fs-navy-deep) 100%);
+}
+.fs-juridica .fs-intro { background: linear-gradient(160deg, #0f895b 0%, #0d4f45 100%); }
+.fs-intro::after {
+  content: ''; position: absolute; right: -90px; bottom: -110px; width: 260px; height: 260px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(109,169,63,.45), transparent 70%); pointer-events: none;
+}
+.fs-badge { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; background: rgba(255,255,255,.14); }
+.fs-title { font-family: 'Fraunces', Georgia, serif; font-size: clamp(1.6rem, 3vw, 2.1rem); line-height: 1.1; margin: 16px 0 8px; color: #fff; }
+.fs-tagline { margin: 0 0 18px; font-weight: 700; color: #cfe9d9; }
+.fs-what, .fs-perfil { margin: 0 0 12px; color: rgba(255,255,255,.86); font-size: .95rem; line-height: 1.55; }
+.fs-what strong, .fs-perfil strong { color: #fff; }
+.fs-legacy { margin: 0 0 12px; padding-left: 18px; color: rgba(255,255,255,.86); }
+.fs-cuota {
+  position: relative; z-index: 1; display: inline-flex; flex-direction: column; margin: 8px 0 4px;
+  padding: 12px 18px; border-radius: 16px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+}
+.fs-cuota span { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.75); font-weight: 700; }
+.fs-cuota strong { font-family: 'Fraunces', Georgia, serif; font-size: 1.7rem; line-height: 1.1; }
+.fs-actions { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.fs-btn {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 18px;
+  border-radius: 999px; font-weight: 700; text-decoration: none; border: 1px solid transparent; cursor: pointer; font: inherit; font-weight: 700;
+}
+.fs-btn-primary { background: #fff; color: var(--fs-navy-deep); }
+.fs-intro .fs-btn-ghost { background: transparent; color: #fff; border-color: rgba(255,255,255,.45); }
+.fs-btn-ghost { background: #fff; color: var(--fs-navy-deep); border-color: var(--fs-line); }
+
+.fs-benefits { padding: 28px; display: grid; gap: 18px; align-content: start; }
+.fs-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.fs-block { background: #f7faf9; border: 1px solid var(--fs-line); border-radius: 18px; padding: 18px; }
+.fs-block h4, .fs-commit h4 {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-size: .82rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--fs-accent);
+}
+.fs-block-icon { width: 32px; height: 32px; flex: 0 0 32px; border-radius: 10px; display: grid; place-items: center; background: #fff; border: 1px solid var(--fs-line); }
+.fs-block ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fs-block li { position: relative; padding-left: 22px; font-size: .92rem; line-height: 1.45; color: var(--fs-ink); }
+.fs-block li::before {
+  content: ''; position: absolute; left: 2px; top: .45em; width: 11px; height: 6px;
+  border-left: 2px solid var(--fs-green); border-bottom: 2px solid var(--fs-green); transform: rotate(-45deg);
+}
+.fs-commit { border: 1px dashed rgba(13,53,95,.25); border-radius: 18px; padding: 18px; background: #fff; }
+.fs-commit ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: .92rem; color: var(--fs-ink); }
+.fs-commit li::marker { color: var(--fs-accent); font-weight: 700; }
+
+@media (max-width: 1020px) {
+  .fs-panel { grid-template-columns: 1fr; }
+}
+@media (max-width: 680px) {
+  .fs-grid { grid-template-columns: 1fr; }
+  .fs-intro, .fs-benefits { padding: 22px; }
+  .fs-tabs { display: flex; border-radius: 18px; }
+  .fs-tabs button { flex: 1 1 auto; justify-content: center; }
+}
+
+/* Diálogo */
+dialog.fichas-dialog {
+  border: none; border-radius: 24px; padding: 0; width: min(1080px, calc(100% - 24px)); max-height: calc(100vh - 32px);
+  box-shadow: 0 30px 80px rgba(8,35,63,.35); color: #14202c; background: #f5f8f7;
+}
+dialog.fichas-dialog::backdrop { background: rgba(8,35,63,.55); }
+.fichas-body { padding: 26px; }
+.fichas-body h2 { margin: 0 0 6px; color: #08233f; font-family: 'Fraunces', Georgia, serif; }
+.fs-dialog-lead { margin: 0 0 18px; color: #5d6d7b; }
+.fs-dialog-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+.fs-dialog-actions .fs-btn-primary { background: #0d355f; color: #fff; }
+@media (max-width: 680px) { .fichas-body { padding: 16px; } }
