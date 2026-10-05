@@ -340,7 +340,7 @@
           </div>
           <div class="field">
             <label for="newPassword">Nueva contraseña</label>
-            <input id="newPassword" type="password">
+            <input id="newPassword" type="password" aria-describedby="passwordHelp"><small id="passwordHelp" data-password-help></small>
           </div>
           <div class="field-full">
             <button class="btn btn-secondary" type="submit" id="passwordBtn">Actualizar contraseña</button>
@@ -386,12 +386,14 @@
         <div id="bajaMessage" class="message-box"></div>
       </article>
     </section>
-  </main>
+  <p><a href="/privacidad.html" target="_blank" rel="noopener">Consultar la política de privacidad vigente</a></p></main>
 
   <script src="/assets/catalogos.js"></script>
   <script src="/assets/portal.js"></script>
   <script src="/assets/fichas-socio.js"></script>
   <script src="/assets/perfil.js"></script>
   <script src="/assets/password-toggle.js" defer></script>
+<script src="/assets/password-policy.js"></script>
+<script src="/assets/policy-context.js"></script>
 </body>
 </html>

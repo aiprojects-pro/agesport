@@ -424,7 +424,7 @@
             '<td>' + escapeHtml(s.entidad || '') + '</td>' +
             '<td>' + escapeHtml(s.provincia || '') + '</td>' +
             '<td>' + escapeHtml(tipoSocioLabel(s.tipo_socio)) + '</td>' +
-            '<td>' + stateBadge(s.estado) + '</td>' +
+            '<td>' + stateBadge(s.estado) + (s.baja_solicitada ? '<br><span class="state-badge pending">Baja solicitada · pendiente de gestión</span>' : '') + '</td>' +
             '<td>' + escapeHtml(s.ultimo_acceso ? formatDate(s.ultimo_acceso) : '—') + '</td>' +
             '<td style="text-align:right;white-space:nowrap">' +
               (s.estado === 'aprobado' ? '<button class="btn-upload" type="button" data-suspend="' + s.id + '">Suspender</button> ' : '') +
@@ -1294,7 +1294,7 @@
         '<td>' + escapeHtml((s.nombre || '') + ' ' + (s.apellidos || '')) + '</td>' +
         '<td class="muted">' + escapeHtml(s.email || '') + '</td>' +
         '<td><select class="socio-tipo" data-id="' + s.id + '">' + options + '</select></td>' +
-        '<td>' + stateBadge(s.estado) + '</td>' +
+        '<td>' + stateBadge(s.estado) + (s.baja_solicitada ? '<br><span class="state-badge pending">Baja solicitada · pendiente de gestión</span>' : '') + '</td>' +
         '<td>' +
           '<button class="btn btn-secondary btn-sm" data-action="socio-reset-pw" data-id="' + s.id + '" data-email="' + escapeHtml(s.email) + '">Reset password</button> ' +
           (s.estado === 'aprobado' && s.activo

@@ -12,7 +12,11 @@ const crypto = require('crypto');
 // un objeto de filtros. Función libre (no método) para evitar problemas de
 // binding de `this` al pasarla como handler de Express.
 function buildSocioFilterWhere(f) {
-  const wh = ["s.estado='aprobado'", 's.activo=true', 'c.acepta_mensajeria=true'];
+  const allowed = new Set(['provincia','comunidad','tipo_socio','rol_cluster','disponibilidad','ambito','sector','solo_mentores','tipo_comunicacion']);
+  if (!f || typeof f!=='object' || Array.isArray(f) || Object.keys(f).some(k=>!allowed.has(k)) || Object.entries(f).some(([k,v])=>v!=null && typeof v!=='string' && !(k==='solo_mentores'&&typeof v==='boolean'))) {
+    const e=new Error('Los filtros de destinatarios no son válidos. Revisa la selección.');e.status=400;throw e;
+  }
+  const wh = ["s.estado='aprobado'", 's.activo=true', 'c.acepta_mensajeria=true', 'c.acepta_notificaciones_email=true'];
   const params = [];
   let i = 1;
   if (f.provincia)    { wh.push(`s.provincia = $${i++}`);          params.push(f.provincia); }
@@ -784,7 +788,7 @@ class AdminController {
         update.estado = 'aprobada';
         update.fecha_gestion = new Date();
         // Da de baja al socio (soft-delete)
-        await db.update('socios', { activo: false, estado: 'rechazado', notas_moderacion: 'Baja aprobada por admin' }, { id: baja.socio_id });
+        await db.update('socios', { activo: false, estado: 'baja', notas_moderacion: 'Baja aprobada por admin' }, { id: baja.socio_id });
       } else if (accion === 'rechazar') {
         update.estado = 'rechazada';
         update.fecha_gestion = new Date();
@@ -1092,7 +1096,8 @@ class AdminController {
       const result = await db.query(`
         SELECT s.id, s.email, s.nombre, s.apellidos, s.entidad, s.provincia,
                s.comunidad_autonoma, s.tipo_socio, s.estado, s.activo,
-               s.ultimo_acceso, s.fecha_registro
+               s.ultimo_acceso, s.fecha_registro,
+               EXISTS(SELECT 1 FROM bajas_pendientes bp WHERE bp.socio_id=s.id AND bp.estado IN ('pendiente','en_revision')) AS baja_solicitada
         FROM socios s
         WHERE s.activo = true AND ($1::text = '' OR s.estado::text = $1)
         ORDER BY s.ultimo_acceso DESC NULLS LAST, s.fecha_registro DESC
@@ -1706,6 +1711,7 @@ class AdminController {
   async previewComunicacion(req, res) {
     try {
       const filtros = req.body || {};
+      if (filtros.tipo_comunicacion && filtros.tipo_comunicacion !== 'informativa') return res.status(400).json({error:'Las comunicaciones comerciales de patrocinadores no están habilitadas.'});
       const { where, params } = buildSocioFilterWhere(filtros);
       const result = await db.query(
         `SELECT COUNT(DISTINCT s.id)::int AS total
@@ -1718,6 +1724,7 @@ class AdminController {
       );
       res.json({ destinatarios: result.rows[0].total });
     } catch (error) {
+      if(error.status===400)return res.status(400).json({error:error.message});
       console.error('Error preview comunicación:', error);
       res.status(500).json({ error: 'No se pudo calcular la preview' });
     }
@@ -1730,10 +1737,11 @@ class AdminController {
   async enviarComunicacion(req, res) {
     try {
       const { asunto, cuerpo, filtros } = req.body || {};
-      if (!asunto || asunto.trim().length < 3) {
+      if ((req.body.tipo_comunicacion && req.body.tipo_comunicacion!=='informativa') || (filtros?.tipo_comunicacion && filtros.tipo_comunicacion!=='informativa')) return res.status(400).json({error:'Las comunicaciones comerciales de patrocinadores no están habilitadas.'});
+      if (typeof asunto!=='string' || asunto.trim().length < 3 || asunto.length>200) {
         return res.status(400).json({ error: 'El asunto es obligatorio' });
       }
-      if (!cuerpo || cuerpo.trim().length < 10) {
+      if (typeof cuerpo!=='string' || cuerpo.trim().length < 10 || cuerpo.length>30000) {
         return res.status(400).json({ error: 'El cuerpo del mensaje es demasiado corto' });
       }
       const { where, params } = buildSocioFilterWhere(filtros || {});
@@ -1797,8 +1805,12 @@ class AdminController {
           for (const d of rows) {
             let delivery;
             try {
+              const current=(await db.query(`SELECT s.* FROM comunicacion_destinatarios cd JOIN socios s ON s.id=cd.socio_id JOIN consentimientos c ON c.socio_id=s.id WHERE cd.id=$1 AND s.activo=true AND s.estado='aprobado' AND c.acepta_mensajeria=true AND c.acepta_notificaciones_email=true`,[d.id])).rows[0];
+              if(!current){ko++;await db.query("UPDATE comunicacion_destinatarios SET estado='fallido',error_code='omitido_preferencias_estado' WHERE id=$1",[d.id]);continue;}
+              const destination=contactEmailFor(current);
+              await db.query('UPDATE comunicacion_destinatarios SET email_destino=$2 WHERE id=$1',[d.id,destination||'(sin email)']);
               const personalized = html.replace(/\{nombre\}/g, escapeHtml(d.nombre || 'socio'));
-              delivery = await emailService.sendEmail(d.email_destino.includes('@') ? d.email_destino : null, asunto, personalized);
+              delivery = await emailService.sendEmail(destination, asunto, personalized);
             } catch (e) {
               delivery = { success: false, reason: 'smtp_error' };
             }
@@ -1814,9 +1826,11 @@ class AdminController {
           );
         } catch (e) {
           console.warn('[mass-comm] error en la comunicación', campaign.id, ':', e.message);
+          await db.query("UPDATE comunicaciones SET estado='con_errores',finished_at=NOW() WHERE id=$1",[campaign.id]).catch(()=>{});
         }
       });
     } catch (error) {
+      if(error.status===400)return res.status(400).json({error:error.message});
       console.error('Error enviando comunicación:', error);
       res.status(500).json({ error: 'No se pudo enviar la comunicación' });
     }

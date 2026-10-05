@@ -137,6 +137,8 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/privacidad.html', require('./controllers/privacyController').page);
+
 if (process.env.NODE_ENV !== 'production') {
   app.use(express.static(path.join(__dirname, 'public')));
 }

@@ -94,4 +94,5 @@ router.get('/landing', async (req, res) => {
   }
 });
 
+router.get('/privacidad',require('../controllers/privacyController').current);
 module.exports = router;

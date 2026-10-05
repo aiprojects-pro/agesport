@@ -61,7 +61,7 @@
     return '<span class="leg-item" style="--leg-color:' + r.color + '">' + escapeHtml(r.label) + '</span>';
   }).join('');
 
-  let currentScope = 'andalucia';
+  let currentScope = 'espana';
   let currentLabelMode = 'nombre'; // 'nombre' | 'rol'
   let currentRolFilter = '';
   let currentEspFilter = '';
@@ -132,7 +132,7 @@
       const data = await request(adminView ? '/api/admin/mapa' : '/api/socios/mapa', { method: 'GET', headers: {} });
       mapaInfo = data; mapLoaded = true;
       sociosMapa = (data.socios || []).filter(s => Number.isFinite(s.lat) && Number.isFinite(s.lng));
-      $('mapModeNotice').textContent = adminView ? 'Mapa de gestión: todas las cuentas aprobadas y activas. Los socios pueden ocultarse del mapa compartido desde Mi perfil.' : 'Mapa privado sin caducidad. Puedes activar o desactivar tu aparición desde Mi perfil. Los indicadores corresponden a los perfiles que aparecen con estos filtros.';
+      $('mapModeNotice').textContent = adminView ? 'Mapa de gestión: todas las cuentas aprobadas y activas. Los socios pueden ocultarse del mapa compartido desde Mi perfil.' : 'Mapa privado sin caducidad. Puedes activar o desactivar tu aparición desde Mi perfil. Los indicadores corresponden a los perfiles que aparecen con estos filtros. La portada pública cuenta todas las cuentas aprobadas y activas; puede incluir personas que han ocultado su perfil del mapa.';
       $('mapUpdated').textContent = 'Datos consultados: ' + new Date().toLocaleString('es-ES') + (data.sin_ubicacion ? '. Sin referencia geográfica: ' + data.sin_ubicacion : '');
       applyFilters();
     } catch (err) {
@@ -143,6 +143,7 @@
   }
 
   function inScope(prov) {
+    if (currentScope === 'ciudades') return ['Ceuta','Melilla'].includes(prov);
     if (currentScope === 'andalucia') return PROV_ANDALUCIA.indexOf(prov) !== -1;
     if (currentScope === 'oriental')  return PROV_ORIENTAL.indexOf(prov) !== -1;
     if (currentScope === 'occidental')return PROV_OCCIDENTAL.indexOf(prov) !== -1;
@@ -179,7 +180,6 @@
       p.roles[key] = (p.roles[key] || 0) + 1;
     });
     const provs = Object.keys(byProv);
-    const max = provs.reduce(function (m, k) { return Math.max(m, byProv[k].total); }, 1);
     provs.forEach(function (prov) {
       const p = byProv[prov];
       const roles = Object.keys(p.roles).map(function (k) { return { slug: k, n: p.roles[k] }; })
@@ -189,7 +189,8 @@
         const from = acc / p.total * 360; acc += r.n;
         return rolColor(r.slug) + ' ' + from.toFixed(1) + 'deg ' + (acc / p.total * 360).toFixed(1) + 'deg';
       }).join(', ');
-      const size = Math.round(34 + 34 * Math.sqrt(p.total / max));
+      const compact = mapContainer.clientWidth < 600;
+      const size = Math.round((compact ? 22 : 24) + Math.min(compact ? 20 : 28, (compact ? 8 : 10) * Math.log2(p.total + 1)));
       const icon = L.divIcon({
         className: 'prov-bubble-icon',
         iconSize: [size, size],
@@ -222,7 +223,9 @@
       $('mapListCount').textContent = visibles.length + ' perfiles en el mapa · ' + nProv + ' provincias';
       $('mapList').innerHTML = visibles.length ? visibles.map(socioItem).join('') : '<p>No hay perfiles con estos filtros.</p>';
       const bboxByScope = { andalucia: BBOX_ANDALUCIA, oriental: BBOX_ORIENTAL, occidental: BBOX_OCCIDENTAL, espana: BBOX_ESPANA };
-      mapaLeaflet.fitBounds(bboxByScope[currentScope] || BBOX_ESPANA);
+      const centers=markersLayer.getLayers().map(marker=>marker.getLatLng());
+      if(centers.length) mapaLeaflet.fitBounds(L.latLngBounds(centers),{padding:[35,35],maxZoom:8});
+      else mapaLeaflet.fitBounds(bboxByScope[currentScope] || BBOX_ESPANA);
       setTimeout(function () { mapaLeaflet.invalidateSize(); }, 60);
       return;
     }
@@ -296,6 +299,7 @@
     Array.from(territoryFilter.querySelectorAll('button')).forEach(function (b) { b.classList.remove('active'); });
     btn.classList.add('active');
     currentScope = btn.dataset.scope;
+    if(currentProvFilter && !inScope(currentProvFilter)){currentProvFilter='';if(filtroProvincia)filtroProvincia.value='';}
     applyFilters();
   });
 
@@ -330,6 +334,7 @@
   });
   if (filtroProvincia) filtroProvincia.addEventListener('change', function () {
     currentProvFilter = filtroProvincia.value || '';
+    if(currentProvFilter && !inScope(currentProvFilter)){currentScope='espana';territoryFilter.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.scope==='espana'));}
     applyFilters();
     // Pan directo al centroide de la provincia seleccionada. Si hay
     // marcadores en la provincia, renderMarkers() los encaja después,
@@ -349,7 +354,7 @@
   });
 
   function filterByScope() {
-    return {scopeLabel: ({andalucia:'Andalucía',oriental:'Andalucía oriental',occidental:'Andalucía occidental',espana:'España'})[currentScope]};
+    return {scopeLabel: ({andalucia:'Andalucía',oriental:'Andalucía oriental',occidental:'Andalucía occidental',espana:'España',ciudades:'Ceuta y Melilla'})[currentScope]};
   }
 
   function renderKPIs() {
@@ -628,13 +633,10 @@
     const total = socios.length;
     if (total === 0) return chartCard('Delegación provincial', null);
     let body = '';
-    PROV_ANDALUCIA.forEach(function (p) {
-      const n = socios.filter(function (s) { return s.provincia === p; }).length;
-      body += bar(p, n, total);
+    [...new Set(socios.map(s=>s.provincia||'Sin provincia'))].sort((a,b)=>a.localeCompare(b,'es')).forEach(function(p){
+      body += bar(p,socios.filter(s=>(s.provincia||'Sin provincia')===p).length,total);
     });
-    const fueraAnd = socios.filter(function (s) { return PROV_ANDALUCIA.indexOf(s.provincia) === -1; }).length;
-    if (fueraAnd > 0) body += bar('Otras (fuera Andalucía)', fueraAnd, total, 'color-gray');
-    return chartCard('Delegación provincial (Andalucía)', body);
+    return chartCard('Distribución por provincia o ciudad autónoma',body);
   }
 
   function chartTipoSocio(socios) {

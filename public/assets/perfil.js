@@ -387,6 +387,7 @@
       await request('/api/socios/perfil', {
         method: 'PUT',
         body: JSON.stringify({
+          policy_version_id: window.AgesportPolicyContext.id,
           confirmar_preferencias: true,
           b2b_ofrece: $('b2b_ofrece').checked,
           b2b_busca: $('b2b_busca').checked,
@@ -456,6 +457,7 @@
     passwordBtn.disabled = true;
     passwordBtn.textContent = 'Actualizando...';
     try {
+      const passwordError=window.AgesportPassword.error($('newPassword').value);if(passwordError)throw new Error(passwordError);
       await request('/api/auth/change-password', {
         method: 'POST',
         body: JSON.stringify({
