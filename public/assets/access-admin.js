@@ -10,7 +10,7 @@
   if (!forceMode) {
     verifySession().then(function (session) {
       const tipoTxt = session.type === 'admin' ? 'administrador' : 'socio';
-      const panelUrl = session.type === 'admin' ? '/admin.html' : '/panel.html';
+      const panelUrl = session.type === 'admin' ? (session.user.rol === 'delegado_provincial' ? '/delegacion.html' : '/admin.html') : '/panel.html';
       const banner = document.createElement('div');
       banner.className = 'message-box info';
       banner.style.margin = '20px auto';
@@ -41,14 +41,14 @@
     adminBtn.disabled = true;
     adminBtn.textContent = 'Accediendo...';
     try {
-      await request('/api/auth/login/admin', {
+      const result = await request('/api/auth/login/admin', {
         method: 'POST',
         body: JSON.stringify({
           email: document.getElementById('adminEmail').value.trim(),
           password: document.getElementById('adminPassword').value
         })
       });
-      window.location.href = '/admin.html';
+      window.location.href = result.admin.rol === 'delegado_provincial' ? '/delegacion.html' : '/admin.html';
     } catch (error) {
       setMessage(adminMessage, false, error.message);
     } finally {

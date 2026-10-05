@@ -97,7 +97,7 @@ const authenticateSocio = async (req, res, next) => {
 };
 
 // Middleware para rutas que requieren autenticación de administrador
-const authenticateAdmin = async (req, res, next) => {
+const authenticateAdminAccount = async (req, res, next, allowDelegate = false) => {
   try {
     const token = req.cookies.adminToken || req.headers.authorization?.split(' ')[1];
     
@@ -118,13 +118,15 @@ const authenticateAdmin = async (req, res, next) => {
     const admin = await db.findOne('administradores', {
       id: decoded.adminId,
       activo: true
-    }, 'id, email, nombre, rol, password_changed_at');
+    }, 'id, email, nombre, rol, provincia_delegacion, password_changed_at');
 
     if (!admin) {
       return res.status(401).json({
         error: 'Administrador no encontrado o inactivo.'
       });
     }
+
+    if (admin.rol === 'delegado_provincial' && !allowDelegate) return res.status(403).json({error:'Este acceso está reservado a la administración general. Utiliza el panel de delegación.'});
 
     // Invalidar sesiones abiertas si la password se cambió después de
     // emitirse el token (mismo enfoque que en socios, con corrección UTC).
@@ -152,6 +154,15 @@ const authenticateAdmin = async (req, res, next) => {
     res.status(401).json({ error: 'Token de administrador inválido.' });
   }
 };
+
+const authenticateAdmin = (req,res,next) => authenticateAdminAccount(req,res,next);
+const authenticateDelegate = (req,res,next) => authenticateAdminAccount(req,res,() => {
+  const provincia = require('../config/catalogos').canonicalProvincia(req.admin.provincia_delegacion || '');
+  if (req.admin.rol !== 'delegado_provincial' || !provincia) return res.status(403).json({error:'Se necesita un delegado con provincia asignada.'});
+  req.delegationProvince = provincia;
+  res.set('Cache-Control','no-store');
+  next();
+},true);
 
 // Restringe el endpoint a admins con rol='superadmin'. Debe usarse
 // SIEMPRE encadenado tras `authenticateAdmin` — depende de `req.admin`.
@@ -197,6 +208,7 @@ const authenticateAny = async (req, res, next) => {
         activo: true 
       });
       if (admin) {
+        if (admin.rol === 'delegado_provincial' && !['/api/auth/verify','/api/auth/change-password'].includes(req.originalUrl.split('?')[0])) return res.status(403).json({error:'Utiliza las funciones de tu delegación provincial.'});
         req.user = { ...admin, type: 'admin' };
         req.admin = admin;
         req.adminId = admin.id;
@@ -382,6 +394,7 @@ module.exports = {
   verifyToken,
   authenticateSocio,
   authenticateAdmin,
+  authenticateDelegate,
   authenticateAny,
   requireSuperadmin,
   encryptData,

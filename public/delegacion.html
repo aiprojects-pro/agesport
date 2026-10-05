@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>AGESPORT · Delegación provincial</title>
+    <link rel="stylesheet" href="/assets/portal.css" />
+    <style>
+      .delegate-page {
+        max-width: 1200px;
+        margin: 30px auto;
+        padding: 0 18px;
+        display: grid;
+        gap: 22px;
+      }
+      .delegate-filters {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+      }
+      .delegate-page > * {
+        min-width: 0;
+      }
+      .delegate-page .card {
+        padding: 24px;
+      }
+      .delegate-page input,
+      .delegate-page select,
+      .delegate-page textarea {
+        width: 100%;
+      }
+      .delegate-page textarea {
+        min-height: 150px;
+      }
+      .delegate-page h2 {
+        margin-top: 0;
+      }
+      .delegate-page .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 14px;
+      }
+      .delegate-page [hidden] {
+        display: none;
+      }
+      .delegate-page .table-scroll {
+        overflow: auto;
+      }
+      @media (max-width: 600px) {
+        .delegate-page > * {
+          min-width: 0;
+        }
+        .delegate-page .card {
+          padding: 16px;
+        }
+        .delegate-page h1 {
+          font-size: 1.8rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+    <header class="site-topbar">
+      <div class="shell inner">
+        <a class="site-brand" href="/"
+          ><span class="site-brand-mark" aria-label="AGESPORT"></span></a
+        ><button class="btn btn-secondary" id="logout">Cerrar sesión</button>
+      </div>
+    </header>
+    <main class="delegate-page" id="contenido">
+      <section class="hero-block">
+        <div class="eyebrow">DELEGACIÓN PROVINCIAL</div>
+        <h1 id="title">Tu comunidad provincial</h1>
+        <p id="scope">Comprobando acceso…</p>
+        <p>
+          Consulta los socios aprobados y activos de tu provincia y prepara comunicaciones
+          informativas.
+        </p>
+      </section>
+      <section class="card">
+        <h2>Encuentra a tus socios</h2>
+        <form id="filters">
+          <div class="delegate-filters">
+            <div>
+              <label for="search">Nombre o entidad</label><input id="search" type="search" />
+            </div>
+            <div>
+              <label for="type">Tipo de socio</label
+              ><select id="type">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div>
+              <label for="role">Actividad profesional</label
+              ><select id="role">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div>
+              <label for="specialty">Especialidad</label
+              ><select id="specialty">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div>
+              <label for="availability">Disponibilidad</label
+              ><select id="availability">
+                <option value="">Todas</option>
+                <option>Alta</option>
+                <option>Media</option>
+                <option>Puntual</option>
+                <option value="ninguna">Sin disponibilidad</option>
+              </select>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary">Aplicar filtros</button
+            ><button type="button" id="clear" class="btn btn-secondary">Mostrar todos</button>
+          </div>
+        </form>
+        <p id="resultCount" role="status"></p>
+        <div class="table-scroll" tabindex="0" aria-label="Socios de la provincia">
+          <table class="table-list">
+            <thead>
+              <tr>
+                <th>Socio</th>
+                <th>Entidad</th>
+                <th>Localidad</th>
+                <th>Tipo</th>
+                <th>Comunicaciones</th>
+              </tr>
+            </thead>
+            <tbody id="members"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Comunicación a los socios filtrados</h2>
+        <p>
+          Solo se enviará a quienes permitan mensajería y avisos por correo. Puedes escribir
+          {nombre} para personalizar el saludo.
+        </p>
+        <form id="communication">
+          <label for="subject">Asunto</label
+          ><input id="subject" required minlength="3" maxlength="200" /><label for="body"
+            >Mensaje</label
+          ><textarea id="body" required minlength="10" maxlength="30000"></textarea>
+          <div class="actions">
+            <button class="btn btn-secondary" id="preview">Revisar destinatarios</button
+            ><button type="button" id="send" class="btn btn-primary" disabled>
+              Enviar comunicación
+            </button>
+          </div>
+        </form>
+        <p id="audience" role="status"></p>
+        <div id="message" role="status"></div>
+      </section>
+      <section class="card">
+        <h2>Mis comunicaciones de esta provincia</h2>
+        <button id="refreshHistory" class="btn btn-secondary">Actualizar resultados</button>
+        <p>
+          «Aceptados» indica que el servidor de correo aceptó el envío; no confirma que el
+          destinatario lo haya leído.
+        </p>
+        <div class="table-scroll" tabindex="0" aria-label="Histórico de comunicaciones">
+          <table class="table-list">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Asunto</th>
+                <th>Destinatarios</th>
+                <th>Aceptados</th>
+                <th>Fallidos</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="history"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <script src="/assets/portal.js"></script>
+    <script src="/assets/catalogos.js"></script>
+    <script src="/assets/delegacion.js"></script>
+  </body>
+</html>

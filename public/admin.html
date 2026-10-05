@@ -592,10 +592,12 @@
               <label for="admRol">Rol</label>
               <select id="admRol">
                 <option value="admin">Administrador</option>
+                <option value="delegado_provincial">Delegado provincial</option>
                 <option value="superadmin">Superadministrador (acceso total)</option>
               </select>
             </div>
           </div>
+          <div class="field"><label for="admProvincia">Provincia del delegado (obligatoria para ese rol)</label><select id="admProvincia"><option value="">Selecciona provincia</option></select></div>
           <div class="actions" style="margin-top:14px">
             <button type="button" class="btn btn-secondary" id="cancelNuevoAdmin">Cancelar</button>
             <button type="button" class="btn btn-primary" id="createAdminBtn">Crear administrador</button>

@@ -109,6 +109,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/socios', sociosRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/delegacion', require('./routes/delegacion'));
 app.use('/api/mensajeria', mensajeriaRoutes);
 app.use('/api/public', publicRoutes);
 
@@ -126,7 +127,7 @@ app.use('/uploads', (req,res) => res.status(404).end());
 // a todas las páginas del área autenticada antes del static handler.
 const PRIVATE_HTML = new Set([
   '/admin.html', '/panel.html', '/perfil.html',
-  '/directorio.html', '/mensajes.html', '/restablecer.html'
+  '/directorio.html', '/mensajes.html', '/restablecer.html', '/delegacion.html'
 ]);
 app.use((req, res, next) => {
   if (PRIVATE_HTML.has(req.path)) {
