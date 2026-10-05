@@ -3,6 +3,7 @@ const nodemailer = require('nodemailer');
 const config = require('../config/config');
 const db = require('../config/database');
 const { contactEmailFor } = require('./contactEmail');
+const legalNotice = require('./associationLegalNotice');
 
 // Lee un prefijo de claves de landing_content (las plantillas de email
 // editables viven ahí). Si la BD no responde o no hay claves, devuelve {}
@@ -162,14 +163,15 @@ class EmailService {
         secure: cfg.secure === undefined || cfg.secure === null ? Number(cfg.port) === 465 : !!cfg.secure,
         auth: { user: cfg.user, pass: cfg.pass },
       });
+      const testBody = '<p>Este correo confirma que la configuración SMTP funciona correctamente.</p>' +
+        '<p>Host: <code>' + escapeHtml(cfg.host) + ':' + (cfg.port || 587) + '</code></p>' +
+        '<p>Enviado desde el panel de administración.</p>';
       const result = await t.sendMail({
         from: `"${cfg.fromName}" <${cfg.fromEmail}>`,
         to,
         replyTo: cfg.replyTo || undefined,
         subject: 'AGESPORT · Prueba de configuración de correo',
-        html: '<p>Este correo confirma que la configuración SMTP funciona correctamente.</p>' +
-              '<p>Host: <code>' + escapeHtml(cfg.host) + ':' + (cfg.port || 587) + '</code></p>' +
-              '<p>Enviado desde el panel de administración.</p>',
+        ...legalNotice.append(testBody, this.htmlToText(testBody)),
       });
       const delivery = result.rejected?.length && !result.accepted?.length
         ? {success:false,reason:'recipient_rejected',error:'El proveedor rechazó al destinatario.'}
@@ -193,6 +195,7 @@ class EmailService {
 
   async sendEmail(to, subject, html, text = null) {
     await this.ready;
+    const content = legalNotice.append(html, text || this.htmlToText(html));
     let delivery;
     if (!to) {
       delivery = {success:false, reason:'recipient_missing', error:'El socio no tiene un email de contacto válido.'};
@@ -203,7 +206,7 @@ class EmailService {
         try {
           const result = await this.transporter.sendMail({
             from:this.fromLabel || `"AGESPORT Mapa del Talento" <${config.email.auth.user}>`,
-            to, subject, html, text:text || this.htmlToText(html),
+            to, subject, ...content,
             ...(this.replyTo ? {replyTo:this.replyTo} : {})
           });
           delivery = result.rejected?.length && !result.accepted?.length
