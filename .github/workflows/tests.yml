@@ -32,3 +32,4 @@ jobs:
       - run: node --test test/qa/review-improvements.test.js
       - run: node --test test/qa/junta-directiva.test.js
       - run: node --test test/qa/october-update.test.js
+      - run: node --test test/qa/talent-explorer.test.js

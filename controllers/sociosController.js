@@ -181,7 +181,7 @@ class SociosController {
                rc.rol AS rol_cluster, rc.rol_secundario,
                rc.b2b_ofrece, rc.b2b_busca, rc.b2b_licita,
                d.nivel AS disponibilidad,
-               d.tutor_mentor,
+               d.tutor_mentor, d.ponente,
                (
                  SELECT COALESCE(array_agg(especialidad ORDER BY orden_prioridad), ARRAY[]::varchar[])
                  FROM socio_especialidades
@@ -196,16 +196,17 @@ class SociosController {
           AND ($1::boolean OR COALESCE(c.mapa_visible,c.acepta_mapa_interactivo,false))
       `, [!!req.adminId]);
       const located = result.rows.map(r => {
-        const hasCoords = r.latitud != null && r.longitud != null && Number.isFinite(Number(r.latitud)) && Number.isFinite(Number(r.longitud));
+        const hasCoords = r.latitud != null && r.longitud != null && Number.isFinite(Number(r.latitud)) && Number.isFinite(Number(r.longitud)) && Math.abs(Number(r.latitud))<=90 && Math.abs(Number(r.longitud))<=180;
         const coords = hasCoords ? {lat: Number(r.latitud), lng: Number(r.longitud)} : geocodingService.getProvinciaCoords(r.provincia);
-        return {...r, coords, precision: hasCoords ? 'municipio' : 'provincia'};
+        return {...r, coords, precision: hasCoords ? 'municipio' : (coords ? 'provincia' : 'pendiente')};
       });
       res.set('Cache-Control', 'no-store');
       res.json({
+        actualizado: new Date().toISOString(),
         modo_prueba: testMode,
         total_elegibles: located.length,
         sin_ubicacion: located.filter(r => !r.coords).length,
-        socios: located.filter(r => r.coords).map((r) => ({
+        socios: located.map((r) => ({
           id: r.id,
           nombre: r.nombre,
           apellidos: r.apellidos,
@@ -215,13 +216,14 @@ class SociosController {
           localidad: r.localidad,
           rol_cluster: r.rol_cluster,
           rol_secundario: r.rol_secundario,
-          lat: r.coords.lat,
-          lng: r.coords.lng,
+          lat: r.coords ? r.coords.lat : null,
+          lng: r.coords ? r.coords.lng : null,
           precision: r.precision,
           perfil_visible: !!req.adminId || r.id === viewerId || !!r.acepta_visibilidad_datos,
           mensajeria: !!r.acepta_mensajeria,
           disponibilidad: r.disponibilidad || null,
           tutor_mentor: !!r.tutor_mentor,
+          ponente: !!r.ponente,
           b2b_ofrece: !!r.b2b_ofrece,
           b2b_busca: !!r.b2b_busca,
           b2b_licita: !!r.b2b_licita,

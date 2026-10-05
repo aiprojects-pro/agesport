@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AGESPORT · Panel de socio</title>
+  <title>AGESPORT · Encuentra talento y colaboraciones</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
@@ -106,6 +106,7 @@
     .kpi-item a { display: inline-block; margin-top: 6px; font-size: .85rem; color: var(--green-deep); }
     .kpi-empty { color: var(--muted); font-size: .92rem; }
   </style>
+<link rel="stylesheet" href="/assets/talent-map.css">
 </head>
 <body>
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -120,11 +121,11 @@
     </div>
   </header>
 
-  <main id="contenido" tabindex="-1" class="page shell private-layout">
+  <main id="contenido" tabindex="-1" class="page shell private-layout talent-page">
     <aside class="sidebar panel">
       <h3>Navegación</h3>
       <nav class="nav-list">
-        <a class="nav-link active" href="/panel.html">Dashboard</a>
+        <a class="nav-link active" href="/panel.html">Explorar talento</a>
         <a class="nav-link" href="/directorio.html">Directorio</a>
         <a class="nav-link" href="/perfil.html">Mi perfil</a>
         <a class="nav-link" href="/mensajes.html">Mensajes</a>
@@ -139,57 +140,48 @@
         <div class="status-chip"><span class="status-dot"></span> Acceso autorizado</div>
       </article>
 
-      <!-- Filtro territorial segmentado -->
-      <article class="form-card">
-        <h2 style="margin:0 0 10px">Lectura territorial del talento</h2>
-        <p class="muted" style="margin:0 0 14px">Filtra los indicadores y el mapa por ámbito geográfico.</p>
-        <div class="segmented" id="territoryFilter">
-          <button type="button" data-scope="andalucia">Toda Andalucía</button>
-          <button type="button" data-scope="oriental">Andalucía oriental</button>
-          <button type="button" data-scope="occidental">Andalucía occidental</button>
-          <button type="button" data-scope="ciudades">Ceuta y Melilla</button>
-          <button type="button" data-scope="espana" class="active">Todo el territorio nacional</button>
+      <article class="talent-explorer" id="mapWrap" aria-label="Explorar socios en el mapa">
+        <header class="explorer-head">
+          <div><span class="eyebrow">PERSONAS · CONOCIMIENTO · COLABORACIÓN</span><h2>¿Con quién quieres conectar?</h2><p>Encuentra experiencia, descubre colaboradores y empieza una conversación.</p></div>
+          <div class="live-status"><span class="live-dot" aria-hidden="true"></span><span id="mapUpdated" role="status">Cargando perfiles…</span><button id="refreshMap" type="button" class="map-refresh">Actualizar</button></div>
+        </header>
+        <div class="intent-chips" id="mapIntents" role="group" aria-label="Qué estás buscando">
+          <button type="button" data-intent="all" aria-pressed="true">Todos los socios <span data-intent-count="all"></span></button>
+          <button type="button" data-intent="collaboration" aria-pressed="false">Busco colaboración <span data-intent-count="collaboration"></span></button>
+          <button type="button" data-intent="mentor" aria-pressed="false">Mentores <span data-intent-count="mentor"></span></button>
+          <button type="button" data-intent="speaker" aria-pressed="false">Ponentes <span data-intent-count="speaker"></span></button>
+          <button type="button" data-intent="available" aria-pressed="false">Con disponibilidad <span data-intent-count="available"></span></button>
+          <button type="button" id="myProvince" aria-pressed="false" disabled>En mi provincia</button>
         </div>
+        <div class="explorer-filters">
+          <div class="map-search"><label for="talentSearch">Buscar personas y experiencia</label><input id="talentSearch" type="search" placeholder="Nombre, entidad, localidad o especialidad…" autocomplete="off"></div>
+          <div><label for="filtroProvincia">Provincia o ciudad autónoma</label><select id="filtroProvincia"><option value="">Todo el territorio</option></select></div>
+          <div><label for="filtroRol">Actividad profesional</label><select id="filtroRol"><option value="">Todas las actividades</option></select></div>
+          <details class="extra-filters"><summary>Más filtros <span id="extraFilterCount"></span></summary><div class="extra-filter-grid">
+            <div><label for="filtroEspecialidad">Especialidad</label><select id="filtroEspecialidad"><option value="">Todas las especialidades</option></select></div>
+            <div><label for="mapAvailability">Disponibilidad declarada</label><select id="mapAvailability"><option value="">Cualquiera</option><option>Alta</option><option>Media</option><option>Puntual</option><option value="ninguna">Sin disponibilidad</option><option value="sin_dato">Sin declarar</option></select></div>
+            <div><label for="mapSector">Sector</label><select id="mapSector"><option value="">Todos los sectores</option><option value="publico">Público</option><option value="privado">Privado</option><option value="tercer_sector">Tercer sector</option></select></div>
+            <div><label for="mapContact">Contacto</label><select id="mapContact"><option value="">Todos los perfiles</option><option value="messages">Aceptan mensajes</option></select></div>
+          </div></details>
+          <button id="filtroReset" type="button" class="btn btn-secondary">Limpiar filtros</button>
+        </div>
+        <div id="mapActiveFilters" class="active-map-filters" aria-label="Filtros aplicados"></div>
+        <div class="explorer-workspace">
+          <section class="explorer-canvas" aria-label="Mapa interactivo">
+            <div class="map-controls"><label for="mapColor">Colorear por</label><select id="mapColor"><option value="role">Actividad profesional</option><option value="availability">Disponibilidad</option></select><button type="button" id="fitMap" class="btn btn-secondary">Ver todos los resultados</button></div>
+            <div id="mapContainer" role="region" aria-label="Mapa de socios; todos los resultados también están en la lista"></div>
+            <div class="map-caption"><strong id="mapPointCount">Cargando ubicaciones…</strong><span>El número de cada grupo indica personas. Pulsa para descubrirlas.</span></div>
+            <div id="rolLegend" class="talent-legend" role="group" aria-label="Leyenda de colores y filtros"></div>
+          </section>
+          <section class="explorer-results" aria-labelledby="mapListCount">
+            <header><div><span class="eyebrow">TU RED DE CONTACTOS</span><h3 id="mapListCount" aria-live="polite">Cargando socios…</h3></div><label for="mapSort">Ordenar<select id="mapSort"><option value="name">Por nombre</option><option value="availability">Por disponibilidad</option><option value="recent">Nuevas incorporaciones</option></select></label></header>
+            <div id="mapList" class="talent-results-list"></div>
+          </section>
+        </div>
+        <footer class="explorer-foot"><p id="mapModeNotice"></p><a href="/perfil.html">Gestionar mi visibilidad</a></footer>
       </article>
-
-      <!-- KPIs -->
-      <section class="grid-4" id="kpis"></section>
-      <!-- Detalle del KPI seleccionado (lista de socios / provincias) -->
+      <section class="grid-4" id="kpis" aria-label="Indicadores de los resultados"></section>
       <section class="card kpi-detail" id="kpiDetail" hidden></section>
-
-      <!-- Mapa (ancho completo, protagonista de la vista) -->
-      <article class="map-card" id="mapWrap">
-        <div style="padding:18px 20px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between">
-          <div>
-            <h3 style="margin:0;color:var(--navy-deep)">Visor del talento</h3>
-            <p class="muted" style="margin:6px 0 0;font-size:.92rem">Los perfiles que comparten ubicación se agrupan. Abre un punto o consulta la lista inferior. Las referencias provinciales son aproximadas.</p>
-          </div>
-          <div class="segmented" id="labelMode" role="group" aria-label="Etiqueta del marcador">
-            <button type="button" data-label="nombre" class="active">Ver por nombre</button>
-            <button type="button" data-label="rol">Ver por rol</button>
-            <button type="button" data-label="provincia">Socios por provincia</button>
-          </div>
-        </div>
-        <!-- Filtros del mapa: rol y especialidad. Actúan sobre los
-             marcadores visibles y recalculan los KPIs. -->
-        <div style="padding:12px 20px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-          <label class="muted" style="font-size:.86rem;font-weight:600;color:var(--navy-deep);margin:0">Filtrar mapa:</label>
-          <select aria-label="Filtrar mapa por rol" id="filtroRol" style="min-width:200px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:#fff">
-            <option value="">Todos los roles</option>
-          </select>
-          <select aria-label="Filtrar mapa por especialidad" id="filtroEspecialidad" style="min-width:200px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:#fff">
-            <option value="">Todas las especialidades</option>
-          </select>
-          <select aria-label="Filtrar mapa por provincia" id="filtroProvincia" style="min-width:160px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:#fff">
-            <option value="">Todas las provincias</option>
-          </select>
-          <button type="button" id="filtroReset" class="btn btn-secondary" style="padding:6px 12px;font-size:.85rem;border-radius:8px">Limpiar filtros</button>
-        </div>
-        <div style="padding:12px 20px"><p id="mapModeNotice" role="status"></p><p id="mapUpdated" aria-live="polite"></p><button class="btn btn-secondary" id="refreshMap" type="button">Actualizar mapa e indicadores</button></div>
-        <div id="mapContainer" role="region" aria-label="Mapa de socios; lista equivalente a continuación"></div>
-        <details style="padding:18px"><summary id="mapListCount">Lista de perfiles del mapa</summary><div id="mapList" class="kpi-list" style="margin-top:14px"></div></details>
-        <div class="map-legend" id="rolLegend"></div>
-      </article>
 
       <!-- ============ INDICADORES AGREGADOS DEL TALENTO ============ -->
       <!-- Todos los datos son agregados anónimos: no se muestra ningún
@@ -243,6 +235,8 @@
   <script src="/assets/portal.js"></script>
   <script src="/assets/avatar.js"></script>
   <script src="/assets/fichas-socio.js"></script>
+  <script src="/assets/talent-map-model.js"></script>
+  <script src="/assets/talent-map.js"></script>
   <script src="/assets/panel.js"></script>
 </body>
 </html>
