@@ -1,3 +1,4 @@
+const passwordPolicy = require('../public/assets/password-policy');
 // controllers/authController.js
 const crypto = require('crypto');
 const {
@@ -216,6 +217,7 @@ class AuthController {
           req.ip, req.get('User-Agent')
         ]);
 
+        await require('../services/privacyPolicy').record(client,socio.id,req.body,'registration');
         return socio;
       });
 
@@ -243,6 +245,7 @@ class AuthController {
       });
 
     } catch (error) {
+      if (error.status) return res.status(error.status).json({error:error.message});
       if (error.code === '23505' && error.constraint === 'socios_email_key') {
         return res.status(409).json({ error: 'Este email ya tiene una cuenta. Recupera tu contraseña o contacta con administración para reactivarla.' });
       }
@@ -505,6 +508,7 @@ class AuthController {
         });
       }
 
+      if (passwordPolicy.error(newPassword)) return res.status(400).json({ error: passwordPolicy.error(newPassword) });
       const isAdmin = !!req.adminId;
       const userId = req.socioId || req.adminId;
       const table = isAdmin ? 'administradores' : 'socios';
@@ -621,12 +625,7 @@ class AuthController {
       // Mismo criterio que el registro: mín. 8 chars, 1 mayúscula, 1
       // minúscula y 1 número. Antes sólo se exigían 8 chars y se podían
       // fijar contraseñas triviales que confundían al usuario al volver.
-      const strong = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
-      if (!newPassword || !strong.test(newPassword)) {
-        return res.status(400).json({
-          error: 'La nueva contraseña debe tener mínimo 8 caracteres, 1 mayúscula, 1 minúscula y 1 número.',
-        });
-      }
+      if (passwordPolicy.error(newPassword)) return res.status(400).json({ error: passwordPolicy.error(newPassword) });
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
       // Single-use + TTL chequeado en SQL.
       const result = await db.query(
@@ -716,12 +715,7 @@ class AuthController {
       if (!token || typeof token !== 'string' || token.length < 32) {
         return res.status(400).json({ error: 'Token inválido' });
       }
-      const strong = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
-      if (!newPassword || !strong.test(newPassword)) {
-        return res.status(400).json({
-          error: 'La nueva contraseña debe tener mínimo 8 caracteres, 1 mayúscula, 1 minúscula y 1 número.',
-        });
-      }
+      if (passwordPolicy.error(newPassword)) return res.status(400).json({ error: passwordPolicy.error(newPassword) });
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
       const result = await db.query(
         `SELECT id, admin_id FROM admin_password_reset_tokens

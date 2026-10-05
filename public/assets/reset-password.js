@@ -22,6 +22,7 @@
         event.preventDefault();
         const p1 = document.getElementById('newPassword').value;
         const p2 = document.getElementById('newPasswordConfirm').value;
+        const passwordError=window.AgesportPassword.error(p1);if(passwordError){setMessage(msg,false,passwordError);return;}
         if (p1 !== p2) {
           setMessage(msg, false, 'Las dos contraseñas no coinciden.');
           return;

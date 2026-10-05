@@ -239,7 +239,7 @@
         <div class="field-full">
           <label for="password">Contraseña para acceder al Mapa del Talento</label>
           <input id="password" type="password" required minlength="8" autocomplete="new-password" aria-describedby="passwordHelp">
-          <p id="passwordHelp" class="muted">Mínimo 8 caracteres, con mayúscula, minúscula y número. Símbolos permitidos: @ $ ! % * ? &amp;.</p>
+          <p id="passwordHelp" class="muted"><span data-password-help></span></p>
         </div>
 
         <!-- ====== Datos profesionales ====== -->
@@ -349,5 +349,7 @@
   <script src="/assets/register.js"></script>
   <script src="/assets/password-toggle.js" defer></script>
   <script src="/assets/cookie-banner.js" defer></script>
+<script src="/assets/password-policy.js"></script>
+<script src="/assets/policy-context.js"></script>
 </body>
 </html>

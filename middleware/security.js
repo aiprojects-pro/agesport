@@ -155,7 +155,7 @@ const validateInput = (req, res, next) => {
     const sanitized = {};
     for (const [key, value] of Object.entries(obj)) {
       if (typeof value === 'string') {
-        sanitized[key] = sanitizeString(value);
+        sanitized[key] = ['password','currentPassword','newPassword'].includes(key) ? value : sanitizeString(value);
       } else if (typeof value === 'object' && value !== null) {
         sanitized[key] = sanitizeObject(value);
       } else {
@@ -209,11 +209,8 @@ const validateSpanishID = (id) => {
 };
 
 // Validar contraseña segura
-const validatePassword = (password) => {
-  // Mínimo 8 caracteres, al menos 1 mayúscula, 1 minúscula, 1 número
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
-  return passwordRegex.test(password);
-};
+const passwordPolicy = require('../public/assets/password-policy');
+const validatePassword = passwordPolicy.valid;
 
 // Middleware de validación de registro
 // Validador unificado para alta y actualización de perfil.
@@ -286,7 +283,7 @@ const validateSocioFields = (mode) => (req, res, next) => {
   check(
     b.password,
     validatePassword,
-    'Contraseña debe tener mínimo 8 caracteres, 1 mayúscula, 1 minúscula y 1 número'
+    passwordPolicy.error(b.password) || passwordPolicy.help
   );
   check(b.nombre, (v) => v.trim().length >= 2, 'Nombre debe tener al menos 2 caracteres');
   check(b.apellidos, (v) => v.trim().length >= 2, 'Apellidos debe tener al menos 2 caracteres');

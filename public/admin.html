@@ -55,9 +55,78 @@
       <button class="tab" data-tab="comunicaciones">Comunicaciones</button>
       <button class="tab" data-tab="auditoria">Actividad</button>
       <button class="tab" data-tab="usuarios">Usuarios y roles</button>
+      <button class="tab" data-tab="privacidad">Protección de datos</button>
+      <button class="tab" data-tab="vinculos">Empresas y patrocinios</button>
     </div>
 
     <!-- ============ DASHBOARD ============ -->
+    <section class="tab-panel" data-panel="privacidad">
+      <article class="form-card">
+        <h2>Protección de datos</h2>
+        <p>Guarda el texto como borrador y revisa la vista previa antes de publicarlo. El texto definitivo y las nuevas casillas están pendientes de documentación. Publicar no cambia preferencias ni exige nuevas aceptaciones.</p>
+        <div id="policyStatus" role="status"></div>
+        <form id="policyForm">
+          <label for="policyTitle">Título</label><input id="policyTitle" required maxlength="200">
+          <p id="policyHelp">Usa los botones para títulos, listas y enlaces. Cada línea de texto es un párrafo. No se admite HTML.</p>
+          <div id="policyToolbar" role="group" aria-label="Formato del texto">
+            <button class="btn btn-secondary" type="button" data-insert="# Título">Título</button>
+            <button class="btn btn-secondary" type="button" data-insert="## Subtítulo">Subtítulo</button>
+            <button class="btn btn-secondary" type="button" data-insert="- Elemento">Lista</button>
+            <button class="btn btn-secondary" type="button" data-insert="[Texto del enlace](https://)">Enlace</button>
+          </div>
+          <label for="policyContent">Texto completo del borrador</label>
+          <textarea id="policyContent" rows="18" maxlength="100000" required aria-describedby="policyHelp" style="width:100%"></textarea>
+          <button class="btn btn-secondary" type="submit">Guardar borrador</button>
+          <button class="btn btn-primary" type="button" id="policyPublish">Publicar texto definitivo guardado</button>
+        </form>
+        <h3>Vista previa del borrador</h3><div id="policyPreview" class="legal-content"></div>
+        <h3>Versiones conservadas</h3><div id="policyVersions"></div>
+        <h3>Respuestas y preferencias registradas</h3>
+        <p>Se conservan por separado las respuestas nuevas. Los registros sin versión identificada no se presentan como aceptación de un texto. No se reconstruyen consentimientos históricos.</p>
+        <form id="policyResponsesForm"><label for="policySocioId">Identificador de socio</label><input id="policySocioId" type="number" min="1" required><button type="submit" class="btn btn-secondary">Consultar respuestas</button></form>
+        <div id="policyResponses" role="status"></div>
+      </article>
+    </section>
+    <section class="tab-panel" data-panel="vinculos">
+      <article class="form-card">
+        <h2>Empresas, patrocinios y personas</h2>
+        <p>Estos vínculos documentan la relación con cada persona. No conceden ni retiran acceso, cambian el tipo de socio o asignan permisos. Los cupos y condiciones propuestos quedan sin activar hasta su aprobación.</p>
+        <div id="linksStatus" role="status"></div>
+        <button id="linksRefresh" type="button" class="btn btn-secondary">Actualizar listas</button>
+        <h3>1. Empresa</h3>
+        <form id="companyForm" class="form-grid">
+          <input type="hidden" name="id"><div class="field"><label>Nombre de empresa<input name="nombre" maxlength="300" required></label></div>
+          <div class="field"><label>Referencia interna (opcional)<input name="referencia" maxlength="200"></label></div>
+          <button class="btn btn-secondary" type="submit">Guardar empresa</button><button class="btn btn-secondary" type="reset">Nueva empresa</button>
+        </form><div id="companiesList"></div>
+        <h3>2. Patrocinio</h3>
+        <form id="sponsorForm" class="form-grid">
+          <input type="hidden" name="id"><div class="field"><label>Empresa<select name="empresa_id" data-company required></select></label></div>
+          <div class="field"><label>Modalidad<input name="modalidad" maxlength="200" required></label></div>
+          <div class="field"><label>Inicio<input name="inicio" type="date" required></label></div>
+          <div class="field"><label>Fin (opcional)<input name="fin" type="date"></label></div>
+          <div class="field"><label>Notas<textarea name="notas" maxlength="2000"></textarea></label></div>
+          <div class="field"><label>Cupo propuesto, sin activar (opcional)<input name="cupo_propuesto" type="number" min="0" max="100000"></label></div>
+          <div class="field-full"><label>Condiciones propuestas, sin activar<textarea name="condiciones_propuestas" maxlength="4000"></textarea></label></div>
+          <button class="btn btn-secondary" type="submit">Guardar patrocinio</button><button class="btn btn-secondary" type="reset">Nuevo patrocinio</button>
+        </form><div id="sponsorsList"></div>
+        <h3>3. Vincular una persona</h3>
+        <form id="personLinkForm" class="form-grid">
+          <div class="field"><label>Persona<select name="socio_id" id="linkPerson" required></select></label></div>
+          <div class="field"><label>Empresa<select name="empresa_id" id="linkCompany" data-company required></select></label></div>
+          <div class="field"><label>Patrocinio (opcional)<select name="patrocinio_id" id="linkSponsor"></select></label></div>
+          <div class="field"><label>Motivo documentado del vínculo<input name="motivo" maxlength="1000" required></label></div>
+          <div class="field"><label>Inicio<input name="inicio" type="date" required></label></div>
+          <div class="field"><label>Fin (opcional)<input name="fin" type="date"></label></div>
+          <button type="submit" class="btn btn-primary">Crear vínculo</button>
+        </form>
+        <h3>Personas vinculadas</h3>
+        <label for="linkFilter">Filtrar por empresa</label><select id="linkFilter" data-company></select>
+        <div id="peopleLinksList"></div>
+        <form id="endLinkForm" hidden><input type="hidden" name="id"><p id="endLinkName"></p><label>Fecha final del vínculo<input name="fin" type="date" required></label><button type="submit" class="btn btn-secondary">Guardar fecha final</button></form>
+        <h3>Historial de cambios</h3><div id="linksHistory"></div>
+      </article>
+    </section>
     <section class="tab-panel active" data-panel="dashboard">
       <section class="grid-4" id="adminKpis"></section>
       <article class="card" style="margin-top:18px"><h3>Mapa y ubicaciones</h3>
@@ -368,8 +437,7 @@
       <article class="form-card">
         <h2 style="margin:0 0 6px">Comunicaciones a socios</h2>
         <p class="muted" style="margin:0 0 14px">
-          Envía un email a todos los socios activos que cumplan los filtros. Sólo
-          se envía a socios con <code>acepta_mensajeria=true</code>. Puedes usar
+          Envía información de la plataforma a cuentas aprobadas y activas que cumplan los filtros y tengan activados los mensajes y sus avisos por correo. No se habilitan campañas comerciales de patrocinadores. Puedes usar
           <code>{nombre}</code> en el cuerpo para personalizar el saludo. Sólo superadmin.
         </p>
         <form id="comForm" class="form-grid">
@@ -578,5 +646,7 @@
   <script src="/assets/portal.js"></script>
   <script src="/assets/admin-dashboard.js"></script>
   <script src="/assets/admin-landing.js"></script>
+<script src="/assets/policy-format.js"></script>
+<script src="/assets/admin-governance.js"></script>
 </body>
 </html>

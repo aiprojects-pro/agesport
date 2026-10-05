@@ -32,7 +32,7 @@ before(async()=>{
  const people=[['Rosario','Núñez Pérez','Sevilla',ROL_A],['José','García','Granada',ROL_A],['Ana','López','Granada',ROL_A],['Luis','Martín','Granada',ROL_B]];
  for(const [i,[nombre,apellidos,prov,rol]] of people.entries()){
   const row=(await db.query(`INSERT INTO socios(email,password_hash,nombre,apellidos,provincia,localidad,estado,activo,tipo_socio) VALUES($1,$2,$3,$4,$5,$5,'aprobado',true,'numero') RETURNING id`,['acceso'+i+'@example.invalid',hash,nombre,apellidos,prov])).rows[0];ids.push(row.id);
-  await db.query('INSERT INTO consentimientos(socio_id,acepta_mapa_interactivo,acepta_visibilidad_datos,acepta_mensajeria) VALUES($1,true,true,true)',[row.id]);
+  await db.query('INSERT INTO consentimientos(socio_id,acepta_mapa_interactivo,acepta_visibilidad_datos,acepta_mensajeria,acepta_notificaciones_email) VALUES($1,true,true,true,true)',[row.id]);
   await db.query('INSERT INTO rol_cluster(socio_id,rol) VALUES($1,$2)',[row.id,rol]);
  }
  await email.ready;email.transporter={async sendMail(m){sent.push(m);return {accepted:[m.to],rejected:[],messageId:'synthetic'};}};

@@ -161,6 +161,7 @@
 
       const especialidades = Array.from(espList.querySelectorAll('input[name=especialidad]:checked'))
         .map(function (cb) { return cb.value; });
+      const passwordError=window.AgesportPassword.error($('password').value);if(passwordError)throw new Error(passwordError);
       const rolElegido = (rolList.querySelector('input[name=rol_cluster]:checked') || {}).value || null;
 
       if ($('rol_secundario').value && (!rolElegido || $('rol_secundario').value === rolElegido)) throw new Error('Selecciona un rol principal y un segundo rol distinto.');
@@ -207,6 +208,8 @@
       payload.cargo_actual = $('cargo_actual').value.trim();
       payload.anos_experiencia = Number($('anos_experiencia').value || 0);
 
+      if (!window.AgesportPolicyContext.id) throw new Error('Espera a que se cargue la política de privacidad o pulsa Reintentar.');
+      payload.policy_version_id=window.AgesportPolicyContext.id;
       await request('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(payload)

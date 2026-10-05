@@ -304,4 +304,17 @@ router.get('/comunicaciones/:id/destinatarios',
   adminController.detalleComunicacion
 );
 
+const privacy = require('../controllers/privacyController');
+router.get('/privacidad',authenticateAdmin,privacy.admin);
+router.put('/privacidad/borrador',authenticateAdmin,privacy.save);
+router.post('/privacidad/publicar',authenticateAdmin,privacy.publish);
+router.get('/privacidad/respuestas/:socioId',authenticateAdmin,privacy.responses);
+const relationships=require('../controllers/relationshipsController');
+router.get('/vinculos',authenticateAdmin,relationships.list);
+router.post('/vinculos/empresas',authenticateAdmin,relationships.company);
+router.put('/vinculos/empresas/:id',authenticateAdmin,relationships.company);
+router.post('/vinculos/patrocinios',authenticateAdmin,relationships.sponsor);
+router.put('/vinculos/patrocinios/:id',authenticateAdmin,relationships.sponsor);
+router.post('/vinculos/personas',authenticateAdmin,relationships.link);
+router.put('/vinculos/personas/:id/fin',authenticateAdmin,relationships.end);
 module.exports = router;

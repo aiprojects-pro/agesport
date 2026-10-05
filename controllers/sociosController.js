@@ -458,7 +458,7 @@ class SociosController {
         if (email_visible !== undefined) socioUpdate.email_visible = email_visible;
         // El email elegido para avisos/directorio debe existir tras el cambio.
         const personalFinal = email_personal !== undefined ? email_personal : datosAnteriores.email_personal;
-        if ((email_preferido === 'personal' || email_visible === 'personal') && !personalFinal) {
+        if (((email_preferido ?? datosAnteriores.email_preferido) === 'personal' || ((email_visible ?? datosAnteriores.email_visible) === 'personal' && (visible_email_directo ?? (await client.query('SELECT visible_email_directo FROM consentimientos WHERE socio_id=$1',[socioId])).rows[0]?.visible_email_directo))) && !personalFinal) {
           const error = new Error('Indica tu email personal para poder usarlo como email de contacto'); error.status = 400; throw error;
         }
         if (nombre_organizacion !== undefined) socioUpdate.nombre_organizacion = nombre_organizacion;
@@ -590,6 +590,7 @@ class SociosController {
             WHERE socio_id = $1
           `, [socioId, ...Object.values(consentimientoUpdate)]);
         }
+        await require('../services/privacyPolicy').record(client,socioId,req.body,'profile');
       });
 
       // Obtener datos actualizados
@@ -611,7 +612,7 @@ class SociosController {
       });
 
     } catch (error) {
-      if ([400,403].includes(error.status)) return res.status(error.status).json({ error: error.message });
+      if ([400,403,409].includes(error.status)) return res.status(error.status).json({ error: error.message });
       console.error('Error actualizando perfil:', error);
       res.status(500).json({ error: 'Error actualizando perfil' });
     }
@@ -827,6 +828,7 @@ class SociosController {
 
       const exportData = {
         datos_personales: datos,
+        respuestas_privacidad: (await db.query('SELECT version_id,purpose,answer,label,source,recorded_at FROM privacy_responses WHERE socio_id=$1 ORDER BY id',[socioId])).rows,
         mensajes: mensajes.rows,
         historial_acceso: auditoria.rows,
         fecha_exportacion: new Date().toISOString(),

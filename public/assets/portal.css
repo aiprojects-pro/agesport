@@ -1092,3 +1092,10 @@ fieldset.decision > p { margin: 4px 0 8px; font-size: .88rem; }
 
 @media (min-width: 720px) { .save-bar { position: sticky; bottom: 0; } }
 @media (max-width: 719px) { .choice { white-space: normal; flex: 1 1 auto; } }
+
+/* Privacy and relationship editors: comfortably usable on narrow screens. */
+[data-panel="privacidad"] h3, [data-panel="vinculos"] h3 { margin-top: 1.5rem; }
+[data-panel="privacidad"] button, [data-panel="vinculos"] button { min-height: 40px; margin: 4px 4px 4px 0; }
+#policyToolbar { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+#policyPreview { overflow-wrap: anywhere; }
+#policyPreview a { text-decoration: underline; }
