@@ -26,9 +26,11 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm test
-      - run: node --test test/qa/qa-regressions.test.js
-      - run: node --test test/qa/public-flows.test.js
-      - run: node --test test/qa/tester-feedback.test.js
-      - run: node --test test/qa/review-improvements.test.js
-      - run: node --test test/qa/junta-directiva.test.js
-      - run: node --test test/qa/october-update.test.js
+      # Each QA file already has a separate command/process; avoid Node runner IPC failures.
+      - run: node --test --experimental-test-isolation=none test/qa/qa-regressions.test.js
+      - run: node --test --experimental-test-isolation=none test/qa/public-flows.test.js
+      - run: node --test --experimental-test-isolation=none test/qa/tester-feedback.test.js
+      - run: node --test --experimental-test-isolation=none test/qa/review-improvements.test.js
+      - run: node --test --experimental-test-isolation=none test/qa/junta-directiva.test.js
+      - run: node --test --experimental-test-isolation=none test/qa/october-update.test.js
+      - run: node --test --experimental-test-isolation=none test/qa/talent-explorer.test.js
