@@ -37,4 +37,4 @@ Prueba de navegador con datos ficticios en escritorio (1440 px) y móvil (390 px
 6. Limpiar filtros y cambiar los colores a disponibilidad.
 7. Consultar los indicadores debajo del mapa; responden a los mismos filtros.
 
-Validación local completada: 33 pruebas unitarias y 47 pruebas de API/regresión. Dos archivos se repitieron por separado sin aislamiento de proceso por un fallo de serialización del ejecutor de Node en macOS; todas sus aserciones pasaron. El flujo de GitHub ejecuta cada archivo por separado con Node 22.
+Validación local completada: 33 pruebas unitarias y 47 pruebas de API/regresión. Dos archivos se repitieron por separado sin aislamiento de proceso por un fallo de serialización del ejecutor de Node; todas sus aserciones pasaron. El mismo fallo se reprodujo en CI después de pasar todas las aserciones del archivo. El flujo de GitHub mantiene un proceso independiente por archivo con Node 22 y desactiva el aislamiento adicional del ejecutor (`--experimental-test-isolation=none`), evitando ese canal de serialización. Opción documentada en https://nodejs.org/download/release/v22.23.0/docs/api/cli.html.
