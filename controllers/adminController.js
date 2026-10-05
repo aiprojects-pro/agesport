@@ -11,14 +11,17 @@ const crypto = require('crypto');
 // Helper para comunicaciones masivas: construye WHERE + params a partir de
 // un objeto de filtros. Función libre (no método) para evitar problemas de
 // binding de `this` al pasarla como handler de Express.
-function buildSocioFilterWhere(f) {
-  const allowed = new Set(['provincia','comunidad','tipo_socio','rol_cluster','disponibilidad','ambito','sector','solo_mentores','tipo_comunicacion']);
+function buildSocioFilterWhere(f, emailOnly = true) {
+  const allowed = new Set(['provincia','comunidad','tipo_socio','rol_cluster','disponibilidad','ambito','sector','solo_mentores','tipo_comunicacion','search','especialidad']);
   if (!f || typeof f!=='object' || Array.isArray(f) || Object.keys(f).some(k=>!allowed.has(k)) || Object.entries(f).some(([k,v])=>v!=null && typeof v!=='string' && !(k==='solo_mentores'&&typeof v==='boolean'))) {
     const e=new Error('Los filtros de destinatarios no son válidos. Revisa la selección.');e.status=400;throw e;
   }
-  const wh = ["s.estado='aprobado'", 's.activo=true', 'c.acepta_mensajeria=true', 'c.acepta_notificaciones_email=true'];
+  const wh = ["s.estado='aprobado'", 's.activo=true'];
+  if (emailOnly) wh.push('c.acepta_mensajeria=true', 'c.acepta_notificaciones_email=true');
   const params = [];
   let i = 1;
+  if (f.search) { wh.push(`(s.nombre ILIKE $${i} OR s.apellidos ILIKE $${i} OR concat(s.nombre,' ',s.apellidos) ILIKE $${i} OR s.entidad ILIKE $${i++})`); params.push('%'+f.search.trim()+'%'); }
+  if (f.especialidad) { wh.push(`EXISTS(SELECT 1 FROM socio_especialidades se WHERE se.socio_id=s.id AND se.especialidad=$${i++})`); params.push(f.especialidad); }
   if (f.provincia)    { wh.push(`s.provincia = $${i++}`);          params.push(f.provincia); }
   if (f.comunidad)    { wh.push(`s.comunidad_autonoma = $${i++}`); params.push(f.comunidad); }
   if (f.tipo_socio)   { wh.push(`s.tipo_socio = $${i++}`);         params.push(f.tipo_socio); }
@@ -1406,7 +1409,7 @@ class AdminController {
   async listAdmins(req, res) {
     try {
       const result = await db.query(
-        `SELECT id, email, nombre, rol, activo, created_at, ultimo_acceso
+        `SELECT id, email, nombre, rol, provincia_delegacion, activo, created_at, ultimo_acceso
          FROM administradores ORDER BY id ASC`
       );
       res.json({ administradores: result.rows });
@@ -1429,7 +1432,10 @@ class AdminController {
           error: 'Contraseña débil: mínimo 8 caracteres con 1 mayúscula, 1 minúscula y 1 número.',
         });
       }
-      const rolLimpio = rol === 'superadmin' ? 'superadmin' : 'admin';
+      if (rol && !['admin','superadmin','delegado_provincial'].includes(rol)) return res.status(400).json({error:'Rol inválido.'});
+      const rolLimpio = rol || 'admin';
+      const provinciaDelegacion = rolLimpio === 'delegado_provincial' ? catalogos.canonicalProvincia(req.body.provincia_delegacion || '') : null;
+      if (rolLimpio === 'delegado_provincial' && !provinciaDelegacion) return res.status(400).json({error:'Selecciona una provincia válida para el delegado.'});
       const existing = await db.findOne('administradores', { email: email.trim().toLowerCase() });
       if (existing) return res.status(409).json({ error: 'Ya existe un administrador con ese email.' });
 
@@ -1439,15 +1445,16 @@ class AdminController {
         nombre: nombre.trim(),
         password_hash: hash,
         rol: rolLimpio,
+        provincia_delegacion: provinciaDelegacion,
         activo: true,
       });
       await auditAction(null, req.adminId, 'CREATE_ADMIN', 'administradores',
-        null, { id: inserted.id, email: inserted.email, rol: rolLimpio }, req);
+        null, { id: inserted.id, email: inserted.email, rol: rolLimpio, provincia_delegacion: provinciaDelegacion }, req);
       res.status(201).json({
         message: 'Administrador creado correctamente.',
         administrador: {
           id: inserted.id, email: inserted.email, nombre: inserted.nombre,
-          rol: inserted.rol, activo: inserted.activo,
+          rol: inserted.rol, provincia_delegacion: inserted.provincia_delegacion, activo: inserted.activo,
         },
       });
     } catch (error) {
@@ -1469,7 +1476,16 @@ class AdminController {
 
       const changes = {};
       if (nombre !== undefined) changes.nombre = String(nombre).trim();
-      if (rol !== undefined) changes.rol = (rol === 'superadmin' ? 'superadmin' : 'admin');
+      if (rol !== undefined) {
+        if (!['admin','superadmin','delegado_provincial'].includes(rol)) return res.status(400).json({error:'Rol inválido.'});
+        changes.rol = rol;
+      }
+      const finalRole = changes.rol || target.rol;
+      if (finalRole === 'delegado_provincial') {
+        const province = catalogos.canonicalProvincia(req.body.provincia_delegacion === undefined ? target.provincia_delegacion || '' : req.body.provincia_delegacion || '');
+        if (!province) return res.status(400).json({error:'Selecciona una provincia válida para el delegado.'});
+        changes.provincia_delegacion = province;
+      } else if (rol !== undefined) changes.provincia_delegacion = null;
       if (activo !== undefined) changes.activo = !!activo;
 
       // Auto-protección: si el superadmin actual es el único, no puede degradarse
@@ -1479,7 +1495,7 @@ class AdminController {
           "SELECT COUNT(*)::int AS c FROM administradores WHERE rol='superadmin' AND activo=true"
         );
         const soloYo = superCount.rows[0].c <= 1 && target.rol === 'superadmin';
-        if (soloYo && (changes.rol === 'admin' || changes.activo === false)) {
+        if (soloYo && ((changes.rol && changes.rol !== 'superadmin') || changes.activo === false)) {
           return res.status(400).json({
             error: 'No puedes degradar ni desactivar al único superadmin activo. Nombra otro superadmin primero.',
           });
@@ -1491,7 +1507,7 @@ class AdminController {
       }
       await db.update('administradores', changes, { id });
       await auditAction(null, req.adminId, 'UPDATE_ADMIN', 'administradores',
-        { id: target.id, rol: target.rol, activo: target.activo }, changes, req);
+        { id: target.id, rol: target.rol, provincia_delegacion: target.provincia_delegacion, activo: target.activo }, changes, req);
       res.json({ message: 'Administrador actualizado correctamente.' });
     } catch (error) {
       console.error('Error actualizando admin:', error);
@@ -1807,6 +1823,12 @@ class AdminController {
             try {
               const current=(await db.query(`SELECT s.* FROM comunicacion_destinatarios cd JOIN socios s ON s.id=cd.socio_id JOIN consentimientos c ON c.socio_id=s.id WHERE cd.id=$1 AND s.activo=true AND s.estado='aprobado' AND c.acepta_mensajeria=true AND c.acepta_notificaciones_email=true`,[d.id])).rows[0];
               if(!current){ko++;await db.query("UPDATE comunicacion_destinatarios SET estado='fallido',error_code='omitido_preferencias_estado' WHERE id=$1",[d.id]);continue;}
+              if (req.delegationProvince) {
+                const delegate = (await db.query('SELECT rol,activo,provincia_delegacion FROM administradores WHERE id=$1',[adminId])).rows[0];
+                if (!delegate || !delegate.activo || delegate.rol !== 'delegado_provincial' || delegate.provincia_delegacion !== req.delegationProvince || current.provincia !== req.delegationProvince) {
+                  ko++; await db.query("UPDATE comunicacion_destinatarios SET estado='fallido',error_code='provincial_scope_changed' WHERE id=$1",[d.id]); continue;
+                }
+              }
               const destination=contactEmailFor(current);
               await db.query('UPDATE comunicacion_destinatarios SET email_destino=$2 WHERE id=$1',[d.id,destination||'(sin email)']);
               const personalized = html.replace(/\{nombre\}/g, escapeHtml(d.nombre || 'socio'));
@@ -1919,3 +1941,5 @@ class AdminController {
 }
 
 module.exports = new AdminController();
+
+module.exports.buildSocioFilterWhere = buildSocioFilterWhere;

@@ -96,6 +96,9 @@
 
   async function requireSession(expectedType) {
     const session = await verifySession();
+    if (session.type === 'admin' && session.user?.rol === 'delegado_provincial' && location.pathname !== '/delegacion.html') {
+      location.href='/delegacion.html';throw new Error('Sesión redirigida a la delegación');
+    }
     if (expectedType && session.type !== expectedType) {
       window.location.href = session.type === 'admin' ? '/admin.html' : '/panel.html';
       throw new Error('Sesión redirigida');

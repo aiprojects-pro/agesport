@@ -1187,7 +1187,7 @@
       tbody.innerHTML = admins.map(function (a) {
         const rolBadge = a.rol === 'superadmin'
           ? '<span class="tag" style="background:rgba(15,137,91,.12);color:var(--green-deep)">Superadmin</span>'
-          : '<span class="tag">Administrador</span>';
+          : '<span class="tag">'+(a.rol === 'delegado_provincial' ? 'Delegado · '+escapeHtml(a.provincia_delegacion || '') : 'Administrador')+'</span>';
         const estadoBadge = a.activo
           ? '<span class="tag" style="background:rgba(15,137,91,.12);color:var(--green-deep)">Activo</span>'
           : '<span class="tag" style="background:rgba(180,80,80,.12);color:#8a2020">Inactivo</span>';
@@ -1198,7 +1198,7 @@
           '<td>' + estadoBadge + '</td>' +
           '<td class="muted">' + fmtDate(a.ultimo_acceso) + '</td>' +
           '<td>' +
-            '<button class="btn btn-secondary btn-sm" data-action="toggle-rol" data-id="' + a.id + '" data-rol="' + a.rol + '">Cambiar rol</button> ' +
+            '<button class="btn btn-secondary btn-sm" data-action="toggle-rol" data-id="' + a.id + '" data-rol="' + a.rol + '" data-province="' + escapeHtml(a.provincia_delegacion || '') + '">Cambiar rol</button> ' +
             '<button class="btn btn-secondary btn-sm" data-action="reset-pw" data-id="' + a.id + '" data-email="' + escapeHtml(a.email) + '">Reset password</button> ' +
             (a.activo
               ? '<button class="btn btn-secondary btn-sm" data-action="deactivate" data-id="' + a.id + '">Desactivar</button>'
@@ -1212,6 +1212,20 @@
     }
   }
 
+  function chooseAdminRole(currentRole,currentProvince) {
+    return new Promise(resolve=>{
+      const dialog=document.createElement('dialog');
+      dialog.style.cssText='border:1px solid #ccd8df;border-radius:18px;padding:26px;width:min(480px,90vw)';
+      dialog.innerHTML='<form method="dialog"><h2>Permisos de acceso</h2><label for="editAdminRole">Perfil</label><select id="editAdminRole"><option value="admin">Administrador</option><option value="superadmin">Superadministrador</option><option value="delegado_provincial">Delegado provincial</option></select><label for="editAdminProvince">Provincia del delegado</label><select id="editAdminProvince"><option value="">Selecciona provincia</option></select><p>El delegado solo podrá consultar socios y enviar comunicaciones en la provincia asignada.</p><div class="actions"><button class="btn btn-secondary" value="cancel" formnovalidate>Cancelar</button><button class="btn btn-primary" value="save">Guardar permisos</button></div></form>';
+      const role=dialog.querySelector('#editAdminRole'),province=dialog.querySelector('#editAdminProvince');
+      window.AgesportCatalogos.COMUNIDADES_AUTONOMAS.flatMap(c=>c.provincias).sort((a,b)=>a.localeCompare(b,'es')).forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;province.appendChild(o);});
+      role.value=currentRole;province.value=currentProvince;
+      const sync=()=>{province.disabled=role.value!=='delegado_provincial';province.required=!province.disabled;};role.onchange=sync;sync();
+      dialog.addEventListener('close',()=>{const result=dialog.returnValue==='save'?{rol:role.value,provincia_delegacion:province.disabled?null:province.value}:null;dialog.remove();resolve(result);});
+      document.body.appendChild(dialog);dialog.showModal();role.focus();
+    });
+  }
+
   // Delegación de eventos en la tabla de admins
   document.addEventListener('click', async function (ev) {
     const btn = ev.target.closest('#adminsTable button[data-action]');
@@ -1220,9 +1234,9 @@
     const action = btn.dataset.action;
     try {
       if (action === 'toggle-rol') {
-        const nuevoRol = btn.dataset.rol === 'superadmin' ? 'admin' : 'superadmin';
-        if (!window.confirm('¿Cambiar rol a "' + nuevoRol + '"?')) return;
-        await request('/api/admin/administradores/' + id, { method: 'PUT', body: JSON.stringify({rol: nuevoRol}) });
+        const chosen = await chooseAdminRole(btn.dataset.rol,btn.dataset.province || '');
+        if (!chosen) return;
+        await request('/api/admin/administradores/' + id, { method: 'PUT', body: JSON.stringify(chosen) });
         setMessage($('adminsMessage'), true, 'Rol actualizado.');
         loadAdmins();
       } else if (action === 'reset-pw') {
@@ -1248,6 +1262,7 @@
   const btnNuevoAdmin = $('btnNuevoAdmin');
   const formNuevoAdmin = $('nuevoAdminForm');
   if (btnNuevoAdmin) {
+    window.AgesportCatalogos.COMUNIDADES_AUTONOMAS.flatMap(c=>c.provincias).sort((a,b)=>a.localeCompare(b,'es')).forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;$('admProvincia').appendChild(o);});
     btnNuevoAdmin.addEventListener('click', function () { formNuevoAdmin.style.display = ''; });
     $('cancelNuevoAdmin').addEventListener('click', function () { formNuevoAdmin.style.display = 'none'; });
     $('createAdminBtn').addEventListener('click', async function () {
@@ -1256,12 +1271,13 @@
         email: $('admEmail').value.trim(),
         password: $('admPassword').value,
         rol: $('admRol').value,
+        provincia_delegacion: $('admProvincia').value,
       };
       try {
         const r = await request('/api/admin/administradores', { method: 'POST', body: JSON.stringify(body) });
         setMessage($('adminsMessage'), true, r.message);
         formNuevoAdmin.style.display = 'none';
-        $('admNombre').value = ''; $('admEmail').value = ''; $('admPassword').value = ''; $('admRol').value = 'admin';
+        $('admNombre').value = ''; $('admEmail').value = ''; $('admPassword').value = ''; $('admRol').value = 'admin'; $('admProvincia').value = '';
         loadAdmins();
       } catch (err) { setMessage($('adminsMessage'), false, err.message); }
     });

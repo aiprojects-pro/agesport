@@ -413,7 +413,8 @@ class AuthController {
           id: admin.id,
           nombre: admin.nombre,
           email: admin.email,
-          rol: admin.rol
+          rol: admin.rol,
+          provincia_delegacion: admin.provincia_delegacion || null
         },
         token // Para clientes que no usen cookies
       });
@@ -478,7 +479,8 @@ class AuthController {
             id: req.admin.id,
             nombre: req.admin.nombre,
             email: req.admin.email,
-            rol: req.admin.rol
+            rol: req.admin.rol,
+            provincia_delegacion: req.admin.provincia_delegacion || null
           },
           authenticated: true
         });
