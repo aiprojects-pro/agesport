@@ -808,6 +808,7 @@
       $('smtp_from_name').value = cfg.fromName || 'AGESPORT · Mapa del Talento';
       $('smtp_from_email').value = cfg.fromEmail || '';
       $('smtp_reply_to').value  = cfg.replyTo || '';
+      $('smtp_registration_email').value = cfg.registrationEmail || '';
       $('smtp_pass').placeholder = cfg.passwordSet
         ? '••••••••  (deja en blanco para no cambiarla)'
         : 'Contraseña / App password';
@@ -827,6 +828,7 @@
       fromName: $('smtp_from_name').value.trim(),
       fromEmail: $('smtp_from_email').value.trim(),
       replyTo: $('smtp_reply_to').value.trim() || null,
+      registrationEmail: $('smtp_registration_email').value.trim(),
     };
   }
 

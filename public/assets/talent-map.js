@@ -41,6 +41,7 @@
   class TalentMap {
     constructor({ adminView = false, onChange = () => {} } = {}) {
       this.adminView = adminView;
+      if ($('locateMe')) $('locateMe').hidden = adminView;
       this.onChange = onChange;
       this.items = [];
       this.filters = defaults();
@@ -109,6 +110,15 @@
       });
       $('refreshMap').addEventListener('click', () => this.refresh());
       $('fitMap').addEventListener('click', () => this.fit());
+      $('locateMe')?.addEventListener('click', () => {
+        const me = this.items.find(s => String(s.id) === String(this.viewerId));
+        const status = $('myMapStatus');
+        if (!this.loaded) { status.textContent = 'Espera a que termine la consulta del mapa y vuelve a intentarlo.'; return; }
+        if (!me) { status.textContent = 'Tu perfil no aparece en la última consulta. Revisa tu visibilidad en Mi perfil y pulsa Actualizar después de guardar.'; return; }
+        this.reset();
+        this.locate(me.id);
+        status.textContent = M.located(me) ? 'Este es tu perfil. Si compartes ubicación con otros socios, el marcador agrupa a todas las personas.' : 'Tu perfil está en la lista, pero falta una ubicación válida. Revisa provincia y localidad en Mi perfil.';
+      });
       $('mapList').addEventListener('click', (ev) => {
         const b = ev.target.closest('[data-locate]');
         if (b) this.locate(Number(b.dataset.locate));
@@ -131,6 +141,9 @@
           maxZoom: 18,
           attribution: '© OpenStreetMap',
         }).addTo(this.map);
+        for (const city of [{name:'Ceuta',lat:35.8894,lng:-5.3213},{name:'Melilla',lat:35.2923,lng:-2.9381}]) {
+          L.marker([city.lat,city.lng], {interactive:false,keyboard:false,icon:L.divIcon({className:'territory-label',html:city.name,iconSize:[75,24],iconAnchor:[37,-8]})}).addTo(this.map);
+        }
         this.layer = L.layerGroup().addTo(this.map);
         this.map.on('zoomend', () => this.renderMarkers());
         this.resizeObserver = new ResizeObserver(() => {
@@ -269,6 +282,7 @@
       const coords = this.visible()
         .filter(M.located)
         .map((s) => [s.lat, s.lng]);
+      if (!Object.entries(this.filters).some(([key,value]) => key === 'intent' ? value !== 'all' : !!value)) coords.push([35.8894,-5.3213],[35.2923,-2.9381]);
       if (coords.length)
         this.map.fitBounds(coords, { padding: [40, 40], maxZoom: 11, animate: false });
       this.renderMarkers();
@@ -324,7 +338,7 @@
         '" aria-hidden="true">' +
         e(initials) +
         '</span><div><h4>' +
-        e(this.name(s)) +
+        e(this.name(s)) + (!this.adminView && String(s.id) === String(this.viewerId) ? ' · Tú' : '') +
         '</h4><p>' +
         e(s.entidad || 'Entidad sin indicar') +
         '</p></div></div><p class="person-role">' +

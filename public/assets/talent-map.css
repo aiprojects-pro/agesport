@@ -649,3 +649,7 @@
     transform: none;
   }
 }
+
+.territory-label { background:#fff; color:#103f55; border:2px solid #137458; border-radius:5px; text-align:center; font-size:14px; font-weight:800; line-height:22px; box-shadow:0 2px 5px #0002; }
+.map-self-status { padding:0 20px; color:#103f55; }
+.map-self-status:empty { display:none; }

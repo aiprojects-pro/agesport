@@ -365,9 +365,12 @@ class EmailService {
 
   async getActiveAdmins() {
     const db = require('../config/database');
-    return await db.findMany('administradores', { activo: true }, { 
-      select: 'id, email, nombre' 
-    });
+    const row = await db.findOne('configuracion', { clave: 'smtp_config' });
+    const cfg = row ? JSON.parse(row.valor) : {};
+    if (cfg.registrationEmail) return [{email:cfg.registrationEmail,nombre:'Avisos de altas'}];
+    // Las altas globales corresponden a administración, no a delegados provinciales.
+    const result = await db.query("SELECT id,email,nombre FROM administradores WHERE activo=true AND rol IN ('admin','superadmin')");
+    return result.rows;
   }
 
   // Enviar email de prueba para verificar configuración

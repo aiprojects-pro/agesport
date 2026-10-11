@@ -66,3 +66,17 @@ test('SMTP configuration test includes the same notice, with no real transport',
     nodemailer.createTransport = original;
   }
 });
+test('registration notices use the configured mailbox instead of account login addresses', async () => {
+  await db.query("INSERT INTO configuracion(clave,valor) VALUES('smtp_config',$1) ON CONFLICT(clave) DO UPDATE SET valor=EXCLUDED.valor",[JSON.stringify({registrationEmail:'office@example.invalid'})]);
+  const beforeCount=sent.length;
+  await email.notifyAdminNewRegistration({nombre:'Prueba',apellidos:'Avisos',email:'new@example.invalid'});
+  assert.equal(sent.length,beforeCount+1);
+  assert.equal(sent.at(-1).to,'office@example.invalid');
+  await db.query("DELETE FROM configuracion WHERE clave='smtp_config'");
+});
+test('without a mailbox override, global registration notices exclude provincial delegates',async()=>{
+ await db.query("INSERT INTO administradores(email,password_hash,nombre,rol,provincia_delegacion) VALUES ('root@example.invalid','fake','Root','superadmin',NULL),('delegate@example.invalid','fake','Delegate','delegado_provincial','Sevilla')");
+ const admins=await email.getActiveAdmins();
+ assert.ok(admins.some(a=>a.email==='root@example.invalid'));
+ assert.ok(!admins.some(a=>a.email==='delegate@example.invalid'));
+});

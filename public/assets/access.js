@@ -1,5 +1,5 @@
 (function () {
-  const { request, verifySession, setMessage } = window.AgesportPortal;
+  const { request, verifySession, setMessage, memberReturnUrl, escapeHtml } = window.AgesportPortal;
   const socioForm = document.getElementById('socioForm');
   const adminForm = document.getElementById('adminForm');
   const socioMessage = document.getElementById('socioMessage');
@@ -15,11 +15,12 @@
   //
   // Si se pasa ?force=socio o ?force=admin en la URL, ignoramos la
   // sesión activa y mostramos el formulario directamente.
+  const returnUrl = memberReturnUrl(new URLSearchParams(window.location.search).get('next'));
   const forceMode = new URLSearchParams(window.location.search).get('force');
   if (!forceMode) {
     verifySession().then(function (session) {
       const tipoTxt = session.type === 'admin' ? 'administrador' : 'socio';
-      const panelUrl = session.type === 'admin' ? '/admin.html' : '/panel.html';
+      const panelUrl = session.type === 'admin' ? '/admin.html' : returnUrl;
       const banner = document.createElement('div');
       banner.className = 'message-box info';
       banner.style.margin = '20px auto';
@@ -30,7 +31,7 @@
       banner.style.background = '#f7fafc';
       banner.innerHTML =
         'Ya tienes una sesión activa como <strong>' + tipoTxt + '</strong>. ' +
-        '<a href="' + panelUrl + '" style="margin-left:8px">Ir al panel</a> · ' +
+        '<a href="' + escapeHtml(panelUrl) + '" style="margin-left:8px">Ir al panel</a> · ' +
         '<a href="#" id="forceLogoutLink" style="margin-left:8px">Cerrar sesión y entrar con otra cuenta</a>';
       const main = document.querySelector('main') || document.body;
       main.insertBefore(banner, main.firstChild);
@@ -41,7 +42,7 @@
           try {
             await request('/api/auth/logout', { method: 'POST' });
           } catch (_) { /* nada */ }
-          window.location.href = '/acceso.html?force=socio';
+          window.location.href = '/acceso.html?force=socio&next=' + encodeURIComponent(returnUrl);
         });
       }
     }).catch(function () { /* sin sesión → muestra el form normal */ });
@@ -59,7 +60,7 @@
           password: document.getElementById('socioPassword').value
         })
       });
-      window.location.href = '/panel.html';
+      window.location.href = returnUrl;
     } catch (error) {
       setMessage(socioMessage, false, error.message);
     } finally {
