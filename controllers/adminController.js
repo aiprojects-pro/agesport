@@ -1312,6 +1312,7 @@ class AdminController {
           fromName: cfg.fromName || '',
           fromEmail: cfg.fromEmail || cfg.user || '',
           replyTo: cfg.replyTo || '',
+          registrationEmail: cfg.registrationEmail || '',
           passwordSet: !!cfg.passEncrypted,
         } : null,
       });
@@ -1333,7 +1334,10 @@ class AdminController {
       }
       const previous = await db.findOne('configuracion', { clave: 'smtp_config' });
       const prevCfg = previous ? JSON.parse(previous.valor) : {};
+      const registrationEmail = req.body.registrationEmail === undefined ? (prevCfg.registrationEmail || '') : String(req.body.registrationEmail || '').trim().toLowerCase();
+      if (registrationEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registrationEmail)) return res.status(400).json({error:'El email para avisos de altas no es válido.'});
       const cfg = {
+        registrationEmail,
         host: String(host).trim(),
         port: parseInt(port) || 587,
         secure: !!secure,

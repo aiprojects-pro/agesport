@@ -84,7 +84,9 @@
           message += ': ' + data.details.join('; ');
         }
       }
-      throw new Error(message);
+      const error = new Error(message);
+      error.status = response.status;
+      throw error;
     }
 
     return data;
@@ -94,8 +96,23 @@
     return request('/api/auth/verify', { method: 'GET', headers: {} });
   }
 
+  function memberReturnUrl(value) {
+    try {
+      const url = new URL(value || '/panel.html', window.location.origin);
+      if (url.origin !== window.location.origin || !['/panel.html', '/mensajes.html', '/perfil.html', '/directorio.html'].includes(url.pathname)) return '/panel.html';
+      return url.pathname + url.search + url.hash;
+    } catch (_) { return '/panel.html'; }
+  }
+
   async function requireSession(expectedType) {
-    const session = await verifySession();
+    let session;
+    try { session = await verifySession(); }
+    catch (error) {
+      if (error.status === 401) {
+        window.location.href = expectedType === 'admin' ? '/acceso-admin.html' : '/acceso.html?next=' + encodeURIComponent(memberReturnUrl(window.location.href));
+      }
+      throw error;
+    }
     if (session.type === 'admin' && session.user?.rol === 'delegado_provincial' && location.pathname !== '/delegacion.html') {
       location.href='/delegacion.html';throw new Error('Sesión redirigida a la delegación');
     }
@@ -136,6 +153,7 @@
     requireSession: requireSession,
     logout: logout,
     setMessage: setMessage,
+    memberReturnUrl: memberReturnUrl,
     queryParam: queryParam
   };
 })();

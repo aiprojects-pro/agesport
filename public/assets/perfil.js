@@ -349,7 +349,7 @@
       ? 'Mi perfil profesional'
       : (socio.nombre || '') + ' ' + (socio.apellidos || '');
     intro.textContent = isOwnProfile
-      ? 'Actualiza tu información profesional, visibilidad y preferencias del entorno privado.'
+      ? 'Actualiza tu información profesional, visibilidad y preferencias. El botón Contactar lo ven los demás socios cuando aceptas mensajes; no se muestra en tu propia ficha.'
       : 'Estás viendo la ficha pública de este socio. No puedes editar sus datos.';
 
     fillForm(socio);

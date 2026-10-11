@@ -151,7 +151,7 @@
           <button type="button" data-intent="mentor" aria-pressed="false">Mentores <span data-intent-count="mentor"></span></button>
           <button type="button" data-intent="speaker" aria-pressed="false">Ponentes <span data-intent-count="speaker"></span></button>
           <button type="button" data-intent="available" aria-pressed="false">Con disponibilidad <span data-intent-count="available"></span></button>
-          <button type="button" id="myProvince" aria-pressed="false" disabled>En mi provincia</button>
+          <button type="button" id="locateMe">Encontrarme en el mapa</button><button type="button" id="myProvince" aria-pressed="false" disabled>En mi provincia</button>
         </div>
         <div class="explorer-filters">
           <div class="map-search"><label for="talentSearch">Buscar personas y experiencia</label><input id="talentSearch" type="search" placeholder="Nombre, entidad, localidad o especialidad…" autocomplete="off"></div>
@@ -178,7 +178,7 @@
             <div id="mapList" class="talent-results-list"></div>
           </section>
         </div>
-        <footer class="explorer-foot"><p id="mapModeNotice"></p><a href="/perfil.html">Gestionar mi visibilidad</a></footer>
+        <p id="myMapStatus" class="map-self-status" role="status"></p><footer class="explorer-foot"><p id="mapModeNotice"></p><a href="/perfil.html">Gestionar mi visibilidad</a></footer>
       </article>
       <section class="grid-4" id="kpis" aria-label="Indicadores de los resultados"></section>
       <section class="card kpi-detail" id="kpiDetail" hidden></section>
