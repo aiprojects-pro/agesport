@@ -20,6 +20,7 @@ Con la cuenta demo: directorio HTTP 200 (17 perfiles), mapa HTTP 200 (22 perfile
 - Etiquetas permanentes de Ceuta/Melilla y encuadre general que incluye ambas ciudades, sin inventar socios ni alterar sus permisos.
 - Encontrarme en el mapa: limpia filtros, localiza el perfil, explica agrupaciones y distingue perfil no visible o sin ubicación; identificación «Tú» en la lista.
 - Mi perfil explica por qué Contactar se muestra a los demás socios.
+- Guardar la configuración SMTP conserva la autenticación en la recarga inmediata, descifrando la clave sólo en memoria.
 - Buzón configurable para avisos de altas en la configuración de correo. Si está definido sustituye los emails de acceso administrativos. Sin override, sólo reciben avisos administradores globales, no delegados provinciales.
 
 La captura de Chipi no acredita por sí sola la causa exacta del fallo histórico. Se comprobó un fallo real de navegación sin sesión y se corrigió; el directorio actual responde correctamente.

@@ -139,7 +139,8 @@ class EmailService {
   reloadFromConfig(cfg) {
     if (!cfg || !cfg.host || !cfg.user) return;
     const previous = this.transporter;
-    this.transporter = buildTransport(cfg);
+    const pass = cfg.pass || (cfg.passEncrypted ? require('../middleware/auth').decryptData(cfg.passEncrypted) : null);
+    this.transporter = buildTransport({ ...cfg, pass });
     if (previous && typeof previous.close === 'function') {
       try { previous.close(); } catch (_) { /* pool ya cerrado */ }
     }

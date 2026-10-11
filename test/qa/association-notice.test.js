@@ -80,3 +80,15 @@ test('without a mailbox override, global registration notices exclude provincial
  assert.ok(admins.some(a=>a.email==='root@example.invalid'));
  assert.ok(!admins.some(a=>a.email==='delegate@example.invalid'));
 });
+
+test('saving SMTP settings retains stored authentication during hot reload',()=>{
+ const original=nodemailer.createTransport;
+ const previous=email.transporter;
+ let options;
+ nodemailer.createTransport=(cfg)=>{options=cfg;return {close(){}};};
+ try {
+  email.reloadFromConfig({host:'smtp.example.invalid',user:'qa@example.invalid',passEncrypted:require('../../middleware/auth').encryptData('SyntheticPassword')});
+  assert.equal(options.auth.user,'qa@example.invalid');
+  assert.equal(options.auth.pass,'SyntheticPassword');
+ } finally { nodemailer.createTransport=original;email.transporter=previous; }
+});
